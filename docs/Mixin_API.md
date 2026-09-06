@@ -264,6 +264,24 @@ UEP prunes superseded generated classes when it observes normal Blueprint
 reinstancing, but editing a function signature while its live class is patched
 is not treated as a supported in-place migration.
 
+## Call-entry boundary and planned hardening
+
+The router changes selected class function-map entries, not the object's class.
+Calls that resolve those entries can reach Python; the target UObject selects
+the active profile. Two instances of the same Blueprint can therefore take
+different paths through the shared router: a matching Python callable on one,
+the preserved original function when the other profile omits that method.
+Neither a successful Python call nor a Python exception implicitly calls the
+original; use `call_mixin_original` for explicit composition.
+
+This is not universal interception of every native invocation. A previously
+retained original `UFunction*`, some Final/explicit-parent call paths, or a
+direct native C++ call can bypass the replaced map entry. These are source-level
+boundaries, not claims of runtime coverage for every opcode or call site.
+The [roadmap](../ROADMAP.md) requires a focused cross-Actor caller-BP regression
+in 0.8 closeout and a labelled call/lifecycle matrix plus controlled
+unregister/reload/re-register tests in 0.9. Those new gates are still planned.
+
 ## 0.7 safety boundary
 
 - Registration, selection and UObject access run on Unreal's game thread.

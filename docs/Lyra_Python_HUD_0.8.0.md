@@ -1,11 +1,16 @@
 # Lyra Python HUD foundation for 0.8.0
 
-UEP 0.8.0 moves the behavior of Lyra's existing health bar into Python without
+The unreleased UEP 0.8.0 candidate moves the event/subscription behavior of
+Lyra's existing health bar into Python without
 replacing `ALyraHUD`, bypassing CommonUI, changing the widget class, or editing
 the Lyra/Engine source trees. The disposable validation stage overlays a
 configured copy of `/Game/UI/Hud/W_Healthbar`; the live object is still
 `W_Healthbar_C` and is still created and removed by Lyra's Game Feature
 `Add Widgets` action.
+
+Data updates and lifecycle hooks are implemented; damage/heal/death visual
+parity and release acceptance remain incomplete. The [roadmap](../ROADMAP.md)
+defines the remaining work, not an already-passed contract.
 
 ## Ownership boundary
 
@@ -16,7 +21,7 @@ configured copy of `/Game/UI/Hud/W_Healthbar`; the live object is still
 | Widget `Construct`/`Destruct`, controller and health subscriptions | Python mixin presenter |
 | Current-pawn selection and rebinding after possession changes | Python mixin presenter |
 | Health normalization and refresh timing | Python mixin presenter |
-| Dynamic materials, bar animation and numeric widget primitives | Existing `W_Healthbar` Blueprint functions |
+| Dynamic materials, bar animation and numeric widget primitives | Retained `W_Healthbar` Blueprint functions; Python animation/interpolation orchestration still needs parity fixes |
 | Dedicated-server UI | None; the acceptance contract requires zero widget/presenter instances |
 
 The presenter is intentionally narrow. It reads replicated health and invokes
@@ -79,10 +84,11 @@ and runtime behavior rather than requiring byte-identical generated uassets.
 No Tick poll drives the health bar. The initial render is explicit; later
 updates are caused by Health Component or possession delegates.
 
-## Acceptance contract
+## Required acceptance contract (not fully enforced yet)
 
 The 0.8 full-content lane must prove all of the following on UE 5.8 and the
-engine-bundled CPython 3.11:
+engine-bundled CPython 3.11. This is the target contract, not a statement that
+the current driver enforces every item:
 
 - seven host-side presenter/bootstrap tests cover source-only asset absence,
   exact callback identity, event-driven rendering, Pawn replacement, Blueprint
@@ -90,8 +96,9 @@ engine-bundled CPython 3.11:
 - generation preserves the untouched reference widget, while the read-only
   audit proves that the staged copy declares the expected Interface, Mixin Set,
   selector, profiles, reflected state and ShooterCore `Add Widgets` shape;
-- Standalone and a network client render the real replicated
-  `100 -> 90 -> 100` sequence from delegate callbacks;
+- Standalone and a network client observe the real replicated
+  `100 -> 90 -> 100` sequence from delegate callbacks, and a separate rendered
+  run verifies damage/heal/death/respawn visuals and numeric interpolation;
 - an authority-driven Pawn restart replaces the Pawn and produces exactly one
   active binding to the new Health Component;
 - a first same-map Experience replacement drives the real
@@ -107,6 +114,24 @@ engine-bundled CPython 3.11:
 - strict logs contain no compiler, fatal, assertion, unhandled-exception or
   unexpected `Log*: Error` diagnostics.
 
+Current closeout gaps:
+
+- `All` does not call `HUDAudit`; that audit currently runs only in its own mode.
+- Runtime checks accept more than one active presenter if counts balance, and
+  success is written before quit. Exactly-one active binding and post-shutdown
+  zero owned callbacks above are requirements, not enforced guarantees.
+  Duplicate-presenter, absent-cleanup and invalid-audit negative tests must fail.
+- The presenter currently calls `InitializeBarVisuals` and then numeric
+  `SetCurrentValue` on updates. Correct damage/heal/death animation selection and
+  interpolation remain to be implemented and visibly checked.
+- After fixing these gaps, repeat current-source full and rendered acceptance.
+  Use native Lyra gameplay or an isolated fixture for lethal/death coverage;
+  do not expand the non-lethal bridge's authority for test convenience.
+
+Existing cleanup paths and historical cleanup logs are real evidence; these
+gaps do not establish a current leak. The seven host tests use fake reflected
+objects and cannot certify all of the real-process requirements above.
+
 A fresh staged Lyra tree has no asset-registry cache. Before multi-process
 runtime tests, the driver completes one headless Editor scan and retains the
 resulting read-only cache. This prevents two `Editor -game` processes from
@@ -114,7 +139,7 @@ competing over an uncached initial Lyra scan before the client can service its
 network handshake. The cache path and byte counts are recorded in the run
 summary.
 
-Run the complete lane with:
+Run the existing combined runtime/package lane with:
 
 ```powershell
 .\Validation\Run-UEP58LyraValidation.ps1 `
@@ -124,9 +149,11 @@ Run the complete lane with:
 ```
 
 `All` includes a full Win64 cook/package and can take substantially longer
-than `Standalone` or `Network`. Use the narrower modes during iteration.
+than `Standalone` or `Network`. It is not yet the complete corrected 0.8 gate:
+run `HUDAudit` separately for now, and do not equate a green summary with release
+approval. Use the narrower modes during iteration.
 
-## Retained acceptance evidence
+## Retained historical evidence
 
 - HUD audit `20260903-032632`: the official action set has one
   `GameFeatureAction_AddWidgets`, 1 layout entry and 11 widget entries.
@@ -139,11 +166,16 @@ than `Standalone` or `Network`. Use the narrower modes during iteration.
   server reports zero HUD state. BuildCookRun and packaged runtime exit 0,
   strict logs pass, and archived/tested executable hashes match.
 
-The complete run was headless; it did not open a visible manual client.
+The complete run was NullRHI/headless, has `hud_audit: null`, and did not open
+a visible manual client. Its `full_acceptance` field records the checks of that
+driver version, not the revised contract. It predates the final source-only
+bootstrap fix/seventh test and is Development-only, not DebugGame or Shipping
+evidence. See [Validation history](Validation_History.md).
 
 ## Deliberate boundary
 
-0.8.0 covers only the health bar and lifecycle foundation. QuickBar,
-weapon/ammo, reticle, team score, elimination feed, accolade presentation and
-a reusable Gameplay Message subscription API remain 0.9.0 work. The runtime
-Mixin API also retains the 0.7 restrictions documented in `Mixin_API.md`.
+0.8.0 targets only the health bar and lifecycle foundation. 0.9 prioritizes
+Mixin engineering, one weapon/ammo HUD chain and a bounded reusable Gameplay
+Message subscription surface. Full QuickBar, reticle, team score, elimination
+feed and accolades are 1.1+ backlog. The runtime Mixin API retains the 0.7
+restrictions documented in [Mixin_API.md](Mixin_API.md).

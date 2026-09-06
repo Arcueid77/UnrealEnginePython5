@@ -1,301 +1,196 @@
 # Roadmap
 
-This roadmap describes capability milestones, not promised delivery dates.
-Each version advances only after its acceptance criteria are automated and pass
-without modifying Unreal Engine source code. UE's binary content assets remain
-assets unless replacing them with generated data provides a concrete benefit;
-the goal is to move behavior and control logic into Python.
+Capability milestones, not delivery dates. Review baseline: 2026-09-07.
+Implementation, retained test evidence and a published release are separate
+states; a version number in the plugin descriptor is not release approval.
 
-## 0.1.0 — UE 5.8 foundation
+The target is Unreal Engine 5.8 with engine-bundled CPython 3.11, without
+modifying Engine source or the official Third Person/Lyra reference projects.
+Blueprint assets remain useful for authored content and visual primitives;
+Python owns the selected behavior, not every native engine subsystem.
 
-Status: implementation complete; exact-source package confirmation deferred.
+## Current status
 
-- Build all runtime and editor plugin modules against UE 5.8.
-- Use the engine-bundled CPython 3.11 runtime.
-- Support both shared and UEP-owned interpreter lifecycles.
-- Validate reflection, common property types, functions, delegates, garbage
-  collection, editor objects and packaged runtime behavior.
-- Provide a Third Person integration demo with additional Python gameplay.
+The latest published tag is `v0.7.0` in both repositories. Development is on
+`dev/release-0.8.0`; neither repository has a `v0.8.0` tag. The core default
+branch is `master`, the Examples default branch is `main`, and both still
+point to 0.7.0. These are review-date facts, not automatic release metadata.
 
-Acceptance gate: the four-suite validation run passes all 40 required checks,
-the Third Person smoke test passes, and neither workflow changes engine source.
+| Version | Delivered scope | Status and retained qualification |
+| --- | --- | --- |
+| 0.1.0 | UE5.8 binding foundation and compatibility demo | Tagged; exact-source package confirmation was deferred |
+| 0.2.0 | Python-first Third Person template parity | Tagged; retained 46-check core, demo and visible evidence |
+| 0.3.0 | API/lifecycle hardening | Tagged; retained 67-check Win64 evidence, Linux unvalidated |
+| 0.4.0 | Lyra integration and authority/replication observation | Tagged; retained generic 70/70 and Lyra package evidence |
+| 0.5.0 | Bounded Python-driven Lyra GAS gameplay slice | Tagged; final selector hardening had runtime tests but no new exact-source package |
+| 0.6.0 | Playable Python-first Third Person and Examples split | Tagged; retained headless, package and visible evidence |
+| 0.7.0 | Retained-class Mixin Third Person | Tagged; retained headless/package evidence, visible-client gate still unrecorded |
+| 0.8.0 | Lyra Python health-bar foundation | Implemented in development; review closeout and release gates remain open |
 
-## 0.2.0 — Python-first Third Person
+Historical tags and delivered scope are not being rewritten. The 0.1/0.5
+exact-source package gaps and 0.7 visible-client gap remain recorded debt, not
+retroactively passed checks. A fresh candidate matrix must cover the current
+behavior before 1.0; it cannot change what was tested in an older release.
+Original result IDs and milestone details are preserved in
+[Validation history](docs/Validation_History.md).
 
-Status: complete.
+## 0.8.0 — Finish the Lyra Python health bar
 
-- Rebuild dynamic Python `UClass`/`UFunction` generation on UE5's `FField`
-  reflection model where it is required for Python subclasses and event
-  overrides.
-- Produce a Python-first variant of the official UE 5.8 Third Person template:
-  character/Pawn lifecycle, camera boom and control rotation, Enhanced Input
-  mapping setup, move/look/jump actions, PlayerController/GameMode bootstrap and
-  locomotion state calculation move out of Blueprint event logic.
-- Drive the animation instance from Python while retaining skeletal meshes,
-  animation clips and pose-blending assets as Unreal assets. Blueprint graphs
-  should be removed or reduced to asset-only glue with documented reasons.
-- Keep the reference Blueprint template unchanged and stage the Python variant
-  separately so behavior can be compared automatically.
-- Add deterministic tests for input binding, movement, jump, camera response,
-  animation state changes, map travel, standalone play and packaged execution.
+Status: unreleased; implementation present, acceptance incomplete.
 
-Acceptance gate: the Python-first variant reaches feature parity with the basic
-Third Person template for keyboard/mouse play, its remaining Blueprint logic is
-inventoried, and all gameplay checks pass in visible and headless modes.
+Goal: one event-driven health-bar presenter on Lyra's existing
+`W_Healthbar_C`, with correct visuals and provable lifecycle ownership.
+CommonUI, Game Feature actions, GAS authority and replication stay native.
 
-Completed gate: UE 5.8.0 and Python 3.11.8 passed 46 shared, standalone,
-editor and packaged core checks. The Python-first demo passed Blueprint audit,
-headless smoke, packaged smoke and a rendered Standalone capture while the
-unchanged template overlay continued to pass its regression smoke test.
+The 2026-09-03 `All` result `20260903-033426` passed the checks implemented
+then, but it used NullRHI, has `hud_audit: null`, and does not establish visual
+parity, exactly one active presenter or post-shutdown zero owned callbacks.
+It also predates the final source-only bootstrap fix. Seven host tests passing
+does not replace a fresh real-runtime run of that fix.
 
-## 0.3.0 — API and platform hardening
+Required exit gates, all still open:
 
-Status: complete.
+- [ ] Restore damage/heal/death presentation and numeric interpolation. Initial
+  setup and subsequent health changes must use the appropriate retained visual
+  primitives rather than resetting the bar on every update.
+- [ ] Integrate `HUDAudit` into `All` and its success condition. Missing or
+  invalid Interface/selector/profile/action configuration must fail the gate.
+- [ ] Require exactly one presenter for the tested local player while active,
+  zero dedicated-server presenters, and zero presenter-owned delegates/state
+  after Destruct, router teardown and interpreter shutdown. Final acceptance
+  must be decided after cleanup evidence, not from a pre-quit snapshot.
+- [ ] Add negative tests for duplicate presenters, missing cleanup evidence and
+  invalid audit data; each must make validation fail. Existing cleanup log
+  messages are retained evidence, not proof of an observed leak.
+- [ ] Add a focused caller-BP regression: another Blueprint calls an Actor
+  reference targeting two instances of the same BP class. One profile implements
+  the function in Python; the other omits it and reaches the preserved BP.
+  Both pass through the shared router and select by target UObject. Assert
+  class identity, per-instance counters/side effects, no implicit original call
+  after Python success, and restoration after unregister.
+- [ ] Record a rendered damage/heal/death/respawn acceptance run. Use native
+  Lyra gameplay or an isolated fixture for death; do not broaden the existing
+  non-lethal health-delta bridge just to drive this test.
+- [ ] After the fixes, rerun current-source host tests, HUD audit, Standalone,
+  synchronized server/client, Win64 Development cook/package and packaged
+  runtime, plus the rendered check. Retain both repository revisions, binary
+  and reference hashes, strict logs and final cleanup evidence.
 
-- Add generic `TSet` property marshalling and promote it into the required core
-  suite.
-- Expand lifecycle, reload, exception, threading and long-running stress tests.
-- Audit the remaining editor, animation, Slate, Sequencer, networking and asset
-  wrappers for UE5 behavior rather than compile-only compatibility.
-- Add at least one non-Windows build/runtime validation lane before claiming
-  broader platform support.
-- Define reproducible source and optional binary release packaging.
+Non-goals: other combat HUD panels, a general GAS/RPC surface, broad hot reload,
+new platform support, or a new native networking authority model. This roadmap
+change does not implement any of the fixes or new gates above.
 
-Acceptance gate: the six-suite Win64 matrix passes all 67 required checks,
-including cooked packaged execution and orderly interpreter/process shutdown;
-the wrapper audit has behavioral coverage, platform claims match retained
-artifacts, and release archives are generated from a clean named commit.
+## 0.9.0 — Mixin engineering and one reusable HUD chain
 
-Completed gate: UE 5.8.0 and CPython 3.11.8 passed 20 shared core, 20
-standalone core, two isolated exception-boundary, five editor and 20 packaged
-core checks in full result `20260811-153622`. The run exposed and fixed a
-`BlendSpace` parameter shallow-copy shutdown corruption, then completed with
-zero fatal, compiler or unexpected error diagnostics and process exit code 0.
-Linux remains explicitly unclaimed: readiness result `20260811-154243` reports
-the required `v26_clang-20.1.8-rockylinux8` SDK is not installed locally.
+Status: planned; starts after 0.8 closeout.
 
-## 0.4.0 — Lyra integration
+Goal: make the retained-class model predictable in normal project development,
+then exercise the reusable pieces with one weapon/ammo HUD chain.
 
-Status: complete.
+- Define and test a call-entry matrix: cross-Actor BP calls, reflected
+  name-lookup/ProcessEvent paths, ordinary events, explicit original calls,
+  supported return/const-reference signatures and rejected signatures.
+  Separately record retained-original pointers, Final/explicit-parent paths
+  and direct native C++ calls as interception boundaries, not blanket promises.
+- Cover placed, spawned and late-loaded objects; first-call registration timing;
+  BeginPlay/Construction/EndPlay; per-instance selection, fallback, reentry,
+  profile switching, GC, repeated PIE and world travel. An event that already
+  ran is never replayed by registration.
+- Provide a controlled unregister/reload/re-register workflow, with explicit
+  restart requirements for generated type or function-signature changes. Do
+  not promise arbitrary live Blueprint recompile or state migration.
+- Make diagnostics identify the UObject, class, profile, function and lifecycle
+  stage; document recovery from import, selector and Python callback errors.
+- Add one bounded reusable Gameplay Message subscription/lifetime surface and
+  use it for weapon/ammo presentation, without moving inventory, equipment,
+  GAS, replication or scoring authority out of Lyra.
+- Keep generic binding/message/lifetime APIs in the plugin; keep Lyra-specific
+  adapters, presentation policy and assets in Examples.
 
-- Start with a capability audit of Lyra's Game Feature plugins, modular gameplay,
-  Enhanced Input, Gameplay Ability System, asset management and multiplayer
-  lifecycle boundaries.
-- Introduce narrow Python extension points with explicit thread, authority,
-  replication and hot-reload rules instead of attempting an immediate Lyra
-  rewrite.
-- Validate editor startup, Game Feature activation, client/server play, cook and
-  package behavior against an unchanged Lyra reference project.
-- Expand Python ownership only where performance and lifecycle measurements show
-  it is safe and maintainable.
+Exit gates:
 
-Lyra is intentionally not a 0.2.0 acceptance dependency.
+- [ ] A checked-in call/lifecycle matrix labels every path as tested supported,
+  intentionally rejected, or bypass/unsupported, with reproducible fixtures.
+- [ ] The controlled reload and cleanup tests pass across repeated PIE, GC and
+  travel; state, callbacks and router restoration are checked after teardown.
+- [ ] A visible and packaged weapon/ammo example proves event-driven updates,
+  safe subscription removal and native authority ownership.
+- [ ] Generic, both Third Person variants and Lyra pass the candidate regression
+  matrix; the missing Mixin Third Person visible gate is closed.
+- [ ] The supported API inventory and migration/deprecation rules are ready for
+  RC freeze, with no known release-blocking correctness defects.
 
-Source gate result `20260811-165230` built a clean disposable `LyraEditor`
-stage, linked `UEPLyraBridge`, started a game world with UEP-owned CPython
-3.11.8, captured a game-thread/Standalone snapshot and shut down with zero
-compiler, fatal or `Log*: Error` diagnostics. Historical readiness result
-`20260811-184203` correctly reports the local Git sample as source-ready but
-content-blocked. Complete-project readiness result `20260812-005352`, followed
-by full-driver Readiness result `20260812-013646`, passes UE 5.8.0, CPython
-3.11.8, all five Game Features and every critical Unreal package against
-`F:\LyraStarterGame\LyraStarterGame.uproject`.
-Final source regression `20260811-183357` also passed both Standalone and a
-real UDP-listening dedicated-server graceful-exit gate. Final generic regression
-`20260812-043408` passed 70/70 checks including Editor/Slate, a full Development
-BuildCookRun and packaged CPython 3.11.8. `Run-UEP58LyraValidation.ps1` now encodes
-the complete Standalone, explicitly synchronized dedicated-server/client and
-packaged-runtime contract. Negative result `20260811-184148` rejected the
-content-free sample before staging. Pre-release `All` result
-`20260812-025232` then passed readiness, Editor build, Standalone gameplay,
-dedicated-server/client authority and replication, and a cold-DDC full Win64
-BuildCookRun. Its executable-layout guard exposed and stopped on one incorrect
-internal-path assumption after UAT had archived successfully. The corrected,
-bit-identical package passed the full gameplay and lifecycle contract in strict
-result `20260812-042711-packaged-resume` with CPython 3.11.8 and zero fatal or
-`Log*: Error` diagnostics.
+Non-goals: full QuickBar, reticle, team score, elimination feed and accolades;
+RPC/latent support; arbitrary C++ interception; unrestricted hot reload.
+The remaining combat HUD is 1.1+ backlog. If it later becomes a pre-1.0
+requirement, explicitly plan 0.10 rather than silently enlarging 0.9.
 
-Named release-code commit `c797d56` subsequently passed formal `All` result
-`20260812-051532` from readiness through packaged runtime in one invocation and
-set `full_acceptance: true`. It cooked 4,046 packages, returned exit code 0 for
-Editor, Standalone, both network roles, UAT and packaged gameplay, and retained
-zero strict runtime/UAT error diagnostics with matching executable hashes.
+## 1.0.0-rc.N — Freeze and prove a release candidate
 
-The completed boundary keeps Game Feature activation, ability grants, input
-mappings and replicated authority-sensitive state native to Lyra. Python
-observes those states through the disposable bridge. The reference project and
-Unreal Engine source remain unchanged throughout validation.
+Status: planned; release fixes only after scope/API freeze.
 
-## 0.5.0 — Python-driven Lyra gameplay slice
+Goal: validate one identified plugin/Examples pair, not a mixture of old green
+reports and new source.
 
-Status: complete.
+- [ ] Freeze the API and declared support matrix, including exact UE revision/
+  BuildId, CPython version, Win64 target and build configuration.
+- [ ] Run the complete generic, PythonFirst, Mixin and Lyra matrix on the
+  candidate; retain editor/standalone, synchronized network, package, visible
+  and post-exit lifecycle evidence with strict diagnostics.
+- [ ] Keep Development evidence separate from Shipping. A production-game 1.0
+  claim requires a dedicated Shipping smoke/package gate; the current drivers
+  and old Development runs do not provide it. DebugGame also needs its own
+  evidence before being advertised as validated.
+- [ ] Reproduce a clean checkout with its pinned Examples revision and test
+  source/archive installation. Verify Engine/reference assets remain unchanged.
+- [ ] Record the [candidate manifest](docs/Validation_History.md#candidate-record-template),
+  artifact hashes, known limitations and migration notes. A code/asset change
+  after validation invalidates affected evidence and requires a new candidate.
 
-- Add one bounded authority write instead of broad arbitrary GAS access. Python
-  chooses a command ID, health delta, target role and timing; the adapter checks
-  game thread, authority, target readiness, magnitude, non-lethal/non-overheal
-  policy, damage immunity and idempotency.
-- Execute Lyra's existing SetByCaller Damage/Heal Gameplay Effects through the
-  target ASC. Do not write Health directly or replace Lyra replication.
-- Prove client writes are rejected locally with no implicit RPC.
-- Prove a dedicated-server Python process changes a real remote player's Health,
-  client Python observes the replicated damaged value, server Python restores
-  only after that acknowledgement, and client Python observes restoration.
-- Retain the 0.4 observation contract and unchanged external Engine/Lyra trees.
+A failing release-blocking gate means another RC, not a changed definition of
+success. Documentation-only corrections can be verified without recooking;
+their source relationship to retained runtime artifacts must stay explicit.
 
-Acceptance gate: strict Standalone, synchronized dedicated-server/client,
-Win64 BuildCookRun and packaged gameplay all pass on UE 5.8 with engine-bundled
-CPython 3.11. Result JSON must record authority rejection, exact `100 -> 90 ->
-100` Health, duplicate-command rejection and orderly shutdown with no compiler,
-fatal/assert or `Log*: Error` diagnostics.
+## 1.0.0 — Stable UE5.8 runtime binding
 
-Incremental implementation results `20260812-233341` (Standalone) and
-`20260812-233801` (Network) pass the new command, authority, idempotency and
-replication contract. Formal `All` result `20260812-234501` then passed the
-complete gameplay-slice candidate with `full_acceptance: true`: readiness,
-Editor, Standalone,
-loopback dedicated server/client, Win64 BuildCookRun and packaged execution all
-passed on UE 5.8.0 and CPython 3.11.8. Every process exited 0, the package hashes
-matched, and strict runtime logs contained no fatal/assert/`Log*: Error`
-diagnostics. After the controller selector was hardened to reject ambiguous
-human targets, exact-source results `20260813-005436` (Network) and
-`20260813-005835` (Standalone) passed without another Cook/package. A final
-package confirmation for that exact source is intentionally left as the only
-release-promotion gate.
+Status: planned; promotion of a fully accepted RC.
 
-## 0.6.0 — Playable Python-first Third Person
+Goal: a supported, documented Win64/UE5.8/CPython 3.11 binding for the declared
+API and configurations, not a promise that all Lyra C++/Blueprint logic is Python.
 
-Status: completed and released on 2026-08-24. Lightweight checks, the headless
-UE 5.8 Standalone contract, Blueprint audit, packaged runtime contract and
-visible-client gate pass. The completed demo history was then moved to
-`AvaloNero/UnrealEnginePython5Examples` and pinned here as the `Demos` submodule.
+Exit gate: every RC requirement passes, support/limitations and migration
+guidance match the retained artifacts, source archives and any optional
+exact-engine binaries have checksums, and both repository tags identify the
+tested pair. Keep 1.x API compatibility within that published surface and use
+documented deprecation paths. Additional platforms/configurations need their
+own green build/runtime evidence.
 
-- Replace the former 543-line combined runtime/smoke module with a package that
-  separates generated gameplay classes, animation, game state, visible actors,
-  viewport HUD, world lifecycle and automation.
-- Turn the template-parity proof into a complete small round: six collectible
-  orbs, cumulative score, timer, completion state, automatic next round and a
-  Python-driven companion.
-- Replace per-frame debug HUD text with one real hit-test-invisible Slate tree
-  owned by the current game-world session.
-- Make PythonFirst the default demo while retaining the original Blueprint
-  overlay only as an explicit compatibility regression.
-- Keep the official UE 5.8 map, mesh, animation and input assets unchanged and
-  keep the empty project C++ module free of gameplay.
+## Validation cost and release discipline
 
-Acceptance gate: UE-bundled CPython 3.11 passes the pure state tests; the
-Blueprint audit remains stable; headless Standalone proves generated classes,
-five input bindings, movement/look/jump, the four animation states, all six
-pickups, score/victory, companion motion, HUD attach/update, same-map travel and
-explicit teardown; a visible 1280x720 run is playable; and the same contract
-passes in a Win64 package with strict clean logs.
+These are workflow requirements, not a claim that the driver already automates
+every tier.
 
-Current evidence: headless Standalone result `20260824-211718` passes the full
-schema-5 runtime/teardown contract with UE 5.8.0, CPython 3.11.8 and the loaded
-UEP 0.6.0 descriptor. It delivers `W`, `MouseX`/`MouseY` and `SpaceBar` through
-the official mapping contexts and records movement, look, jump and all released
-keys. Blueprint audit result `20260824-211829` retains the expected four
-Blueprints, 27 graphs and 173 nodes. Win64 package result `20260824-203312`
-records UAT `Build=False`, archives 1754 Pak entries and passes the same schema-5
-contract from the inner packaged target with zero release-blocking UAT/runtime
-diagnostics. Visible Play result `20260824-044028` confirms the rendered Python
-HUD, physical mouse look and the SpaceBar jump/fall/land sequence; the final
-trace-disabled package relaunches with zero TCP listeners and no Windows
-Security picker.
+| Change/risk | Minimum development verification |
+| --- | --- |
+| Documentation only | Diff/format/link and cross-document consistency checks; no Unreal build |
+| Python behavior only | Host tests plus affected real-runtime scenarios using a verified matching native binary; record the new script hashes |
+| C++/reflection/engine change | Affected incremental Editor/Game build plus call, lifecycle and runtime regressions |
+| Blueprint/Mixin declaration change | Disposable-stage generation/compile, semantic audit and affected runtime tests |
+| Release candidate | Full relevant matrix, cook/package, rendered checks and post-exit evidence on the identified source pair |
 
-## 0.7.0 — Blueprint mixins and retained-class Third Person
+Choose narrow lanes while iterating; announce heavy work before starting it.
+A skip flag, an old `full_acceptance: true`, or merely launching a client is
+not release approval. Do not regenerate unchanged assets or start a package
+for a documentation review.
 
-Status: source implementation, asset generation, headless Standalone and Win64
-Cook/package acceptance complete; visible-client acceptance pending.
+The plugin repository owns generic binding/runtime APIs; Examples owns demos,
+assets and Lyra adapters. Future releases record the Examples commit first,
+then the core `Demos` gitlink, and verify both tags against the tested manifest.
+Repository separation must not introduce a core dependency on Lyra.
 
-- Add `register_mixin`, `mixin`, `unregister_mixin` and registry inspection for
-  Blueprint-generated classes.
-- Add one class router with CDO-declared Mixin Sets, mutually exclusive named
-  profiles and cached per-instance profile selection through a Blueprint
-  Interface or explicit Python API.
-- Replace selected Blueprint `UFunction` map entries while keeping every object
-  and asset on its original Unreal class.
-- Automatically call the preserved Blueprint implementation when an active
-  profile omits one function from the router union.
-- Preserve an explicit `call_mixin_original` path, per-UObject Python state and
-  helper methods without retaining bound-method reference cycles.
-- Restore every original function on explicit unregister, reload and process
-  shutdown.
-- Discover directly declared Interface owners from package completion in Editor,
-  Game and packaged builds; inherited Blueprint children share the parent router.
-- Reject registry mutation during selector/initializer/teardown/dispatch
-  callbacks while allowing nested initialization of a different object.
-- Preserve native return values and const-reference inputs by copying between
-  the injected and preserved UFunction's native parameter layouts before direct
-  original dispatch.
-- Add a Third Person Mixin variant in which two instances of the official
-  Character BP select different profiles, including one whose missing `Move`
-  falls back to Blueprint, while native jump and AnimBP remain unchanged.
+## 1.1+ backlog
 
-Acceptance gate: two live `BP_ThirdPersonCharacter_C` objects must retain the
-same class while selecting different profiles; the player must move/look
-through Python, move through automatic Blueprint fallback after a profile
-switch, call its original BeginPlay, retain Blueprint jump/animation, survive
-unregister/re-register on the same pawn and restore the original Blueprint Move
-implementation. The installed Engine/template remains unchanged; the examples
-repository intentionally owns a same-path Character BP copy containing only the
-Mixin Interface configuration in addition to Epic's gameplay graphs.
-
-Current evidence: repeat-generation result `20260831-012003` and schema-4
-headless Standalone result `20260831-012054` compile/link on UE 5.8.0 with
-CPython 3.11.8. The playable Character declares
-`DA_ThirdPersonCharacterMixin`, reads its instance-editable
-`PythonMixinProfile` variable, and passes same-BP selection, Blueprint fallback,
-direct and declared re-registration, full restoration, package-load fixture,
-native const-array/return and callback-reentry gates. Win64 Package result
-`20260831-014230` builds the Game target, cooks/stages/archives and passes the
-same contract in the packaged runtime. Its Cook log proves commandlet bootstrap
-is skipped and no routed function map is serialized into assets.
-Template audit `20260829-225525` and Python-first regression `20260829-225336`
-also pass. Strict package/build/runtime logs are clean. Visible-client evidence
-is not yet recorded for this tree.
-
-## 0.8.0 — Lyra Python HUD foundation
-
-Status: automated acceptance complete on 2026-09-03. A visible manual client
-was intentionally not launched during the headless release run.
-
-- Reuse the proven HUD/session lifecycle while preserving Lyra's `ALyraHUD`,
-  Game Feature activation and CommonUI ownership.
-- Replace the visible health-bar behavior with a Python presenter bound to
-  Lyra's Health Component events.
-- Prove replicated `100 -> 90 -> 100`, respawn, Experience-owned `Add Widgets`
-  teardown/recreation, repeated travel and zero dedicated-server widget
-  creation.
-
-Acceptance result `20260903-033426` passed the complete `All` lane on UE 5.8.0
-and CPython 3.11.8 with `full_acceptance: true`. Standalone, network client and
-packaged game each recorded 3 Constructs / 2 Destructs and balanced final
-delegates; the dedicated server recorded zero HUD state. BuildCookRun and the
-packaged runtime exited 0 with matching executable hashes and clean strict logs.
-
-## 0.9.0 — Lyra combat HUD and API hardening
-
-Status: planned.
-
-- Add Python-driven QuickBar, weapon/ammo, reticle, team score, elimination feed
-  and accolade presentation over Lyra's native replicated gameplay state.
-- Introduce a bounded reusable Gameplay Message subscription surface so HUD
-  behavior is event-driven rather than tick-polled.
-- Keep inventory, equipment, GAS, scoring authority and replication native.
-- Extract reusable UI/lifecycle/message functionality from demo-specific code
-  without introducing a Lyra dependency into the core binding.
-- Freeze the supported Python API, document deprecation rules and stress GC,
-  callback release, respawn, travel, feature activation and interpreter exit.
-- Run the complete generic, Third Person and Lyra regression matrices before
-  accepting only release fixes.
-
-## 1.0.0 — Stable UE 5.8 runtime binding
-
-Status: planned.
-
-- Publish the exact Win64/UE5.8/CPython 3.11 support contract, migration guide,
-  deterministic source archive, optional exact-engine binary and checksums.
-- Require exact-commit generic and Lyra BuildCookRun/package evidence, visible
-  demo evidence, strict clean logs and unchanged Engine/reference-project trees.
-- Preserve API compatibility throughout 1.x; additional platforms become
-  supported only after their own retained green build and runtime artifacts.
+Full combat HUD, broader platform/configuration coverage and additional
+reflection/networking/hot-reload capabilities are independent proposals. Each
+needs a concrete user scenario, bounded ownership and an acceptance contract;
+none is implied by 1.0.

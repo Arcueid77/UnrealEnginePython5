@@ -3,7 +3,11 @@
 This file records the UE5 port maintained in this repository. The historical
 UE4 project history remains available in Git.
 
-## [0.8.0] - 2026-09-03
+## [0.8.0] - Unreleased
+
+Implementation is present on `dev/release-0.8.0`; 0.7.0 remains the latest
+tagged release. Visual parity, stricter validation and a current-source full
+rerun remain open. See [ROADMAP.md](ROADMAP.md) for the release exit gates.
 
 ### Added
 
@@ -39,8 +43,10 @@ UE4 project history remains available in Git.
   unavailable instead of aborting the source-only probe, and HUD audit now
   verifies the exact Interface, selector, Mixin profiles, reflected state and
   ShooterCore `Add Widgets` shape consumed by the presenter.
-- Full Lyra acceptance now requires both the gameplay slice and Python HUD
-  lifecycle slice; focused `-SkipHUDSlice` remains available for diagnostics.
+- The current driver's `full_acceptance` flag requires both the gameplay slice
+  and Python HUD slice; focused `-SkipHUDSlice` remains available for diagnostics.
+  `All` does not yet invoke `HUDAudit` or enforce every corrected lifecycle gate,
+  so that flag alone is not 0.8 release approval.
 
 ### Supported boundaries
 
@@ -49,7 +55,9 @@ UE4 project history remains available in Git.
   Python owns health presentation only and reuses Blueprint visual primitives.
 - 0.8 does not include QuickBar, weapon/ammo, reticle, team score, elimination
   feed, accolade presentation or a general Gameplay Message subscription API.
-  Those remain 0.9 work.
+  0.9 is scoped to Mixin engineering plus one weapon/ammo chain and a bounded
+  reusable message subscription surface; the other combat HUD panels are 1.1+
+  backlog. A release-candidate freeze precedes 1.0.
 
 ### Validation
 
@@ -60,12 +68,22 @@ UE4 project history remains available in Git.
 - HUD audit result `20260903-032632` identifies the real
   `LAS_ShooterGame_StandardHUD` action set: one `GameFeatureAction_AddWidgets`
   with 1 layout and 11 widget entries.
-- Formal `All` result `20260903-033426` passed UE 5.8.0 / CPython 3.11.8 with
+- Historical `All` result `20260903-033426` passed its then-implemented checks
+  on UE 5.8.0 / CPython 3.11.8 with
   `full_acceptance: true`. Standalone, network client and packaged game each
   observed Health `100 -> 90 -> 100`, Pawn replacement, 3 Constructs, 2
-  Destructs and balanced final callbacks; the dedicated server created zero HUD
-  state. BuildCookRun exited 0, strict logs passed, and archived/tested
+  Destructs and balanced pre-quit callback snapshots; the dedicated server
+  created zero HUD state. BuildCookRun exited 0, strict logs passed, and archived/tested
   executable SHA-256 values matched.
+- That Development run used NullRHI and has `hud_audit: null`; the independent
+  audit/generation records are not coverage of `All`. It predates the final
+  bootstrap fix/seventh host test, and does not enforce exactly one presenter
+  or post-shutdown zero owned callbacks. Damage/heal/death animations and
+  numeric interpolation still need correction and rendered acceptance.
+  Historical logs contain cleanup events; this is not an observed-leak claim.
+  DebugGame and Shipping are unvalidated. See
+  [Validation history](docs/Validation_History.md) for retained evidence and
+  candidate provenance requirements.
 
 ## [0.7.0] - 2026-08-29
 

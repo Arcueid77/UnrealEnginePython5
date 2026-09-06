@@ -7,6 +7,27 @@ The validation driver copies the project and the current plugin sources into
 `.build/Validation/UEP58Host`. It never installs the plugin into the engine and
 does not modify Unreal Engine source code.
 
+## Validation scope and cost
+
+The [roadmap](../ROADMAP.md) separates implementation, historical evidence and
+release approval. 0.8 is unreleased: the old Lyra `All` run does not include
+`HUDAudit`, enforce exactly one active presenter, verify post-shutdown zero
+owned callbacks, or prove rendered animation parity. These remain driver/test
+closeout work, not guarantees added by this documentation update.
+
+Use diff/format/link checks for documentation; host tests and affected runtime
+scenarios for Python changes; affected incremental builds for C++/reflection;
+and staged generation/audits when Blueprint declarations change. Reusing a
+native binary for script-only work requires matching native-source provenance
+and recording the actual new script hashes. Announce full cook/package work
+before starting it and reserve the full matrix for candidates or relevant risk.
+
+Retained packages are Win64 Development. The generic driver accepts DebugGame,
+but this review establishes no DebugGame or Shipping validation. A future RC
+must record exact core/Examples/engine/Python/configuration provenance using the
+[candidate record](../docs/Validation_History.md#candidate-record-template);
+old green results and skip modes are not current-source release approval.
+
 The desktop-only host disables the unrelated `AndroidFileServer` plugin for
 editor, cook and packaged execution so Android deployment tooling is outside
 this acceptance contract. Its package step waits for Unreal's global UAT mutex
@@ -293,7 +314,9 @@ memory.
 `Package` modes run narrower diagnostic lanes. The gameplay and HUD slices are
 enabled by default in runtime modes; `-SkipGameplaySlice` and `-SkipHUDSlice`
 exist for focused/back-compat diagnostics, but only `All` with both enabled can
-set `full_acceptance: true`. `-GameplaySliceDamage` accepts 0.01 through 25 and
+set `full_acceptance: true`. This is the current flag condition, not the full
+corrected 0.8 contract: `HUDAudit` is still a separate mode and the stricter
+presenter/cleanup gates remain open. `-GameplaySliceDamage` accepts 0.01 through 25 and
 defaults to the release value 10. Negative result
 `20260811-184148` correctly reports `blocked` with 11 missing-content reasons
 and no staging project for the local Git sample.
@@ -328,7 +351,7 @@ controller, exact-source Network result `20260813-005436` rebuilt only
 up to date and passed the local sequence. No Cook/package was repeated after
 that hardening; these remain historical 0.5 evidence.
 
-For 0.8, clean-base generation results `20260903-033001` and
+For the historical 0.8 candidate, clean-base generation results `20260903-033001` and
 `20260903-033049` passed the same two-profile semantic postconditions while the
 reference Healthbar hash stayed unchanged. Read-only HUD audit result
 `20260903-032632` confirms that `LAS_ShooterGame_StandardHUD` contains one
@@ -340,6 +363,15 @@ real Health `100 -> 90 -> 100`, Pawn replacement, 3 Constructs / 2 Destructs
 and balanced delegates after two Experience lifecycles; the dedicated server
 recorded zero HUD state. The archived and stable tested executable hashes match,
 and all strict logs passed.
+
+That `All` invocation used NullRHI and has `hud_audit: null`; the audit and
+generation above were independent runs. Its snapshots do not enforce exactly
+one active presenter or post-exit zero owned callbacks, and its pre-bootstrap-
+fix source/six host tests are not a fresh run of the current seven-test tree.
+Existing cleanup log events do not close those validation gaps or imply an
+observed leak. A corrected current-source full and rendered run is required.
+Preserved IDs and limitations are in
+[Validation history](../docs/Validation_History.md).
 
 The full ownership and rejection contract is documented in
 [`../docs/Lyra_Gameplay_Slice_0.5.0.md`](../docs/Lyra_Gameplay_Slice_0.5.0.md).
