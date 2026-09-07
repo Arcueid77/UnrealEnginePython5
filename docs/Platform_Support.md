@@ -24,10 +24,22 @@ BuildCookRun and packaged runtime exited 0, strict logs passed, and archived and
 stable tested executable hashes matched.
 
 That Development run used NullRHI and contains `hud_audit: null`; it does not
-prove rendered visual parity or the corrected release contract. Exactly-one
-presenter and post-exit zero-owned-callback checks are not yet enforced. The
-final bootstrap fix also needs a fresh full real-runtime run. See
+prove rendered visual parity or the corrected release contract. The closeout
+code adds exactly-one presenter and post-exit zero-owned-callback checks, but
+they now have host tests and a current-script NullRHI Standalone pass. A fresh
+full real-runtime run is still required. See
 [the roadmap](../ROADMAP.md) and [Validation history](Validation_History.md).
+
+The first 2026-09-07 read-only Editor audit attempt could not launch the project:
+the engine manifest BuildId was `91898095-bb6d-4da0-9340-28669c3653b3`, while
+the staged plugin and multiple Engine plugins used
+`160ea5ae-f247-4a72-996b-dea22b186e2f`. Matching source files alone does not make
+those binaries compatible. A guarded UBT preflight subsequently found only
+metadata actions outdated; official UBT updated the manifests/receipt in two
+actions and retained the engine's current BuildId. No manual GUID override or
+C++ compile was used. The fresh strict audit and Standalone then passed, with
+final zero HUD presenters/references and balanced owned subscriptions. These
+focused runs do not establish package, network, rendered or release acceptance.
 
 | Win64 configuration | Evidence at the 2026-09-07 review |
 | --- | --- |

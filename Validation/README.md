@@ -12,8 +12,25 @@ does not modify Unreal Engine source code.
 The [roadmap](../ROADMAP.md) separates implementation, historical evidence and
 release approval. 0.8 is unreleased: the old Lyra `All` run does not include
 `HUDAudit`, enforce exactly one active presenter, verify post-shutdown zero
-owned callbacks, or prove rendered animation parity. These remain driver/test
-closeout work, not guarantees added by this documentation update.
+owned callbacks, or prove rendered animation parity. The updated driver now
+audits HUD-enabled `All` and enforces one active presenter plus final Python-exit
+evidence. Host checks, a fresh strict HUD audit and current-script NullRHI
+Standalone now pass. Integrated `All`, synchronized network, package and visual
+acceptance remain open; see the scoped 2026-09-07 record in
+[Validation history](../docs/Validation_History.md).
+
+Run the lightweight checks without launching or compiling Unreal:
+
+```powershell
+& F:\UnrealEngine\Engine\Binaries\ThirdParty\Python3\Win64\python.exe -B -m unittest discover -s Demos/UEPLyraIntegration/Tests -p 'test_*.py' -v
+.\Validation\Tests\Test-LyraHUDContracts.ps1
+```
+
+These currently pass 17 Python tests and 28 PowerShell checks. Runtime report
+schema 5 preserves `hud` as the active snapshot and adds `shutdown.hud` from
+Python `atexit`, after the UEP Mixin pre-exit cleanup. `awaiting_shutdown` is
+not success. The driver waits for process completion and verifies ordered
+exit markers; missing finalization or residual counters/references fail.
 
 Use diff/format/link checks for documentation; host tests and affected runtime
 scenarios for Python changes; affected incremental builds for C++/reflection;
@@ -257,7 +274,7 @@ on a localized Windows culture those engine tests otherwise emit false
 `LogAutomationTest: Error` diagnostics. The strict runtime error gate is not
 relaxed. The driver runs these gates without changing the reference project:
 
-1. seven fast host-side presenter/bootstrap tests under the engine-bundled
+1. 17 fast presenter/bootstrap/shutdown tests under the engine-bundled
    CPython 3.11, including the source-only missing-asset path, followed by a
    warning/error-free `LyraEditor` build;
 2. real `L_Expanse` Standalone Experience with active `ShooterCore`, registered
@@ -314,9 +331,10 @@ memory.
 `Package` modes run narrower diagnostic lanes. The gameplay and HUD slices are
 enabled by default in runtime modes; `-SkipGameplaySlice` and `-SkipHUDSlice`
 exist for focused/back-compat diagnostics, but only `All` with both enabled can
-set `full_acceptance: true`. This is the current flag condition, not the full
-corrected 0.8 contract: `HUDAudit` is still a separate mode and the stricter
-presenter/cleanup gates remain open. `-GameplaySliceDamage` accepts 0.01 through 25 and
+set `full_acceptance: true`, and the updated flag additionally requires its
+in-run HUD audit to pass. `HUDAudit` remains available independently; HUD-enabled
+`All` now invokes it too. Rendered visual acceptance is still a separate open
+gate. `-GameplaySliceDamage` accepts 0.01 through 25 and
 defaults to the release value 10. Negative result
 `20260811-184148` correctly reports `blocked` with 11 missing-content reasons
 and no staging project for the local Git sample.
@@ -367,7 +385,7 @@ and all strict logs passed.
 That `All` invocation used NullRHI and has `hud_audit: null`; the audit and
 generation above were independent runs. Its snapshots do not enforce exactly
 one active presenter or post-exit zero owned callbacks, and its pre-bootstrap-
-fix source/six host tests are not a fresh run of the current seven-test tree.
+fix source/six host tests are not a fresh run of the current closeout tree.
 Existing cleanup log events do not close those validation gaps or imply an
 observed leak. A corrected current-source full and rendered run is required.
 Preserved IDs and limitations are in

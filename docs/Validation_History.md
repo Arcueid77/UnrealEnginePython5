@@ -28,8 +28,8 @@ Review qualifications that take precedence over historical completion wording:
   source-only bootstrap fix/seventh test. A current full real-runtime rerun is
   still required. Matching some staged Python file hashes does not make the
   entire run current-source evidence.
-- The current validator accepts two active presenters if its count/balance
-  checks otherwise agree, and records success before quit. Thus the existing
+- The pre-closeout validator accepted two active presenters if its count/balance
+  checks otherwise agreed, and recorded success before quit. Thus the existing
   `3 Constructs / 2 Destructs` snapshots do not enforce exactly one presenter
   or post-shutdown zero owned callbacks. Old logs do contain cleanup events;
   this is a missing validation guarantee, not a finding of an actual leak.
@@ -42,6 +42,10 @@ HUD audit `20260903-032632` and clean-base generation
 `20260903-033001` / `20260903-033049` are separate supporting records. The
 reference Healthbar SHA-256 was
 `7AD30080E82AF2BB2FB40DD132F632A35E3429076ABAD49A37FDFD657895CF66`.
+
+The retained `20260903-032632` audit has no healthbar `mixin` declaration field.
+It is an asset/graph inventory, not a pass of the later strict Interface/profile
+audit contract. The updated semantic validator correctly rejects that old data.
 
 ## 0.1.0 — UE 5.8 foundation
 
@@ -311,6 +315,76 @@ and CPython 3.11.8 with `full_acceptance: true`. Standalone, network client and
 packaged game each recorded 3 Constructs / 2 Destructs and balanced final
 delegates; the dedicated server recorded zero HUD state. BuildCookRun and the
 packaged runtime exited 0 with matching executable hashes and clean strict logs.
+
+## 2026-09-07 closeout progress — host checks, audit and focused Standalone
+
+Documentation baseline was pushed as core `55d8670` / Examples `6a749ee`.
+The following closeout changes were tested from a subsequent dirty working
+tree, not a new tagged or fully runtime-accepted release:
+
+- HUD-enabled `All` invokes the strict audit and cannot set its full flag
+  without a passed in-run audit; diagnostic skips still prevent full acceptance.
+- Probe/driver checks reject duplicate active presenters. Schema 5 preserves
+  the active snapshot, writes `awaiting_shutdown`, and records final HUD state
+  from Python `atexit` after UEP's Mixin pre-exit teardown. The external driver
+  checks final zero-owned-callback/reference counts and ordered exit markers
+  after process completion. Missing/unclean finalization fails closed.
+- 17 Python tests and 28 PowerShell positive/negative checks pass. The Python
+  tests include real CPython subprocess exits with cleanup, a residual binding,
+  and `os._exit(0)` bypassing finalizers. These are not Unreal runtime tests.
+  Logs are retained under
+  `.build/LyraValidation/Full/Results/20260907-hud-closeout/` as
+  `python-host-tests.log` and `powershell-contract-tests.log`; both processes
+  exited 0. `hud-audit.log` in that directory records the failed Editor launch.
+- Old `20260903-033426` runtime JSON is rejected by the new schema/final-evidence
+  contract; it remains historical evidence, unchanged on disk.
+- Read-only Editor attempt `20260907-hud-closeout` exited 1 before running the
+  audit. The engine BuildId was `91898095-bb6d-4da0-9340-28669c3653b3`, versus
+  `160ea5ae-f247-4a72-996b-dea22b186e2f` for the staged plugin and multiple
+  Engine plugins; `DerivedDataBuildController` failed to load. This is an
+  environment/binary-provenance blocker at that point, not a failed Python presenter test.
+  The Engine's `UnrealEditor.target` receipt had a third BuildId,
+  `81feb3cc-2985-40bd-9e05-ca9d4172c49f`; the launch failure alone does not
+  establish which build step introduced that inconsistency.
+  No BuildIds were manually overridden. Startup did invoke Unreal's SDK
+  validation, not a C++ compile.
+- Follow-up diagnosis found that `NetCore.dll` was newer than some engine
+  plugin manifests: the old All run used `160ea5ae...`, while the DLL/root
+  metadata had subsequently changed at 2026-09-02 19:53:45/46 UTC. The specific
+  originating command was not established. The old base `UnrealEditor.target`
+  receipt is not proof of an ABI mismatch by itself.
+- Guarded UBT preflight (`build-preflight-detailed.log`) found only two outdated
+  metadata actions, with no compiler/linker actions. Existing generated records
+  were copied to `metadata-backup/` (344 files). Official UBT then executed only
+  `WriteMetadata UnrealEditor.version (LyraEditor)` and
+  `WriteMetadata LyraEditor.target`, succeeded in 3.72 seconds, and recycled
+  the current engine BuildId `91898095-bb6d-4da0-9340-28669c3653b3`.
+  `build-metadata-repair.log` retains the action list. No Engine source was
+  edited. NetCore, UEP and LyraGame DLL SHA-256 values were unchanged.
+- `hud-audit-after-repair.json` and its log record a fresh strict audit pass;
+  the Editor exited 0. The real Healthbar retains its class, declares
+  `UEPPythonMixinInterface`, selects `Python` and retains `BlueprintFallback`.
+  Authored graph pin defaults were read without compiling/saving assets.
+- Current overlay Python scripts were synchronized into the existing stage;
+  native staged sources matched the checkout and no C++ build was invoked.
+  `standalone-shutdown-summary.json` retains dirty-tree core/Examples revisions,
+  script and binary hashes and the explicit `full_acceptance: false` scope.
+  `standalone-shutdown.json` passes schema 5 on UE 5.8.0 / Python 3.11.8:
+  health `100 -> 90 -> 100`, Pawn replacement, widget action recreation and
+  travel pass, with exactly one active presenter/reference. After actual UE
+  shutdown, the snapshot records 0 presenters/references, 3 Constructs /
+  3 Destructs, 1 router teardown, controller binds/unbinds 3/3 and health
+  binds/unbinds 6/6, with no presenter errors. The process exited 0 after
+  102.024 seconds; the current driver's strict report/log assertions pass.
+  The log orders `UEP_LYRA_AWAITING_SHUTDOWN`, `Goodbye Python`,
+  `UEP_LYRA_HUD_SHUTDOWN_PASSED`, then `Log file closed`.
+- Reference Healthbar hash remains the value above; staged Healthbar remains
+  `3247123608F568DCA5A5D48A9ECEE6B02F02DE36EC59716BA27E57515795D1AC`.
+
+Visual animation/interpolation fixes and cross-Actor caller-BP fixtures remain
+open. This follow-up did not run integrated `All`, synchronized network,
+cook/package or rendered acceptance. Those gates still require fresh evidence;
+neither this focused pass nor the old green run is release approval.
 
 ## Candidate record template
 

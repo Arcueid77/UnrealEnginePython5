@@ -27,9 +27,12 @@ rerun remain open. See [ROADMAP.md](ROADMAP.md) for the release exit gates.
   zero-UI evidence.
 - A headless staged asset-registry prime step whose cache files and byte counts
   are retained in full-content validation summaries.
-- Seven host-side presenter/bootstrap contract tests for source-only asset
+- Seventeen host-side presenter/bootstrap/shutdown tests for source-only asset
   absence, exact delegate identity, event-driven rendering, Pawn replacement,
-  Blueprint fallback, Destruct and registry teardown.
+  Blueprint fallback, Destruct, registry teardown and final Python-exit evidence.
+- Twenty-eight PowerShell acceptance-contract checks cover duplicate presenters,
+  absent/invalid cleanup evidence, ordered exit logs, invalid Mixin audits and
+  `All`/skip-mode routing without launching Unreal.
 
 ### Changed
 
@@ -43,10 +46,15 @@ rerun remain open. See [ROADMAP.md](ROADMAP.md) for the release exit gates.
   unavailable instead of aborting the source-only probe, and HUD audit now
   verifies the exact Interface, selector, Mixin profiles, reflected state and
   ShooterCore `Add Widgets` shape consumed by the presenter.
-- The current driver's `full_acceptance` flag requires both the gameplay slice
-  and Python HUD slice; focused `-SkipHUDSlice` remains available for diagnostics.
-  `All` does not yet invoke `HUDAudit` or enforce every corrected lifecycle gate,
-  so that flag alone is not 0.8 release approval.
+- HUD-enabled `All` now invokes `HUDAudit`; its `full_acceptance` flag requires
+  both slices and a passed audit in that invocation. Skip/narrow lanes cannot
+  claim full acceptance. Rendered visual parity still needs separate approval.
+- Runtime report schema 5 preserves the active snapshot, writes
+  `awaiting_shutdown`, and finalizes from a pure-state Python exit callback.
+  The driver requires one active presenter, zero final owned callbacks/widget
+  references, monotonic evidence counters and ordered final exit log markers.
+- The read-only HUD inventory can export authored health-bar node pin defaults
+  for visual-primitive inspection, without compiling or saving assets.
 
 ### Supported boundaries
 
@@ -61,6 +69,15 @@ rerun remain open. See [ROADMAP.md](ROADMAP.md) for the release exit gates.
 
 ### Validation
 
+- Closeout host checks pass: 17 Python tests (including actual CPython subprocess
+  exit, leaked binding and skipped-finalizer cases) and 28 PowerShell checks.
+  A fresh strict HUD audit and current-script NullRHI Standalone also pass on
+  2026-09-07. The active HUD count is 1; final counts are 0 presenters/references,
+  3/3 controller and 6/6 health binds/unbinds, with ordered Python-exit markers.
+  UBT resolved the initial BuildId mismatch using two metadata-only actions;
+  no manual GUID override, C++ compile, cook/package or asset save was needed.
+  Reference/staged Healthbar and checked DLL hashes stayed unchanged. This is
+  focused evidence, not integrated `All`, network/package or visual acceptance.
 - Clean-base generation results `20260903-033001` and `20260903-033049` both
   produced `W_Healthbar_C` with the `Python` default, two profiles and
   `PythonMixinProfile`; the reference widget remained SHA-256

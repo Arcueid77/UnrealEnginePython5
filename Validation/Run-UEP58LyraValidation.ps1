@@ -25,6 +25,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "LyraHUDContracts.ps1")
+
 function Get-FullPath {
     param([Parameter(Mandatory = $true)][string]$Path)
     return [System.IO.Path]::GetFullPath($Path)
@@ -331,103 +333,7 @@ function Assert-LyraHUDAudit {
     }
 
     $report = Get-Content -LiteralPath $ResultPath -Raw | ConvertFrom-Json
-    if ($report.schema_version -ne 1 -or
-        $report.status -ne "passed" -or
-        $report.engine_version[0] -ne 5 -or
-        $report.engine_version[1] -ne 8) {
-        throw "Lyra HUD audit failed its status/engine contract: $ResultPath"
-    }
-
-    $expectedBlueprints = @(
-        @{ role = "healthbar"; path = "/Game/UI/Hud/W_Healthbar" },
-        @{ role = "default_hud_layout"; path = "/Game/UI/Hud/W_DefaultHUDLayout" },
-        @{ role = "shooter_hud_layout"; path = "/ShooterCore/UserInterface/W_ShooterHUDLayout" }
-    )
-    foreach ($expected in $expectedBlueprints) {
-        $matches = @($report.widget_blueprints | Where-Object {
-            $_.role -eq $expected.role -and $_.path -eq $expected.path
-        })
-        if ($matches.Count -ne 1 -or
-            !([string]$matches[0].generated_class) -or
-            @($matches[0].graphs).Count -le 0) {
-            throw "Lyra HUD audit lacks '$($expected.role)' Blueprint evidence: $ResultPath"
-        }
-    }
-    $healthbar = @($report.widget_blueprints | Where-Object role -eq "healthbar")[0]
-    foreach ($propertyName in @(
-        "HealthNumber",
-        "NormalizedHealth",
-        "HealthOldValue",
-        "HealthNewValue",
-        "BarFillMID",
-        "PythonMixinProfile"
-    )) {
-        if (@($healthbar.reflected_properties) -notcontains $propertyName) {
-            throw "Lyra HUD audit healthbar lacks property '$propertyName': $ResultPath"
-        }
-    }
-    foreach ($functionName in @(
-        "Construct",
-        "InitializeBarVisuals",
-        "SetDynamicMaterials",
-        "GetPythonMixinSet",
-        "GetPythonMixinProfile"
-    )) {
-        if (@($healthbar.reflected_functions) -notcontains $functionName) {
-            throw "Lyra HUD audit healthbar lacks function '$functionName': $ResultPath"
-        }
-    }
-    $mixin = $healthbar.mixin
-    if (@($mixin.implemented_interfaces) -notcontains "UEPPythonMixinInterface" -or
-        $mixin.mixin_set_path -ne "/Game/UEPMixins/DA_LyraHealthbarMixin.DA_LyraHealthbarMixin" -or
-        $mixin.mixin_set_class -ne "UEPPythonMixinSet" -or
-        $mixin.selected_profile -ne "Python" -or
-        $mixin.default_profile -ne "Python") {
-        throw "Lyra HUD audit healthbar Mixin declaration is inconsistent: $ResultPath"
-    }
-    $expectedMixinProfiles = @(
-        @{
-            profile_name = "Python"
-            python_module = "uep_lyra_hud.healthbar_mixin"
-            python_class = "LyraHealthbarPythonProfile"
-        },
-        @{
-            profile_name = "BlueprintFallback"
-            python_module = "uep_lyra_hud.healthbar_mixin"
-            python_class = "LyraHealthbarBlueprintFallbackProfile"
-        }
-    )
-    if (@($mixin.profiles).Count -ne $expectedMixinProfiles.Count) {
-        throw "Lyra HUD audit healthbar Mixin profile count is inconsistent: $ResultPath"
-    }
-    foreach ($expectedProfile in $expectedMixinProfiles) {
-        $profiles = @($mixin.profiles | Where-Object {
-            $_.profile_name -eq $expectedProfile.profile_name -and
-            $_.python_module -eq $expectedProfile.python_module -and
-            $_.python_class -eq $expectedProfile.python_class
-        })
-        if ($profiles.Count -ne 1) {
-            throw "Lyra HUD audit lacks Mixin profile '$($expectedProfile.profile_name)': $ResultPath"
-        }
-    }
-    $actionSet = @($report.data_assets | Where-Object {
-        $_.role -eq "shooter_hud_action_set" -and
-        $_.path -eq "/ShooterCore/Experiences/LAS_ShooterGame_StandardHUD"
-    })
-    if ($actionSet.Count -ne 1 -or
-        $actionSet[0].asset_class -ne "LyraExperienceActionSet" -or
-        $actionSet[0].action_count -ne 1 -or
-        @($actionSet[0].game_features_to_enable) -notcontains "ShooterCore") {
-        throw "Lyra HUD audit lacks the Shooter HUD action-set evidence: $ResultPath"
-    }
-    $addWidgetsActions = @($actionSet[0].actions | Where-Object {
-        $_.class -eq "GameFeatureAction_AddWidgets" -and
-        $_.layout_entry_count -eq 1 -and
-        $_.widget_entry_count -eq 11
-    })
-    if ($addWidgetsActions.Count -ne 1) {
-        throw "Lyra HUD audit Shooter action set lacks the expected Add Widgets layout: $ResultPath"
-    }
+    Assert-LyraHUDAuditData -Report $report -ResultPath $ResultPath
 
     $logContents = Get-Content -LiteralPath $UnrealLogPath -Raw
     if (!$logContents.Contains("UEP_LYRA_HUD_AUDIT_PASSED") -or
@@ -527,12 +433,14 @@ function Assert-LyraRuntime {
     }
 
     if ($ExpectHUDSlice) {
-        if ($report.schema_version -lt 3 -or
+        if ($report.schema_version -lt 5 -or
             !$report.PSObject.Properties["hud"] -or
             !$report.PSObject.Properties["hud_lifecycle"]) {
             throw "Lyra $ExpectedMode report lacks 0.8 Python HUD evidence: $ResultPath"
         }
         $hud = $report.hud
+        Assert-LyraHUDActiveState -HUD $hud -ExpectedMode $ExpectedMode
+        Assert-LyraHUDShutdownReport -Report $report
         if (!$hud.registered -or !$hud.source_asset_available -or @($hud.errors).Count -ne 0 -or
             !$report.hud_lifecycle.enabled -or !$report.hud_lifecycle.completed) {
             throw "Lyra $ExpectedMode Python HUD registration/lifecycle failed: $ResultPath"
@@ -555,7 +463,7 @@ function Assert-LyraRuntime {
             }
         }
         else {
-            if ([int]$hud.active_widget_count -lt 1 -or
+            if ([int]$hud.active_widget_count -ne 1 -or
                 [int]$hud.construct_count -lt 3 -or
                 [int]$hud.destruct_count -lt 2 -or
                 ([int]$hud.controller_bind_count - [int]$hud.controller_unbind_count) -ne [int]$hud.active_widget_count -or
@@ -599,12 +507,15 @@ function Assert-LyraRuntime {
         $requiredLogMarkers.Add("UEP_LYRA_GAMEPLAY_SLICE_PASSED")
     }
     if ($ExpectHUDSlice) {
+        Assert-LyraHUDShutdownLog -LogContents $logContents
         $requiredLogMarkers.Add("UEP_LYRA_HUD_INTERFACE_REGISTERED")
         $requiredLogMarkers.Add("UEP_LYRA_PYTHON_HUD_PASSED")
         $requiredLogMarkers.Add("UEP_LYRA_HUD_RESPAWN_PASSED")
         $requiredLogMarkers.Add("UEP_LYRA_HUD_GAME_FEATURE_CYCLE_PASSED")
         $requiredLogMarkers.Add("UEP_LYRA_HUD_TRAVEL_PASSED")
         $requiredLogMarkers.Add("UEP_LYRA_HUD_LIFECYCLE_PROBE_PASSED")
+        $requiredLogMarkers.Add("UEP_LYRA_AWAITING_SHUTDOWN")
+        $requiredLogMarkers.Add("UEP_LYRA_HUD_SHUTDOWN_PASSED")
         if ($ExpectedMode -notin @("server", "server_exit")) {
             $requiredLogMarkers.Add("UEP_LYRA_PYTHON_HEALTHBAR_CONSTRUCTED")
             $requiredLogMarkers.Add("UEP_LYRA_HUD_HEALTH")
@@ -728,7 +639,7 @@ $gameplayRuntimeMap = if ($gameplaySliceEnabled) { "${GameplayMap}?NumBots=3" } 
 New-Item -ItemType Directory -Path $resultRoot -Force | Out-Null
 
 $summary = [ordered]@{
-    schema_version = 3
+    schema_version = 4
     status = "failed"
     run_id = $runId
     mode = $Mode
@@ -743,6 +654,7 @@ $summary = [ordered]@{
     package_output_root = if ($Mode -in @("Package", "All")) { $packageRoot } else { $null }
     readiness = $null
     hud_host_tests = $null
+    hud_validation_contract_tests = $null
     editor_build = $null
     asset_registry_prime = $null
     hud_audit = $null
@@ -800,6 +712,13 @@ try {
     if (!$powerShellPath) {
         $powerShellPath = "powershell.exe"
     }
+    $summary.hud_validation_contract_tests = Invoke-LoggedProcess `
+        -FilePath $powerShellPath `
+        -ArgumentList @("-NoProfile", "-NonInteractive", "-File", (Join-Path $PSScriptRoot "Tests\Test-LyraHUDContracts.ps1")) `
+        -WorkingDirectory $repoRoot `
+        -LogPath (Join-Path $resultRoot "hud-validation-contract-tests.log") `
+        -Label "Lyra HUD acceptance positive/negative contracts" `
+        -TimeoutSeconds 60
     $readinessArguments = @(
         "-NoProfile",
         "-NonInteractive",
@@ -1152,7 +1071,7 @@ try {
             }
         }
 
-        if ($Mode -eq "HUDAudit") {
+        if (Test-LyraHUDAuditRequired -Mode $Mode -HUDSliceEnabled $hudSliceEnabled) {
             $hudAuditScript = Join-Path $repoRoot "Demos\UEPLyraIntegration\Tools\audit_hud.py"
             $hudAuditResult = Join-Path $resultRoot "hud-audit.json"
             $hudAuditStdout = Join-Path $resultRoot "hud-audit-stdout.log"
@@ -1182,6 +1101,7 @@ try {
             $hudAuditProcess = Invoke-LoggedProcess -FilePath $editorPath -ArgumentList $hudAuditArguments -WorkingDirectory $stageRoot -LogPath $hudAuditStdout -Label "Lyra HUD read-only audit" -TimeoutSeconds 300
             $hudAuditReport = Assert-LyraHUDAudit -ResultPath $hudAuditResult -UnrealLogPath $hudAuditLog
             $summary.hud_audit = [ordered]@{
+                status = "passed"
                 process = $hudAuditProcess
                 report = $hudAuditResult
                 unreal_log = $hudAuditLog
@@ -1197,7 +1117,7 @@ try {
                 (Get-LyraRuntimeArguments -TargetMode "standalone" -ResultPath $standaloneResult -UnrealLogPath $standaloneLog -ExpectedControllers 1 -ActiveFeatures $RequiredActiveGameFeatures -RegisteredFeatures $RequiredRegisteredGameFeatures -TimeoutSeconds $RuntimeTimeoutSeconds -Experience $ExpectedExperience -GameplaySlice:$gameplaySliceEnabled -HUDSlice:$hudSliceEnabled -HUDTravelURL $gameplayRuntimeMap -GameplayDamage $GameplaySliceDamage)
             $standaloneProcess = Invoke-LoggedProcess -FilePath $editorPath -ArgumentList $standaloneArguments -WorkingDirectory $stageRoot -LogPath $standaloneStdout -Label "Lyra standalone gameplay" -TimeoutSeconds ($RuntimeTimeoutSeconds + 120)
             $standaloneReport = Assert-LyraRuntime -ResultPath $standaloneResult -UnrealLogPath $standaloneLog -ExpectedMode "standalone" -ExpectedActiveFeatures $RequiredActiveGameFeatures -ExpectedRegisteredFeatures $RequiredRegisteredGameFeatures -ExpectedExperienceContains $ExpectedExperience -ExpectGameplaySlice:$gameplaySliceEnabled -ExpectHUDSlice:$hudSliceEnabled -ExpectedGameplayDamage $GameplaySliceDamage
-            $summary.standalone = [ordered]@{ process = $standaloneProcess; report = $standaloneResult; unreal_log = $standaloneLog; snapshot = $standaloneReport.snapshot; gameplay_slice = $standaloneReport.gameplay_slice; hud = $standaloneReport.hud; hud_lifecycle = $standaloneReport.hud_lifecycle }
+            $summary.standalone = [ordered]@{ process = $standaloneProcess; report = $standaloneResult; unreal_log = $standaloneLog; snapshot = $standaloneReport.snapshot; gameplay_slice = $standaloneReport.gameplay_slice; hud = $standaloneReport.hud; hud_lifecycle = $standaloneReport.hud_lifecycle; shutdown = $standaloneReport.shutdown }
         }
 
         if ($Mode -in @("Network", "All")) {
@@ -1246,8 +1166,8 @@ try {
                 runtime_sync = if ($gameplaySliceEnabled -or $hudSliceEnabled) { $gameplaySyncDir } else { $null }
                 gameplay_sync = if ($gameplaySliceEnabled) { $gameplaySyncDir } else { $null }
                 hud_sync = if ($hudSliceEnabled) { $gameplaySyncDir } else { $null }
-                server = [ordered]@{ process = $serverProcess; report = $serverResult; unreal_log = $serverLog; snapshot = $serverReport.snapshot; gameplay_slice = $serverReport.gameplay_slice; hud = $serverReport.hud; hud_lifecycle = $serverReport.hud_lifecycle }
-                client = [ordered]@{ process = $clientProcess; report = $clientResult; unreal_log = $clientLog; snapshot = $clientReport.snapshot; gameplay_slice = $clientReport.gameplay_slice; hud = $clientReport.hud; hud_lifecycle = $clientReport.hud_lifecycle }
+                server = [ordered]@{ process = $serverProcess; report = $serverResult; unreal_log = $serverLog; snapshot = $serverReport.snapshot; gameplay_slice = $serverReport.gameplay_slice; hud = $serverReport.hud; hud_lifecycle = $serverReport.hud_lifecycle; shutdown = $serverReport.shutdown }
+                client = [ordered]@{ process = $clientProcess; report = $clientResult; unreal_log = $clientLog; snapshot = $clientReport.snapshot; gameplay_slice = $clientReport.gameplay_slice; hud = $clientReport.hud; hud_lifecycle = $clientReport.hud_lifecycle; shutdown = $clientReport.shutdown }
             }
         }
 
@@ -1357,11 +1277,12 @@ try {
                 gameplay_slice = $packagedReport.gameplay_slice
                 hud = $packagedReport.hud
                 hud_lifecycle = $packagedReport.hud_lifecycle
+                shutdown = $packagedReport.shutdown
             }
         }
 
         $summary.status = "passed"
-        $summary.full_acceptance = $Mode -eq "All" -and $gameplaySliceEnabled -and $hudSliceEnabled
+        $summary.full_acceptance = Get-LyraFullAcceptanceFlag -Mode $Mode -GameplaySliceEnabled $gameplaySliceEnabled -HUDSliceEnabled $hudSliceEnabled -HUDAudit $summary.hud_audit
     }
 }
 catch {

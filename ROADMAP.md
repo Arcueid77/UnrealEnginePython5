@@ -45,10 +45,20 @@ CommonUI, Game Feature actions, GAS authority and replication stay native.
 The 2026-09-03 `All` result `20260903-033426` passed the checks implemented
 then, but it used NullRHI, has `hud_audit: null`, and does not establish visual
 parity, exactly one active presenter or post-shutdown zero owned callbacks.
-It also predates the final source-only bootstrap fix. Seven host tests passing
-does not replace a fresh real-runtime run of that fix.
+It also predates the final source-only bootstrap fix. Passing host tests does
+not replace fresh real-runtime evidence.
 
-Required exit gates, all still open:
+Closeout implementation now routes HUD-enabled `All` through the audit, requires
+one active presenter, and delays HUD success until Python-exit cleanup evidence
+is available. 17 Python tests and 28 PowerShell contract tests pass, including
+real CPython exit/skip-finalizer cases. A fresh strict HUD audit and current-script
+NullRHI Standalone passed on 2026-09-07: one active presenter, then zero final
+references and balanced 3/3 controller and 6/6 health subscriptions. UBT repaired
+the earlier BuildId mismatch with two metadata-only actions. Integrated `All`,
+network, package and visual gates remain open. See
+[Validation history](docs/Validation_History.md).
+
+Required exit gates (host checks alone do not close a runtime gate):
 
 - [ ] Restore damage/heal/death presentation and numeric interpolation. Initial
   setup and subsequent health changes must use the appropriate retained visual
@@ -59,7 +69,7 @@ Required exit gates, all still open:
   zero dedicated-server presenters, and zero presenter-owned delegates/state
   after Destruct, router teardown and interpreter shutdown. Final acceptance
   must be decided after cleanup evidence, not from a pre-quit snapshot.
-- [ ] Add negative tests for duplicate presenters, missing cleanup evidence and
+- [x] Add negative tests for duplicate presenters, missing cleanup evidence and
   invalid audit data; each must make validation fail. Existing cleanup log
   messages are retained evidence, not proof of an observed leak.
 - [ ] Add a focused caller-BP regression: another Blueprint calls an Actor
@@ -77,8 +87,8 @@ Required exit gates, all still open:
   and reference hashes, strict logs and final cleanup evidence.
 
 Non-goals: other combat HUD panels, a general GAS/RPC surface, broad hot reload,
-new platform support, or a new native networking authority model. This roadmap
-change does not implement any of the fixes or new gates above.
+new platform support, or a new native networking authority model. Visual fixes,
+caller-BP coverage and current-source Unreal acceptance remain unfinished.
 
 ## 0.9.0 — Mixin engineering and one reusable HUD chain
 

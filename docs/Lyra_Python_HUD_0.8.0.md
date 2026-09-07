@@ -84,15 +84,16 @@ and runtime behavior rather than requiring byte-identical generated uassets.
 No Tick poll drives the health bar. The initial render is explicit; later
 updates are caused by Health Component or possession delegates.
 
-## Required acceptance contract (not fully enforced yet)
+## Required acceptance contract (Unreal closeout still pending)
 
 The 0.8 full-content lane must prove all of the following on UE 5.8 and the
 engine-bundled CPython 3.11. This is the target contract, not a statement that
-the current driver enforces every item:
+every item has passed on the current source:
 
-- seven host-side presenter/bootstrap tests cover source-only asset absence,
+- 17 host-side presenter/bootstrap/shutdown tests cover source-only asset absence,
   exact callback identity, event-driven rendering, Pawn replacement, Blueprint
-  fallback, Destruct and registry teardown before an Unreal process is launched;
+  fallback, Destruct, registry teardown and final Python exit, plus 28 PowerShell
+  positive/negative acceptance checks before an Unreal process is launched;
 - generation preserves the untouched reference widget, while the read-only
   audit proves that the staged copy declares the expected Interface, Mixin Set,
   selector, profiles, reflected state and ShooterCore `Add Widgets` shape;
@@ -116,11 +117,16 @@ the current driver enforces every item:
 
 Current closeout gaps:
 
-- `All` does not call `HUDAudit`; that audit currently runs only in its own mode.
-- Runtime checks accept more than one active presenter if counts balance, and
-  success is written before quit. Exactly-one active binding and post-shutdown
-  zero owned callbacks above are requirements, not enforced guarantees.
-  Duplicate-presenter, absent-cleanup and invalid-audit negative tests must fail.
+- HUD-enabled `All` now calls `HUDAudit` and requires its passed result. The
+  former audit-mode-only behavior is historical; the integrated path still
+  needs a current-source Unreal run.
+- Probe/driver checks now require exactly one active presenter. Report schema 5
+  writes `awaiting_shutdown` first and finalizes from Python `atexit`, after
+  Mixin pre-exit cleanup, with a separate `shutdown.hud` snapshot. The driver
+  checks zero final owned callbacks/references and ordered exit markers after
+  process completion. Host negative tests and the actual UE Standalone exit
+  path pass on the current scripts; synchronized network/package validation
+  remains outstanding.
 - The presenter currently calls `InitializeBarVisuals` and then numeric
   `SetCurrentValue` on updates. Correct damage/heal/death animation selection and
   interpolation remain to be implemented and visibly checked.
@@ -129,8 +135,14 @@ Current closeout gaps:
   do not expand the non-lethal bridge's authority for test convenience.
 
 Existing cleanup paths and historical cleanup logs are real evidence; these
-gaps do not establish a current leak. The seven host tests use fake reflected
-objects and cannot certify all of the real-process requirements above.
+gaps do not establish a current leak. The 17 Python tests use fake reflected
+objects and real CPython-only subprocess exits, not a running Unreal game.
+The first 2026-09-07 Editor attempt failed on mismatched module BuildIds. After
+UBT's metadata-only repair, a fresh strict audit and current-script NullRHI
+Standalone passed. Active presenter/reference counts were 1/1; after Python
+exit both were 0, controller bindings were 3/3 and health bindings 6/6. No C++
+compile, cook/package or asset save was performed. The integrated `All` path
+and rendered parity still need their own evidence.
 
 A fresh staged Lyra tree has no asset-registry cache. Before multi-process
 runtime tests, the driver completes one headless Editor scan and retains the
@@ -149,9 +161,10 @@ Run the existing combined runtime/package lane with:
 ```
 
 `All` includes a full Win64 cook/package and can take substantially longer
-than `Standalone` or `Network`. It is not yet the complete corrected 0.8 gate:
-run `HUDAudit` separately for now, and do not equate a green summary with release
-approval. Use the narrower modes during iteration.
+than `Standalone` or `Network`. HUD-enabled `All` includes the audit, but rendered
+visual acceptance still needs its own check. Do not equate a green summary with
+release approval; the updated combined lane has not yet passed in Unreal.
+Use the narrower modes during iteration.
 
 ## Retained historical evidence
 

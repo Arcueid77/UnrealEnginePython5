@@ -81,7 +81,8 @@ The release target includes:
 * an unchanged-class Lyra health-bar presenter driven by possession and Health
   Component delegates, with cleanup paths for respawn, Experience-owned Game
   Feature action replacement, travel, destruction and Python exit; exactly-one
-  presenter and post-shutdown zero-callback gates still need enforcement;
+  presenter and post-shutdown zero-callback gates have host tests and a current-
+  script Unreal Standalone pass; network/package closeout remains pending;
 * machine-readable evidence that Standalone/network clients observe
   `100 -> 90 -> 100` while the dedicated server creates zero HUD instances; and
 * deterministic Git source archives, checksums and optional UE5.8 `BuildPlugin`
@@ -107,6 +108,15 @@ the final source-only bootstrap fix, does not prove rendered animation parity,
 and does not enforce exactly one active presenter or post-exit zero owned
 callbacks. Fresh full and rendered acceptance remain required; see
 [Validation history](docs/Validation_History.md) for evidence qualifications.
+
+The closeout code now invokes the audit in HUD-enabled `All`, requires exactly
+one active presenter, and writes `awaiting_shutdown` until Python exit records
+zero owned callbacks/widget references. 17 Python and 28 PowerShell host checks
+pass. On 2026-09-07, a fresh strict HUD audit and current-script NullRHI
+Standalone passed, including the final Python-exit snapshot. The initial
+BuildId mismatch was resolved by UBT's two metadata actions, without compiling
+C++, changing Engine source or rebuilding a package. Integrated `All`, network,
+packaged and rendered acceptance are still pending; this is not release approval.
 
 Repeat-generation result `20260831-012003` and schema-4 headless Mixin
 Standalone result `20260831-012054` pass on UE 5.8.0 and engine CPython 3.11.8.
