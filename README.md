@@ -137,7 +137,7 @@ clean; only the visible-client manual gate remains pending.
 The repeatable acceptance project and one-command build/test/package workflow
 are documented in [`Validation/README.md`](Validation/README.md). The sample is
 maintained with its original release history in
-[`UnrealEnginePython5Examples`](https://github.com/AvaloNero/UnrealEnginePython5Examples)
+[`UnrealEnginePython5Examples`](https://github.com/Arcueid77/UnrealEnginePython5Examples)
 and pinned here as the `Demos` submodule. Clone with `--recurse-submodules`, or
 run `git submodule update --init Demos` before following
 [`Demos/README.md`](Demos/README.md). See
