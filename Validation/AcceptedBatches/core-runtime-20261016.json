@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "batch": "core-runtime-5.8.1",
+  "scope": "Bounded native call/reflection/editor-authoring support; no new packaged-build acceptance",
+  "recorded_utc": "2026-10-16T12:50:42.6969302Z",
+  "status": "evidence_snapshot",
+  "full_version_acceptance": false,
+  "release_publication": false,
+  "evidence_scope": "Only the explicitly listed runs; historical binaries remain historical",
+  "core_parent_commit": "980587e4bf2d449a4154a7ba2b25ef500829cdc3",
+  "examples_parent_commit": "0395f360136070d96dd3ad17e1fb1023c4cc2595",
+  "runs": [
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/CallMatrix01",
+      "summary_sha256": "35144D3498F636E79EEDA44E66F2885A20CEDB061C207EDA6589DD747103954C",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 843,
+      "process_exit_code": null,
+      "peer_exit_codes": {},
+      "independent_gate_exit_code": null,
+      "report_hashes": []
+    },
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/Lifecycle01",
+      "summary_sha256": "323DC0E6BD268FA372686BF9F2B2FD14BC375F59787433B69E5E0A40378CBC1E",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 422,
+      "process_exit_code": 0,
+      "peer_exit_codes": {},
+      "independent_gate_exit_code": null,
+      "report_hashes": [
+        {
+          "sha256": "79B396E43AC28193B5271EFC9CB222B7B3CA6A1C8C65B8685D8A2080EECFC0D7",
+          "file": "pie.json"
+        }
+      ]
+    },
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/SparseMap01",
+      "summary_sha256": "563E789678D32E9C68D5CCFF2102A25AFEBE5645C46661372EBB92D2A5966BB4",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 824,
+      "process_exit_code": 0,
+      "peer_exit_codes": {},
+      "independent_gate_exit_code": null,
+      "report_hashes": [
+        {
+          "sha256": "951ECD8C078C552751FB7C05F99E36CFA37C697FAB48497CDFBE0CFBA8A9A111",
+          "file": "audit.json"
+        }
+      ]
+    },
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/Differential02",
+      "summary_sha256": "F9978EAD176EEBC643E7FD95A53C183536CAD6C6F1C6BE1937FC9DF0830AE43A",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 1421,
+      "process_exit_code": 0,
+      "peer_exit_codes": {},
+      "independent_gate_exit_code": 0,
+      "report_hashes": [
+        {
+          "sha256": "19FEB6E06A10E7B6D6C95FCC9F138DE16842F7D8BE7A48AC4406CA0382ED9A96",
+          "file": "jump.json"
+        }
+      ]
+    },
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/SpawnNetwork01",
+      "summary_sha256": "923E0D3F931F829CD61CA7B7A7CA1C85E5A554AA5D275094AF5703D71BD34459",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 1424,
+      "process_exit_code": null,
+      "peer_exit_codes": {
+        "server": 0,
+        "B0": 0,
+        "A": 0
+      },
+      "independent_gate_exit_code": 0,
+      "report_hashes": [
+        {
+          "sha256": "C05651C9085688AADA909917369F0DE43B9BA5AA3664D3A908BBCD536AB8B822",
+          "file": "server.json"
+        },
+        {
+          "sha256": "E91B6068C0C5E6C20531357E00F7CF1FC28CC70392ED2866C2F2055C37ED8548",
+          "file": "A.json"
+        },
+        {
+          "sha256": "F6B19AE2071E2901682B9819B7890A6D051C6809346E1E4FADFBE00D7544DC10",
+          "file": "B0.json"
+        }
+      ]
+    },
+    {
+      "directory": ".build/LyraValidation/BlueprintPython/20261016-device-color/CombinedNetwork01",
+      "summary_sha256": "9F2E167CDA4F151193F7A7855A8D15181FACAD232C9A51EB328DA1157F8F15AC",
+      "status": "passed",
+      "uep_dll_sha256": [
+        "41271D075921BF076FD4C6BE0B404544150BCC34C5E7E2D2CC2F5F95325E72D5"
+      ],
+      "frozen_input_records": 757,
+      "process_exit_code": null,
+      "peer_exit_codes": {
+        "A": 0,
+        "B0": 0,
+        "B1": 0,
+        "server": 0
+      },
+      "independent_gate_exit_code": null,
+      "report_hashes": [
+        {
+          "sha256": "F7F3D83AAB932DE589F396F1B06E49E1993054D49A1B927167D4C28F2D7157F3",
+          "file": "server.json"
+        },
+        {
+          "sha256": "BFCD48199D27814F640AFC0185B4EE3FE605AB64D6AE03863F843D00D6681CB7",
+          "file": "A.json"
+        },
+        {
+          "sha256": "A35F2174D1D4298CFAA9FAF0316139D008259B3F51D5348926DC9008F1A4F8DE",
+          "file": "B0.json"
+        },
+        {
+          "sha256": "7779365601C319731DFC9579EAD83FD581262E615B55A7E8939CF66C2FDC1E38",
+          "file": "B1.json"
+        }
+      ]
+    }
+  ],
+  "source_files": [
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "D717BA60F9186183A47D503A9C9C24001E8269A4DB2900E1B4209852E05F30FA",
+      "path": "Source/UnrealEnginePython/Private/Blueprint/UEPyEdGraph.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "928CAEBEF324E0323990F1C6792D3D3B0AF847C7D652412997E7E5ED7C947D53",
+      "path": "Source/UnrealEnginePython/Private/Blueprint/UEPyEdGraph.h"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "A6179DDC6FDE26388970152588E200EFCD52FE940D622AAA9C63027101AE5FDD",
+      "path": "Source/UnrealEnginePython/Private/Blueprint/UEPyEdGraphPin.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "F2098E7FC7BE46C6339B74CADFEAF26F48BEEC516EFB6EB9031B644899851901",
+      "path": "Source/UnrealEnginePython/Private/PythonFunction.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "CEB063327EA6A03D8A4816F6753F2C53464F78EEDD1CF2123E0C4C6778BFEA90",
+      "path": "Source/UnrealEnginePython/Private/Slate/UEPyFCharacterEvent.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "981A567CCC2C9D92561326C7690FF55FAAC887C23E50F0ABB5FAB78F50179670",
+      "path": "Source/UnrealEnginePython/Private/UEPyEditor.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "A1DC8EF649712233059F1B78EA754F623457A1163C6D442CC158A360E10B7480",
+      "path": "Source/UnrealEnginePython/Private/UEPyEditor.h"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "4B1948DE2E028734F77439D45161993FBB2DA530A85E81F5F9590FA9D6DAC923",
+      "path": "Source/UnrealEnginePython/Private/UEPyEngine.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "2BE39236004DB10499CC7B4F6B13050C7A34781686D794017E54E24575B24E2A",
+      "path": "Source/UnrealEnginePython/Private/UEPyMixin.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "C20DCAF0DDD962D5E5CA8568F591179E470D4060FAB35703F31ED21345BD85DB",
+      "path": "Source/UnrealEnginePython/Private/UEPyModule.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "5BBDAE30DB3039FB15DAC98C61A247E8A2D4987C8CEEC5BAED67573E2FC7AA1D",
+      "path": "Source/UnrealEnginePython/Private/UObject/UEPyObject.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "633E0B3E5764B267A6DD7FFBFDB2756DC78D9C0F43874D20277CF4204F630C4F",
+      "path": "Source/UnrealEnginePython/Private/UnrealEnginePython.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "986F0FB7F3FB25CAF7264C905AAC2DE2D050C921BFE92EE4691E9065F30DAB3B",
+      "path": "Source/UnrealEnginePython/UnrealEnginePython.Build.cs"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "2C0C718E2635D7616FE48407384C4283D9241569E5FC6637D441CCB5B15BBDFE",
+      "path": "Source/UnrealEnginePython/Private/UEPyBlueprintScript.cpp"
+    },
+    {
+      "matches_at_least_one_listed_native_input": true,
+      "sha256": "B077A02257104F402BF59EB0B98094507392D85F1DBF91103AF981D258093A71",
+      "path": "Source/UnrealEnginePython/Private/UEPyBlueprintScript.h"
+    }
+  ],
+  "host_report": {
+    "result": {
+      "schema_version": 1,
+      "status": "passed",
+      "tests_run": 893,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "runtime_acceptance": false,
+      "temporary_root": "F:\\UnrealEnginePython5\\.build\\HostTestTemp",
+      "failed_cases": []
+    },
+    "sha256": "C6480D3DDC782490852FDF9B83F59623EA9137D050DCC23480EB674F52384252",
+    "path": ".build/LyraValidation/BlueprintPython/20261016-emote/host05.json"
+  }
+}

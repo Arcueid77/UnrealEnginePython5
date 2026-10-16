@@ -60,6 +60,11 @@ also clears tracked callables during the housekeeper pass.
 Keep the returned Enhanced Input handle and remove it when the owning gameplay
 object tears down. Removing the same handle twice returns `False`.
 
+For grouped game-thread bindings, `uep_runtime.SubscriptionScope` owns exact
+delegate callbacks and optional native Gameplay Message channel subscriptions.
+Call `close()` from Destruct/EndPlay and Mixin teardown before module reload.
+See [Runtime subscriptions](Runtime_Subscriptions_API.md).
+
 ## Dynamic class reload contract
 
 Generated classes are transient but Unreal class names remain unique for the

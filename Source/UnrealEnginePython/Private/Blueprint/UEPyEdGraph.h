@@ -31,6 +31,7 @@ PyObject *py_ue_node_pin_default_value_changed(ue_PyUObject *, PyObject *);
 PyObject *py_ue_node_function_entry_set_pure(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_node_get_title(ue_PyUObject *, PyObject *);
+PyObject *py_ue_node_get_macro_graph(ue_PyUObject *, PyObject *);
 PyObject *py_ue_node_allocate_default_pins(ue_PyUObject *, PyObject *);
 PyObject *py_ue_node_reconstruct(ue_PyUObject *, PyObject *);
 #endif

@@ -60,7 +60,8 @@ static int ue_py_fcharacter_event_init(ue_PyFCharacterEvent *self, PyObject *arg
 	char *key;
 	PyObject *py_repeat = nullptr;
 	PyObject *py_modifier = nullptr;
-	if (!PyArg_ParseTuple(args, "sO|O", &key, &py_repeat, &py_modifier))
+	unsigned int user_index = 0;
+	if (!PyArg_ParseTuple(args, "sO|OI", &key, &py_repeat, &py_modifier, &user_index))
 	{
 		return -1;
 	}
@@ -78,7 +79,7 @@ static int ue_py_fcharacter_event_init(ue_PyFCharacterEvent *self, PyObject *arg
 	}
 
 
-	FCharacterEvent Event(*UTF8_TO_TCHAR(key), modifier, 0, (py_repeat && PyObject_IsTrue(py_repeat)));
+	FCharacterEvent Event(*UTF8_TO_TCHAR(key), modifier, user_index, (py_repeat && PyObject_IsTrue(py_repeat)));
 
 	new(&self->character_event) FCharacterEvent(Event);
 	new(&self->f_input.input) FInputEvent(Event);

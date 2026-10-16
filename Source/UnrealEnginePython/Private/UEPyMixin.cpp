@@ -765,7 +765,7 @@ namespace
 		return true;
 	}
 
-	bool ValidateOriginalFunction(UFunction* original, FString& error)
+	bool ValidateOriginalFunction(UFunction* original, FString& error, bool allow_named_outputs = false)
 	{
 		if (!original)
 		{
@@ -790,6 +790,10 @@ namespace
 			if (property->HasAnyPropertyFlags(CPF_OutParm) &&
 				!property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm))
 			{
+				if (allow_named_outputs && !property->HasAnyPropertyFlags(CPF_ReferenceParm))
+				{
+					continue; // Explicit opt-in: outputs are returned by name, never mutable inputs.
+				}
 				error = FString::Printf(
 					TEXT("non-const output parameter '%s' is outside the 0.7 mixin contract"),
 					*property->GetName());
@@ -804,7 +808,8 @@ namespace
 		Py_ssize_t positional_count = 1;
 		for (TFieldIterator<FProperty> it(original); it && it->HasAnyPropertyFlags(CPF_Parm); ++it)
 		{
-			if (!it->HasAnyPropertyFlags(CPF_ReturnParm))
+			if (!it->HasAnyPropertyFlags(CPF_ReturnParm) &&
+				!(it->HasAnyPropertyFlags(CPF_OutParm) && !it->HasAnyPropertyFlags(CPF_ConstParm)))
 			{
 				++positional_count;
 			}
@@ -980,7 +985,30 @@ namespace
 			}
 
 			FString validation_error;
-			if (!ValidateOriginalFunction(original, validation_error))
+			bool allow_named_outputs = false;
+			PyObject* named_outputs = PyObject_GetAttrString(value, "uep_named_outputs");
+			if (named_outputs)
+			{
+				if (named_outputs != Py_True && named_outputs != Py_False)
+				{
+					Py_DECREF(named_outputs);
+					Py_DECREF(items);
+					PyErr_Format(PyExc_TypeError, "%s.uep_named_outputs must be bool", python_name);
+					return false;
+				}
+				allow_named_outputs = named_outputs == Py_True;
+				Py_DECREF(named_outputs);
+			}
+			else if (PyErr_ExceptionMatches(PyExc_AttributeError))
+			{
+				PyErr_Clear();
+			}
+			else
+			{
+				Py_DECREF(items);
+				return false;
+			}
+			if (!ValidateOriginalFunction(original, validation_error, allow_named_outputs))
 			{
 				Py_DECREF(items);
 				PyErr_Format(
@@ -1597,6 +1625,19 @@ namespace
 		FScopedMixinMutation mutation_scope;
 		RegisterMixinInterfacesInPackage(loaded_package);
 	}
+
+#if WITH_EDITOR
+	void OnMixinEndLoadPackage(const FEndLoadPackageContext& context)
+	{
+		// The async loader's old per-package completion delegate can expose an
+		// unsafe package in UE5.8.1. EndLoad also covers synchronous loads and
+		// provides the whole completed batch, including imported packages.
+		for (UPackage* loaded_package : context.LoadedPackages)
+		{
+			OnMixinPackageLoadCompleted(loaded_package);
+		}
+	}
+#endif
 }
 
 void UPythonFunction::SetMixinRegistration(uint64 registration_id, FName function_name)
@@ -2373,7 +2414,14 @@ void unreal_engine_python_enable_mixin_discovery()
 	}
 	if (!GMixinPackageLoadedHandle.IsValid())
 	{
+		// OnEndLoadPackage is not available in ordinary non-editor builds.
+		// Keep that existing runtime path separate until it has its own
+		// packaged discovery replacement and acceptance coverage.
+#if WITH_EDITOR
+		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnEndLoadPackage.AddStatic(&OnMixinEndLoadPackage);
+#else
 		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnPackageLoadCompleted.AddStatic(&OnMixinPackageLoadCompleted);
+#endif
 	}
 	if (Py_IsInitialized() && !FUEPyScopedMixinCallback::IsActive() && GMixinMutationDepth == 0)
 	{
@@ -2387,7 +2435,11 @@ void unreal_engine_python_disable_mixin_discovery()
 {
 	if (GMixinPackageLoadedHandle.IsValid())
 	{
+#if WITH_EDITOR
+		FCoreUObjectDelegates::OnEndLoadPackage.Remove(GMixinPackageLoadedHandle);
+#else
 		FCoreUObjectDelegates::OnPackageLoadCompleted.Remove(GMixinPackageLoadedHandle);
+#endif
 		GMixinPackageLoadedHandle.Reset();
 	}
 	GDeclaringClasses.Empty();

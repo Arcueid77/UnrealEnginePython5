@@ -187,13 +187,124 @@ Test-Case "All rejects absent audit" {
 Test-Case "All rejects failed audit" {
     Assert-Rejected { Get-LyraFullAcceptanceFlag "All" $true $true ([pscustomobject]@{status="failed"}) } "passed HUD audit"
 }
-Test-Case "All with a checked audit can set its flag" {
-    if (!(Get-LyraFullAcceptanceFlag "All" $true $true ([pscustomobject]@{status="passed"}))) { throw "Expected full flag" }
+function New-MultiClientNetwork {
+    $processes = [pscustomobject]@{}
+    foreach ($peer in @('server', 'A', 'B0', 'B1')) {
+        $processes | Add-Member -NotePropertyName $peer -NotePropertyValue ([pscustomobject]@{exit_code=0;pid=100;duration_seconds=10})
+    }
+    return [pscustomobject]@{status='passed';schema_version=1;multi_client_acceptance=$true;required_client_count=2
+        scope='loopback-dedicated-two-clients';processes=$processes
+        protocol_validation=[pscustomobject]@{status='passed';required_client_count=2;process_instances=4;scenario_ids=@(1..16 | ForEach-Object {'N{0:00}' -f $_})}}
+}
+Test-Case "All with every required gate can set its flag" {
+    $passed = [pscustomobject]@{status="passed"}
+    if (!(Get-LyraFullAcceptanceFlag "All" $true $true $passed $passed $passed (New-MultiClientNetwork))) { throw "Expected full flag" }
+}
+Test-Case "All rejects missing multi-client evidence" {
+    $passed = [pscustomobject]@{status='passed'}
+    Assert-Rejected { Get-LyraFullAcceptanceFlag 'All' $true $true $passed $passed $passed } 'passed two-client'
+}
+Test-Case "one client cannot satisfy the network gate" {
+    $network = New-MultiClientNetwork; $network.required_client_count=1
+    Assert-Rejected { Assert-LyraMultiClientNetworkData $network } 'passed two-client'
+}
+Test-Case "missing rejoin process cannot satisfy the network gate" {
+    $network = New-MultiClientNetwork; $network.processes.PSObject.Properties.Remove('B1')
+    Assert-Rejected { Assert-LyraMultiClientNetworkData $network } 'process exits'
+}
+Test-Case "missing network phase cannot satisfy the gate" {
+    $network = New-MultiClientNetwork; $network.protocol_validation.scenario_ids=@('N01')
+    Assert-Rejected { Assert-LyraMultiClientNetworkData $network } 'scenario coverage'
+}
+Test-Case "forced network exit cannot satisfy the gate" {
+    $network = New-MultiClientNetwork; $network.processes.A.exit_code=1
+    Assert-Rejected { Assert-LyraMultiClientNetworkData $network } 'Unclean two-client'
+}
+Test-Case "All rejects missing rendered checks" {
+    $passed = [pscustomobject]@{status="passed"}
+    Assert-Rejected { Get-LyraFullAcceptanceFlag "All" $true $true $passed $passed $null } "passed callsite and rendered"
+}
+Test-Case "All rejects missing cross-Actor checks" {
+    $passed = [pscustomobject]@{status="passed"}
+    Assert-Rejected { Get-LyraFullAcceptanceFlag "All" $true $true $passed $null $passed } "passed callsite and rendered"
 }
 Test-Case "skip and narrow lanes cannot claim full acceptance" {
     if ((Get-LyraFullAcceptanceFlag "All" $true $false $null) -or
         (Get-LyraFullAcceptanceFlag "All" $false $true $null) -or
         (Get-LyraFullAcceptanceFlag "Network" $true $true $null)) { throw "Diagnostic lane claimed full acceptance" }
+}
+
+function New-Callsite {
+    $counts = [ordered]@{original=@(1,0,1,1,0,1); mixed=@(1,1,2,2,0,1); mixed_again=@(1,2,2,3,0,1); profiles_swapped=@(2,2,1,3,1,2); restored=@(3,2,1,4,1,1)}
+    $phases = foreach ($name in $counts.Keys) {
+        $values = $counts[$name]
+        [pscustomobject]@{name=$name; targets=@(
+            [pscustomobject]@{actor='first'; class='Fixture_C'; blueprint_calls=$values[0]; python_calls=$values[1]; last_route=$values[2]},
+            [pscustomobject]@{actor='second'; class='Fixture_C'; blueprint_calls=$values[3]; python_calls=$values[4]; last_route=$values[5]}
+        )}
+    }
+    return [pscustomobject]@{schema_version=1; status='passed'; assets_saved=$false; evidence=[pscustomobject]@{caller_compiled_before_registration=$true; zero_parameter_native_fallback=$true; same_class=$true; restoration_passed=$true; phases=@($phases)}}
+}
+
+function New-Visual {
+    $names = @('initial','damage_interpolating','damage_settled','heal_interpolating','heal_settled','death_interpolating','death_settled','respawn')
+    $targets = @(100,60,60,100,100,0,0,100)
+    $displayed = @(100,93,60,67,100,83,0,100)
+    $frames = for ($index=0; $index -lt 8; $index++) {
+        [pscustomobject]@{name=$names[$index]; current=$displayed[$index]; target=$targets[$index]; normalized=$targets[$index]/100.0; pending_elimination=$false;
+            animations=@([pscustomobject]@{animation=$(if ($index -eq 6) {'OnEliminated'} else {'OnSpawned'})})}
+    }
+    $final = (New-ShutdownReport).shutdown.hud
+    $final.construct_count=1; $final.destruct_count=1
+    return [pscustomobject]@{schema_version=1; status='passed'; frames=@($frames); shutdown=$final}
+}
+
+Test-Case "synthetic cross-Actor evidence passes" {
+    Assert-UEPMixinCallsiteData (New-Callsite)
+    $missing = New-Callsite; $missing.evidence.zero_parameter_native_fallback=$false
+    Assert-Rejected { Assert-UEPMixinCallsiteData $missing } 'Missing precompiled'
+}
+Test-Case "Python cannot fall through to BP" {
+    $report=New-Callsite; $report.evidence.phases[1].targets[0].blueprint_calls++
+    Assert-Rejected { Assert-UEPMixinCallsiteData $report } 'dispatch counters'
+}
+Test-Case "missing restoration fails" {
+    $report=New-Callsite; $report.evidence.phases=@($report.evidence.phases | Select-Object -First 4)
+    Assert-Rejected { Assert-UEPMixinCallsiteData $report } 'phases'
+}
+Test-Case "replaced actor type cannot count as mixin" {
+    $report=New-Callsite; $report.evidence.phases[1].targets[0].class='PythonSubclass_C'
+    Assert-Rejected { Assert-UEPMixinCallsiteData $report } 'instance or class'
+}
+Test-Case "synthetic rendered evidence passes" {
+    Assert-LyraHUDVisualData (New-Visual)
+    $switched = New-Visual
+    $switched | Add-Member -NotePropertyName switch_during_animation -NotePropertyValue $true
+    $switched.shutdown.destruct_count=0
+    Assert-LyraHUDVisualData $switched
+    Assert-UEPFocusedLog "Goodbye Python`nUEP_LYRA_HUD_VISUAL_PASSED`nLog file closed" 'UEP_LYRA_HUD_VISUAL_PASSED' -RequirePythonExit
+}
+Test-Case "rendered intermediate cannot snap to target" {
+    $report=New-Visual; $report.frames[1].current=60
+    Assert-Rejected { Assert-LyraHUDVisualData $report } 'interpolate'
+}
+Test-Case "rendered pending shutdown fails" {
+    $report=New-Visual; $report.status='awaiting_shutdown'
+    Assert-Rejected { Assert-LyraHUDVisualData $report } 'frames'
+    Assert-Rejected { Assert-UEPFocusedLog "UEP_LYRA_HUD_VISUAL_PASSED`nLog file closed" 'UEP_LYRA_HUD_VISUAL_PASSED' -RequirePythonExit } 'ordered completion'
+}
+Test-Case "rendered missing frame fails" {
+    $report=New-Visual; $report.frames=@($report.frames | Select-Object -First 7)
+    Assert-Rejected { Assert-LyraHUDVisualData $report } 'frames'
+}
+Test-Case "rendered unfinished death fails" {
+    $report=New-Visual; $report.frames[6].pending_elimination=$true
+    Assert-Rejected { Assert-LyraHUDVisualData $report } 'death/respawn'
+}
+Test-Case "rendered residual reference fails" {
+    $report=New-Visual; $report.shutdown.live_widget_reference_count=1
+    Assert-Rejected { Assert-LyraHUDVisualData $report } 'retained owned state'
+    Assert-Rejected { Assert-UEPFocusedLog "LogPython: Error: unrelated failure`nGoodbye Python`nUEP_LYRA_HUD_VISUAL_PASSED`nLog file closed" 'UEP_LYRA_HUD_VISUAL_PASSED' -RequirePythonExit } 'unexpected error'
 }
 
 [pscustomobject]@{status="passed"; test_count=$cases.Count; tests=@($cases)} | ConvertTo-Json -Depth 3

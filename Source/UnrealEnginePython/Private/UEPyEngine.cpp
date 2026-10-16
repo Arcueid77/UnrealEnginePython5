@@ -577,6 +577,10 @@ PyObject *py_unreal_engine_new_object(PyObject * self, PyObject * args)
 	UClass *obj_class = ue_py_check_type<UClass>(obj);
 	if (!obj_class)
 		return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
+	// NewObject asserts on abstract classes in UE 5.8. Reject invalid Python
+	// input before crossing that boundary instead of terminating the Editor.
+	if (obj_class->HasAnyClassFlags(CLASS_Abstract))
+		return PyErr_Format(PyExc_TypeError, "cannot instantiate abstract UClass %s", TCHAR_TO_UTF8(*obj_class->GetPathName()));
 
 	FName f_name = NAME_None;
 

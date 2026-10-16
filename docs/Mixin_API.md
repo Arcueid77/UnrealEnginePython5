@@ -122,6 +122,14 @@ declaring class. `register_declared_mixin(class)` forces registration for one
 loaded direct owner; `register_loaded_mixin_interfaces()` rescans all loaded
 classes and returns the number of newly registered routers.
 
+UE 5.8.1 Editor builds (including `UnrealEditor -game` and Editor-hosted
+servers) observe `OnEndLoadPackage` and process every package in its completed
+batch. The old async per-package delegate is deprecated as unsafe in 5.8.1;
+the Editor path no longer reads its potentially unstable package pointer.
+Ordinary non-Editor builds do not expose `OnEndLoadPackage` and currently retain
+the existing per-package discovery path. Its replacement and packaged safety
+acceptance remain open; Editor tests must not be reported as proof of that path.
+
 Cook commandlets are deliberately excluded from discovery and Python registry
 mutation is rejected while Cook is running. A packaged game registers its
 declared Mixins only after the runtime process starts. This prevents temporary
@@ -205,6 +213,15 @@ switched or removed.
 
 ## Helpers and state
 
+For gameplay writes in an Editor executable (including `-game`), prefer the
+existing `object.set_property("Duration", value)` form for reflected fields.
+The legacy `object.Duration = value` setter emits editor property-change
+notifications outside object construction; a `UUserWidget` can consequently
+rerun `PreConstruct` and reset materials. A native Blueprint runtime variable
+write does not emit those editor notifications. This distinction was exercised
+by the 0.10 action-touch BP/Python differential; no Engine change is required.
+Python-only `_uep_*` instance state is unaffected.
+
 The Python wrapper for the UObject is passed as `self`. Profile helpers are
 resolved and bound on demand:
 
@@ -278,9 +295,27 @@ This is not universal interception of every native invocation. A previously
 retained original `UFunction*`, some Final/explicit-parent call paths, or a
 direct native C++ call can bypass the replaced map entry. These are source-level
 boundaries, not claims of runtime coverage for every opcode or call site.
-The [roadmap](../ROADMAP.md) requires a focused cross-Actor caller-BP regression
-in 0.8 closeout and a labelled call/lifecycle matrix plus controlled
-unregister/reload/re-register tests in 0.9. Those new gates are still planned.
+The [call/lifecycle matrix](Mixin_Call_Lifecycle_Matrix.md) labels tested
+routes, rejected signatures and bypasses. The 0.9 fixtures include repeated
+real PIE, native GC, controlled reload and live weapon profile switching.
+The [roadmap](../ROADMAP.md) keeps packaging/release approval separate.
+
+### Explicit Parent construction adapter (Editor only)
+
+`ue.blueprint_extract_construction_helper(bp, "MyConstructionBody")` clones a
+compiled Actor BP's zero-parameter construction graph into a virtual helper
+and leaves `UserConstructionScript` as entry -> helper. Compile, verify, and
+save explicitly; the API does not save. Invalid/duplicate names, non-Actor BPs
+and nested construction graphs are rejected. Unregister before asset authoring.
+It changes only the passed BP copy; never pass a reference template unintentionally.
+
+Route the Python construction method with `.override = "MyConstructionBody"`.
+The BlueprintFallback profile calls `call_mixin_original("MyConstructionBody")`.
+The cloned BP body remains intact, so child explicit Parent construction can
+execute the retained parent construction and then resolve the helper virtually.
+One parent router serves its children; the related-class router guard is not
+relaxed. This bounded graph adapter is not a general hook for cached UFunction
+pointers, other explicit Parent calls, or direct C++ invocations.
 
 ## 0.7 safety boundary
 
@@ -293,8 +328,11 @@ unregister/reload/re-register tests in 0.9. Those new gates are still planned.
   owns a router; derived classes inherit it.
 - Profile methods accept `self` plus the reflected input signature.
 - Static functions, RPCs, latent functions and delegate signatures are rejected.
-- Non-const output/reference parameters are rejected. Return values and const
-  reference inputs are supported.
+- Non-const output parameters are rejected by default. In 0.10 development,
+  an individual Python method can explicitly opt in to named outputs with
+  `method.uep_named_outputs = True` (a bool, not integer 1). Writable reference /
+  in-out parameters remain rejected. Return values and const reference inputs
+  retain their existing support.
 - `GetPythonMixinSet` and `GetPythonMixinProfile` are reserved routing methods.
 - Registry mutation is rejected from selector, initializer, teardown, mixed
   callable and original-call callback boundaries.
@@ -304,3 +342,40 @@ unregister/reload/re-register tests in 0.9. Those new gates are still planned.
 
 See `Third_Person_Mixin_Demo_0.7.0.md` for the retained-class, multi-profile
 runtime proof. For the class-creating alternative, see `Subclassing_API.md`.
+
+## Explicit named outputs (0.10 development)
+
+This opt-in omits the reflected non-const output parameters from the Python
+method's arguments. Return a dictionary with exactly one entry per output,
+using its reflected name. If the signature also has a return value, include
+`ReturnValue`. For example, the retained QuickBar BP query is:
+
+```python
+def IsThisTheActiveQuickbarSlot(self):
+    return {"IsActive": bool(self.native_active_slot == self.SlotIndex)}
+
+IsThisTheActiveQuickbarSlot.uep_named_outputs = True
+```
+
+The complete output dictionary is converted into separately initialized native
+storage before any caller output is copied. Missing/extra keys, a non-dictionary
+or failed conversion are errors; they do not silently invoke original BP. A
+profile that omits the method still uses the preserved original implementation,
+including propagation to the actual BP/native caller's output addresses.
+Python callers of reflected named-output functions receive the existing output
+tuple shape, e.g. `(False,)`, not the dictionary or a bare bool.
+
+Current acceptance includes a BP caller compiled before router registration,
+multiple outputs, native return plus outputs, explicit-original/missing-method
+fallback, rejected dictionaries with unchanged seeded caller output storage,
+recovery and unregister restoration. The eleven-lane focused call matrix and the
+production QuickBar single/two-client comparisons pass. Packed-bool layout is
+not yet explicitly proven by an adversarial fixture. This is not a claim that
+mutable references, RPCs, latent or delegate signatures are supported.
+
+Reflected return storage may precede an ordinary output property. The VM
+argument decoder skips `CPF_ReturnParm` before stepping argument expressions:
+the return slot has no argument expression to consume. The retained device-color
+route has `ReturnValue` before `bCallNativeParent`; six actual BP/Python software
+comparisons and the current eleven-lane native call matrix pass this layout.
+This does not broaden the supported mutable-reference or RPC signatures.

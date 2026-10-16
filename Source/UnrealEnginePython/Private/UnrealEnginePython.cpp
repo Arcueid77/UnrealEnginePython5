@@ -3,6 +3,7 @@
 #include "UnrealEnginePython.h"
 #include "UEPyModule.h"
 #include "UEPyMixin.h"
+#include "UEPyBlueprintScript.h"
 #include "PythonBlueprintFunctionLibrary.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformFilemanager.h"
@@ -14,9 +15,7 @@
 #endif
 
 #include "Styling/SlateStyleRegistry.h"
-#if WITH_EDITOR
 #include "Interfaces/IPluginManager.h"
-#endif
 
 #if UEP_LEGACY_ENGINE_MINOR_VERSION >= 18
 #define PROJECT_CONTENT_DIR FPaths::ProjectContentDir()
@@ -43,6 +42,7 @@ namespace
 		{
 			FScopePythonGIL gil;
 			unreal_engine_python_unregister_all_mixins();
+			unreal_engine_python_unregister_all_blueprint_scripts();
 		}
 		unreal_engine_python_shutdown_housekeeper();
 	}
@@ -372,7 +372,6 @@ void FUnrealEnginePythonModule::InitializePython()
 	}
 	ScriptsPaths.Add(ProjectScriptsPath);
 
-#if WITH_EDITOR
 	for (TSharedRef<IPlugin>plugin : IPluginManager::Get().GetEnabledPlugins())
 	{
 		FString PluginScriptsPath = FPaths::Combine(plugin->GetContentDir(), UTF8_TO_TCHAR("Scripts"));
@@ -381,13 +380,14 @@ void FUnrealEnginePythonModule::InitializePython()
 			ScriptsPaths.Add(PluginScriptsPath);
 		}
 
-		// allows third parties to include their code in the main plugin directory
+#if WITH_EDITOR
+		// Legacy Editor-only imports from the plugin root remain available.
 		if (plugin->GetName() == "UnrealEnginePython")
 		{
 			ScriptsPaths.Add(plugin->GetBaseDir());
 		}
-	}
 #endif
+	}
 
 	if (ZipPath.IsEmpty())
 	{
@@ -543,17 +543,41 @@ void FUnrealEnginePythonModule::InitializePython()
 
 	setup_stdout_stderr();
 
-	if (PyImport_ImportModule("ue_site"))
+	PyObject* SiteModule = PyImport_ImportModule("ue_site");
+	if (SiteModule)
 	{
 		UE_LOG(LogPython, Log, TEXT("ue_site Python module successfully imported"));
+		Py_DECREF(SiteModule);
 	}
 	else
 	{
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 		if (PyErr_ExceptionMatches(PyExc_ModuleNotFoundError))
 		{
-			UE_LOG(LogPython, Log, TEXT("ue_site Python module not found"));
+			// The optional hook may be absent. A missing dependency inside an
+			// existing hook is a real bootstrap error and must retain its traceback.
+			PyObject* ErrorType = nullptr;
+			PyObject* ErrorValue = nullptr;
+			PyObject* ErrorTraceback = nullptr;
+			PyErr_Fetch(&ErrorType, &ErrorValue, &ErrorTraceback);
+			PyErr_NormalizeException(&ErrorType, &ErrorValue, &ErrorTraceback);
+			PyObject* MissingName = ErrorValue ? PyObject_GetAttrString(ErrorValue, "name") : nullptr;
+			const bool MissingOptionalHook = MissingName && PyUnicode_Check(MissingName) &&
+				PyUnicode_CompareWithASCIIString(MissingName, "ue_site") == 0;
+			Py_XDECREF(MissingName);
 			PyErr_Clear();
+			if (MissingOptionalHook)
+			{
+				Py_XDECREF(ErrorType);
+				Py_XDECREF(ErrorValue);
+				Py_XDECREF(ErrorTraceback);
+				UE_LOG(LogPython, Log, TEXT("ue_site Python module not found"));
+			}
+			else
+			{
+				PyErr_Restore(ErrorType, ErrorValue, ErrorTraceback);
+				unreal_engine_py_log_error();
+			}
 		}
 		else
 		{

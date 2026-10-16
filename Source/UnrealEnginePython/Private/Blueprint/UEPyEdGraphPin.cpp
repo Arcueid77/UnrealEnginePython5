@@ -253,8 +253,63 @@ static int py_ue_edgraphpin_set_sub_category(ue_PyEdGraphPin *self, PyObject *va
 	return -1;
 }
 
+// Stable, read-only graph coordinates. Pin names alone are not unique: most
+// Blueprint nodes have pins named "self", "then", or "ReturnValue".
+static PyObject *py_ue_edgraphpin_get_id(ue_PyEdGraphPin *self, void *closure)
+{
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*self->pin->PinId.ToString(EGuidFormats::DigitsWithHyphens)));
+}
+
+static PyObject *py_ue_edgraphpin_get_direction(ue_PyEdGraphPin *self, void *closure)
+{
+	return PyLong_FromLong((long)self->pin->Direction);
+}
+
+static PyObject *py_ue_edgraphpin_get_owning_node(ue_PyEdGraphPin *self, void *closure)
+{
+	Py_RETURN_UOBJECT(self->pin->GetOwningNode());
+}
+
+static PyObject *py_ue_edgraphpin_get_sub_category_object(ue_PyEdGraphPin *self, void *closure)
+{
+	UObject *object = self->pin->PinType.PinSubCategoryObject.Get();
+	if (!object)
+		Py_RETURN_NONE;
+	Py_RETURN_UOBJECT(object);
+}
+
+static PyObject *py_ue_edgraphpin_get_container_type(ue_PyEdGraphPin *self, void *closure)
+{
+	return PyLong_FromLong((long)self->pin->PinType.ContainerType);
+}
+
+static PyObject *py_ue_edgraphpin_get_is_reference(ue_PyEdGraphPin *self, void *closure)
+{
+	return PyBool_FromLong(self->pin->PinType.bIsReference);
+}
+
+static PyObject *py_ue_edgraphpin_get_is_const(ue_PyEdGraphPin *self, void *closure)
+{
+	return PyBool_FromLong(self->pin->PinType.bIsConst);
+}
+
+static PyObject *py_ue_edgraphpin_get_parent_pin(ue_PyEdGraphPin *self, void *closure)
+{
+	if (!self->pin->ParentPin)
+		Py_RETURN_NONE;
+	return py_ue_new_edgraphpin(self->pin->ParentPin);
+}
+
 static PyGetSetDef ue_PyEdGraphPin_getseters[] = {
 	{ (char*)"name", (getter)py_ue_edgraphpin_get_name, NULL, (char *)"", NULL },
+	{ (char*)"id", (getter)py_ue_edgraphpin_get_id, NULL, (char *)"Stable Blueprint pin GUID", NULL },
+	{ (char*)"direction", (getter)py_ue_edgraphpin_get_direction, NULL, (char *)"0=input, 1=output", NULL },
+	{ (char*)"owning_node", (getter)py_ue_edgraphpin_get_owning_node, NULL, (char *)"", NULL },
+	{ (char*)"sub_category_object", (getter)py_ue_edgraphpin_get_sub_category_object, NULL, (char *)"", NULL },
+	{ (char*)"container_type", (getter)py_ue_edgraphpin_get_container_type, NULL, (char *)"0=scalar, 1=array, 2=set, 3=map", NULL },
+	{ (char*)"is_reference", (getter)py_ue_edgraphpin_get_is_reference, NULL, (char *)"", NULL },
+	{ (char*)"is_const", (getter)py_ue_edgraphpin_get_is_const, NULL, (char *)"", NULL },
+	{ (char*)"parent_pin", (getter)py_ue_edgraphpin_get_parent_pin, NULL, (char *)"", NULL },
 	{ (char*)"category", (getter)py_ue_edgraphpin_get_category, (setter)py_ue_edgraphpin_set_category, (char *)"", NULL },
 	{ (char*)"sub_category", (getter)py_ue_edgraphpin_get_sub_category, (setter)py_ue_edgraphpin_set_sub_category, (char *)"", NULL },
 	{ (char*)"default_value", (getter)py_ue_edgraphpin_get_default_value, (setter)py_ue_edgraphpin_set_default_value, (char *)"", NULL },

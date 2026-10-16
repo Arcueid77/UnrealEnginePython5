@@ -90,6 +90,12 @@ def validate_versions_and_mode():
 
 def validate_runtime_control_surface():
     check(callable(getattr(ue, "request_exit", None)), "unreal_engine.request_exit is unavailable")
+    try:
+        ue.new_object(ue.find_class("Object"))
+    except TypeError as error:
+        check("abstract" in str(error), str(error))
+    else:
+        raise AssertionError("new_object accepted an abstract UClass")
 
 
 def create_fixture():

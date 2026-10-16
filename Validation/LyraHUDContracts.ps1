@@ -10,7 +10,10 @@ function Get-LyraFullAcceptanceFlag {
         [string]$Mode,
         [bool]$GameplaySliceEnabled,
         [bool]$HUDSliceEnabled,
-        [object]$HUDAudit
+        [object]$HUDAudit,
+        [object]$MixinCallsite,
+        [object]$HUDVisual,
+        [object]$MultiClientNetwork
     )
     if ($Mode -ne "All" -or !$GameplaySliceEnabled -or !$HUDSliceEnabled) {
         return $false
@@ -18,7 +21,118 @@ function Get-LyraFullAcceptanceFlag {
     if ($null -eq $HUDAudit -or $HUDAudit.status -ne "passed") {
         throw "Full Lyra acceptance requires a passed HUD audit in this invocation"
     }
+    if ($null -eq $MixinCallsite -or $MixinCallsite.status -ne "passed" -or
+        $null -eq $HUDVisual -or $HUDVisual.status -ne "passed") {
+        throw "Full Lyra acceptance requires passed callsite and rendered HUD checks in this invocation"
+    }
+    Assert-LyraMultiClientNetworkData $MultiClientNetwork
     return $true
+}
+
+function Assert-LyraMultiClientNetworkData {
+    param([object]$Report)
+    if ($null -eq $Report -or $Report.status -ne 'passed' -or
+        $Report.schema_version -ne 1 -or $Report.multi_client_acceptance -ne $true -or
+        $Report.required_client_count -ne 2 -or $Report.scope -ne 'loopback-dedicated-two-clients') {
+        throw 'Full Lyra acceptance requires passed two-client network evidence in this invocation'
+    }
+    $protocol = $Report.protocol_validation
+    if ($null -eq $protocol -or $protocol.status -ne 'passed' -or
+        $protocol.required_client_count -ne 2 -or $protocol.process_instances -ne 4 -or
+        (@($protocol.scenario_ids) -join '|') -ne ((1..16 | ForEach-Object {'N{0:00}' -f $_}) -join '|')) {
+        throw 'Incomplete two-client network scenario coverage'
+    }
+    if ($null -eq $Report.processes -or
+        (@($Report.processes.PSObject.Properties.Name | Sort-Object) -join '|') -ne 'A|B0|B1|server') {
+        throw 'Missing two-client network process exits'
+    }
+    foreach ($peer in @('server', 'A', 'B0', 'B1')) {
+        $processResult = $Report.processes.$peer
+        if ($processResult.exit_code -ne 0 -or $processResult.pid -le 0 -or $processResult.duration_seconds -le 0) {
+            throw "Unclean two-client network process exit: $peer"
+        }
+    }
+}
+
+function Assert-UEPMixinCallsiteData {
+    param([Parameter(Mandatory = $true)][object]$Report)
+    if ($Report.schema_version -ne 1 -or $Report.status -ne "passed" -or $Report.assets_saved -ne $false -or
+        $Report.evidence.caller_compiled_before_registration -ne $true -or
+        $Report.evidence.zero_parameter_native_fallback -ne $true -or
+        $Report.evidence.same_class -ne $true -or $Report.evidence.restoration_passed -ne $true) {
+        throw "Missing precompiled cross-Actor Mixin evidence"
+    }
+    $expected = [ordered]@{
+        original = '1,0,1|1,0,1'; mixed = '1,1,2|2,0,1'; mixed_again = '1,2,2|3,0,1'
+        profiles_swapped = '2,2,1|3,1,2'; restored = '3,2,1|4,1,1'
+    }
+    $phases = @($Report.evidence.phases)
+    if (($phases.name -join '|') -ne ($expected.Keys -join '|')) { throw "Callsite phases are incomplete or reordered" }
+    $firstTargets = @($phases[0].targets)
+    if ($firstTargets.Count -ne 2 -or $firstTargets[0].actor -eq $firstTargets[1].actor -or
+        $firstTargets[0].class -ne $firstTargets[1].class) { throw "Callsite requires two same-class instances" }
+    foreach ($phase in $phases) {
+        $targets = @($phase.targets)
+        if ($targets.Count -ne 2) { throw "Callsite target count mismatch" }
+        $counts = @()
+        for ($index = 0; $index -lt 2; $index++) {
+            $target = $targets[$index]
+            if ($target.actor -ne $firstTargets[$index].actor -or $target.class -ne $firstTargets[0].class) {
+                throw "Callsite changed target instance or class"
+            }
+            $counts += (@('blueprint_calls', 'python_calls', 'last_route') | ForEach-Object { Get-LyraHUDCounter $target $_ }) -join ','
+        }
+        if (($counts -join '|') -ne $expected[$phase.name]) { throw "Callsite dispatch counters failed: $($phase.name)" }
+    }
+}
+
+function Assert-LyraHUDVisualData {
+    param([Parameter(Mandatory = $true)][object]$Report)
+    $names = @('initial', 'damage_interpolating', 'damage_settled', 'heal_interpolating', 'heal_settled', 'death_interpolating', 'death_settled', 'respawn')
+    $targets = @(100, 60, 60, 100, 100, 0, 0, 100)
+    if ($Report.schema_version -ne 1 -or $Report.status -ne 'passed' -or
+        (@($Report.frames).name -join '|') -ne ($names -join '|')) { throw 'Missing rendered HUD frames' }
+    for ($index = 0; $index -lt $names.Count; $index++) {
+        $frame = $Report.frames[$index]
+        if (![double]::IsFinite([double]$frame.current) -or ![double]::IsFinite([double]$frame.normalized) -or
+            [double]$frame.target -ne $targets[$index] -or
+            [math]::Abs([double]$frame.normalized - $targets[$index] / 100.0) -gt 0.0001) {
+            throw 'Rendered HUD value mismatch'
+        }
+        if ($names[$index] -like '*_interpolating') {
+            $previous = $targets[$index - 1]
+            if ($frame.current -le [math]::Min($previous, $targets[$index]) -or
+                $frame.current -ge [math]::Max($previous, $targets[$index])) { throw 'Rendered number did not interpolate' }
+        }
+        elseif ($frame.current -ne $targets[$index]) { throw 'Rendered number did not settle' }
+    }
+    if ($Report.frames[6].pending_elimination -ne $false -or
+        $Report.frames[6].animations[-1].animation -ne 'OnEliminated' -or
+        $Report.frames[7].animations[-1].animation -ne 'OnSpawned') { throw 'Rendered death/respawn animation chain failed' }
+    $final = $Report.shutdown
+    $switched = $Report.PSObject.Properties['switch_during_animation'] -and $Report.switch_during_animation
+    $expectedDestructs = if ($switched) { 0 } else { 1 }
+    if (@($final.errors).Count -ne 0 -or
+        (Get-LyraHUDCounter $final 'active_widget_count') -ne 0 -or
+        (Get-LyraHUDCounter $final 'live_widget_reference_count') -ne 0 -or
+        (Get-LyraHUDCounter $final 'construct_count') -ne 1 -or
+        (Get-LyraHUDCounter $final 'destruct_count') -ne $expectedDestructs -or
+        (Get-LyraHUDCounter $final 'teardown_count') -lt 1 -or
+        (Get-LyraHUDCounter $final 'controller_bind_count') -ne (Get-LyraHUDCounter $final 'controller_unbind_count') -or
+        (Get-LyraHUDCounter $final 'health_bind_count') -ne (Get-LyraHUDCounter $final 'health_unbind_count')) {
+        throw 'Rendered HUD exit retained owned state'
+    }
+}
+
+function Assert-UEPFocusedLog {
+    param([string]$Content, [string]$PassedMarker, [switch]$RequirePythonExit)
+    if ($Content -match '(?im)(Log\w+:\s*Error:|Fatal error:|Assertion failed|Unhandled Exception|Ensure condition failed)') {
+        throw 'Focused Unreal log contains an unexpected error'
+    }
+    $prefix = if ($RequirePythonExit) { 'Goodbye Python.*' } else { '' }
+    if ($Content -notmatch ('(?s)' + $prefix + [regex]::Escape($PassedMarker) + '.*Log file closed')) {
+        throw 'Focused Unreal log lacks ordered completion evidence'
+    }
 }
 
 function Get-LyraHUDCounter {

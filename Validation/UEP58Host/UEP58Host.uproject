@@ -12,6 +12,14 @@
   ],
   "Plugins": [
     {
+      "Name": "AndroidFileServer",
+      "Enabled": false
+    },
+    {
+      "Name": "ResonanceAudio",
+      "Enabled": false
+    },
+    {
       "Name": "UnrealEnginePython",
       "Enabled": true
     },

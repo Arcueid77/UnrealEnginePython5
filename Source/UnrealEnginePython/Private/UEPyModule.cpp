@@ -1,4 +1,6 @@
 #include "UEPyModule.h"
+#include "Misc/PackageName.h"
+#include "UObject/SoftObjectPath.h"
 
 #include "UEPyEngine.h"
 #include "UEPyTimer.h"
@@ -113,6 +115,7 @@
 #include "PythonFunction.h"
 #include "PythonClass.h"
 #include "UEPyMixin.h"
+#include "UEPyBlueprintScript.h"
 #include "InputActionValue.h"
 
 #if UEP_LEGACY_ENGINE_MINOR_VERSION >= 15
@@ -272,6 +275,11 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "unregister_mixin", py_unreal_engine_unregister_mixin, METH_VARARGS, "Restore a Blueprint-generated UClass after removing its Python mixin." },
 	{ "unregister_all_mixins", py_unreal_engine_unregister_all_mixins, METH_VARARGS, "Restore every class with an active Python mixin." },
 	{ "get_registered_mixins", py_unreal_engine_get_registered_mixins, METH_VARARGS, "Describe active Python mixin registrations." },
+	{ "register_blueprint_script", py_unreal_engine_register_blueprint_script, METH_VARARGS, "Replace a directly owned Blueprint function body while retaining its identity and signature." },
+	{ "unregister_all_blueprint_scripts", py_unreal_engine_unregister_all_blueprint_scripts, METH_VARARGS, "Restore all scripted Blueprint function bodies." },
+	{ "get_registered_blueprint_scripts", py_unreal_engine_get_registered_blueprint_scripts, METH_VARARGS, "Describe installed Blueprint Python bodies and observed call counts." },
+	{ "call_function_by_class", py_unreal_engine_call_function_by_class, METH_VARARGS, "Invoke a class-qualified reflected function with named arguments and outputs." },
+	{ "describe_function", py_unreal_engine_describe_function, METH_VARARGS, "Describe a reflected function signature." },
 
 	{ "add_on_screen_debug_message", py_unreal_engine_add_on_screen_debug_message, METH_VARARGS, "" },
 	{ "print_string", py_unreal_engine_print_string, METH_VARARGS, "" },
@@ -428,6 +436,7 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "blueprint_set_variable_visibility", py_unreal_engine_blueprint_set_variable_visibility, METH_VARARGS, "" },
 	{ "blueprint_add_function", py_unreal_engine_blueprint_add_function, METH_VARARGS, "" },
 	{ "blueprint_configure_mixin", py_unreal_engine_blueprint_configure_mixin, METH_VARARGS, "Add UEPPythonMixinInterface and configure its Mixin Set plus a constant or instance-variable profile selector." },
+	{ "blueprint_extract_construction_helper", py_unreal_engine_blueprint_extract_construction_helper, METH_VARARGS, "Move an Actor Blueprint construction body into a virtual helper, preserving a thin construction forwarder. Editor only; does not save." },
 	{ "blueprint_add_ubergraph_page", py_unreal_engine_blueprint_add_ubergraph_page, METH_VARARGS, "" },
 	{ "blueprint_get_all_graphs", py_unreal_engine_blueprint_get_all_graphs, METH_VARARGS, "" },
 	{ "blueprint_mark_as_structurally_modified", py_unreal_engine_blueprint_mark_as_structurally_modified, METH_VARARGS, "" },
@@ -715,6 +724,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 
 	{ "node_pins", (PyCFunction)py_ue_node_pins, METH_VARARGS, "" },
 	{ "node_get_title", (PyCFunction)py_ue_node_get_title, METH_VARARGS, "" },
+	{ "node_get_macro_graph", (PyCFunction)py_ue_node_get_macro_graph, METH_VARARGS, "Resolve a macro graph without altering the asset." },
 	{ "node_find_pin", (PyCFunction)py_ue_node_find_pin, METH_VARARGS, "" },
 	{ "node_create_pin", (PyCFunction)py_ue_node_create_pin, METH_VARARGS, "" },
 	{ "node_pin_type_changed", (PyCFunction)py_ue_node_pin_type_changed, METH_VARARGS, "" },
@@ -2308,7 +2318,9 @@ PyObject* ue_py_convert_property(FProperty* prop, uint8* buffer, int32 index, bo
 
 		PyObject* py_dict = PyDict_New();
 
-		for (int32 i = 0; i < map_helper.Num(); i++)
+		// TMap uses sparse slots: Num() is the live count, not the highest
+		// occupied slot. Native Map_Remove can leave valid pairs beyond Num().
+		for (int32 i = 0; i < map_helper.GetMaxIndex(); i++)
 		{
 			if (map_helper.IsValidIndex(i))
 			{
@@ -2430,6 +2442,25 @@ bool ue_py_convert_pyobject(PyObject* py_obj, FProperty* prop, uint8* buffer, in
 
 	if (PyUnicodeOrString_Check(py_obj))
 	{
+		if (auto soft_class = CastField<FSoftClassProperty>(prop))
+		{
+#if PY_MAJOR_VERSION >= 3
+			Py_ssize_t utf8_length = 0;
+			const char* utf8 = PyUnicode_AsUTF8AndSize(py_obj, &utf8_length);
+#else
+			const char* utf8 = UEPyUnicode_AsUTF8(py_obj);
+#endif
+			if (!utf8) { return false; }
+#if PY_MAJOR_VERSION >= 3
+			if (FCStringAnsi::Strlen(utf8) != utf8_length) { return false; }
+#endif
+			const FString path(UTF8_TO_TCHAR(utf8));
+			// Preserve asynchronous class loading: constructing a soft reference
+			// must not FindObject/LoadObject/TryLoad the referenced Blueprint.
+			if (!path.IsEmpty() && (!path.Contains(TEXT(".")) || !FPackageName::IsValidObjectPath(path))) { return false; }
+			soft_class->SetPropertyValue_InContainer(buffer, FSoftObjectPtr(FSoftObjectPath(path)), index);
+			return true;
+		}
 		if (auto casted_prop = CastField<FStrProperty>(prop))
 		{
 			casted_prop->SetPropertyValue_InContainer(buffer, UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(py_obj)), index);
