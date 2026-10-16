@@ -10,23 +10,30 @@ $summaryPath=Join-Path $inputRoot 'summary.json'
 $outputPath=Join-Path $outputRoot 'snapshot.json'
 $passed=0
 try{
-    foreach($shape in @('array','map','missing','nonzero')){
+    foreach($shape in @('array','map','missing','nonzero','variants','variant-failed')){
         $peers=switch($shape){
             'array' {@(@{name='server';exit_code=0},@{name='A';exit_code=0})}
             'map' {@{server=@{exit_code=0};A=@{exit_code=0}}}
             'missing' {@(@{name='server'})}
             'nonzero' {@{server=@{exit_code=9}}}
+            default {$null}
         }
-        @{status='passed';processes=$peers;hashes=@()}|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summaryPath
+        $value=@{status='passed';processes=$peers;hashes=@()}
+        if($shape -in @('variants','variant-failed')){
+            $value.variants=@(@{variant='Mixin';status='passed';process=@{exit_code=$(if($shape -eq 'variants'){0}else{9})};binary_hashes=@();script_hashes=@()})
+        }
+        $value|ConvertTo-Json -Depth 8|Set-Content -LiteralPath $summaryPath
         $accepted=$false
         try{
             & (Join-Path $repo 'Validation/Save-UEPBatchAcceptance.ps1') -Batch $shape -Scope 'Synthetic ledger format test, not native evidence' -EvidenceDirectories @($inputRoot) -OutputFile $outputPath
             $accepted=$true
-        }catch{if($shape -in @('array','map')){throw}}
-        if($accepted -ne ($shape -in @('array','map'))){throw "Wrong ledger decision for $shape"}
+        }catch{if($shape -in @('array','map','variants')){throw}}
+        if($accepted -ne ($shape -in @('array','map','variants'))){throw "Wrong ledger decision for $shape"}
         if($accepted){
             $result=Get-Content -LiteralPath $outputPath -Raw|ConvertFrom-Json
-            if(@($result.runs[0].peer_exit_codes.PSObject.Properties).Count -ne 2){throw 'Lost native peer exits'}
+            if($shape -eq 'variants'){
+                if($result.runs[0].variant_exit_codes.Mixin -ne 0){throw 'Lost native variant exit'}
+            }elseif(@($result.runs[0].peer_exit_codes.PSObject.Properties).Count -ne 2){throw 'Lost native peer exits'}
             Remove-Item -LiteralPath $outputPath
         }
         $passed++

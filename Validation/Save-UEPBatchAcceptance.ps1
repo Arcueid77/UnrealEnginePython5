@@ -4,7 +4,7 @@ param([Parameter(Mandatory=$true)][string]$Batch,
     [Parameter(Mandatory=$true)][string]$Scope,
     [Parameter(Mandatory=$true)][string[]]$EvidenceDirectories,
     [Parameter(Mandatory=$true)][string]$OutputFile,
-    [string[]]$ScopeSourceFiles=@(),[string]$HostReport)
+    [string[]]$ScopeSourceFiles=@(),[hashtable]$SourcePathMap=@{},[string]$HostReport)
 # A compact evidence index, not a substitute for native semantic report gates.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -47,11 +47,20 @@ foreach($directory in $EvidenceDirectories){
     foreach($name in @('hashes','input_hashes','source_hashes','binary_hashes')){
         $values=Field $summary $name;if($null -ne $values){$rows+=@($values)}
     }
+    $variantExits=[ordered]@{}
+    foreach($variant in @(Field $summary 'variants')){
+        if($null -eq $variant){continue}
+        $name=Field $variant 'variant';$run=Field $variant 'process'
+        if(!$name -or (Field $variant 'status') -ne 'passed' -or $null -eq $run -or
+            (Field $run 'exit_code') -ne 0 -or $variantExits.Contains($name)){throw 'Failed, duplicate or incomplete native variant'}
+        $variantExits[$name]=Field $run 'exit_code'
+        foreach($key in @('binary_hashes','script_hashes')){$rows+=@(Field $variant $key)}
+    }
     $inputs+=@($rows)
     $dlls=@($rows|Where-Object {(Field $_ 'path') -match 'UnrealEditor-UnrealEnginePython\.dll$'}|ForEach-Object {$_.sha256}|Sort-Object -Unique)
     $row=[ordered]@{directory=(Relative $root);summary_sha256=(Get-FileHash -LiteralPath $path).Hash;status=$summary.status
         uep_dll_sha256=$dlls;frozen_input_records=$rows.Count;process_exit_code=if($null -ne $process){$process.exit_code}else{$null}
-        peer_exit_codes=$exits;independent_gate_exit_code=if($null -ne $gate){$gate.exit_code}else{$null};report_hashes=@()}
+        peer_exit_codes=$exits;variant_exit_codes=$variantExits;independent_gate_exit_code=if($null -ne $gate){$gate.exit_code}else{$null};report_hashes=@()}
     foreach($name in @('jump.json','server.json','A.json','B0.json','B1.json','pie.json','audit.json')){
         $report=Join-Path $root $name
         if(Test-Path -LiteralPath $report){$row.report_hashes+=@{file=$name;sha256=(Get-FileHash -LiteralPath $report).Hash}}
@@ -62,8 +71,14 @@ foreach($file in $ScopeSourceFiles){
     $path=[IO.Path]::GetFullPath($file)
     if(!$path.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Scope source outside repository'}
     $hash=(Get-FileHash -LiteralPath $path).Hash
-    $matching=@($inputs|Where-Object {(Field $_ 'path') -eq $path -and $_.sha256 -eq $hash}).Count
-    $snapshot.source_files+=@{path=(Relative $path);sha256=$hash;matches_at_least_one_listed_native_input=($matching -gt 0)}
+    $inputPath=$path
+    if($SourcePathMap.ContainsKey($path)){
+        $inputPath=[IO.Path]::GetFullPath($SourcePathMap[$path])
+        if(!$inputPath.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Mapped historical input outside workspace'}
+    }
+    $matching=@($inputs|Where-Object {(Field $_ 'path') -eq $inputPath -and $_.sha256 -eq $hash}).Count
+    $snapshot.source_files+=@{path=(Relative $path);sha256=$hash;native_input_path=(Relative $inputPath)
+        matches_at_least_one_listed_native_input=($matching -gt 0)}
 }
 if($HostReport){
     $hostPath=[IO.Path]::GetFullPath($HostReport)
