@@ -789,8 +789,41 @@ references and cancels a previous owned pending request; those are safety
 improvements, not exact parity with the original stale-reference behavior.
 CP networking, travel/rejoin, physical input, scoreboard pixel/text parity and
 packages remain untested here. The scoreboard Widget's own BP business is
-still a later UI/scoring batch. Next separate input family is pressed Widgets;
-whole 0.11 remains open, and no Engine build/cook/package was needed.
+still a later UI/scoring batch. Whole 0.11 remains open, and no Engine
+build/cook/package was needed.
+
+The pressed-input Widget root now routes activation/deactivation/native-End to
+Python without changing either Inventory/Map child. Native authoring preserves
+the full original CDO, type, three signatures and retained business graphs;
+typed soft-class transport and exact original-delegate cleanup avoid eager
+loading and foreign-listener removal. The actual Inventory Experience grants
+two instances per toggle class; fixtures preserve both and issue a single real
+EnhancedInput press. Differential01 passes fourteen original/Python pairs,
+six native pending-GC regressions and four same-BP mixed-Profile cases, with
+74/74 policy and 28/28 fixture scopes and 1,465 frozen inputs. Ordinary End
+keeps the UI-owned panel, active Profile teardown closes it, and inactive
+teardown cannot close pooled UI. Pressed UI survives pause, unlike held input.
+
+Network01's UI reports passed but its strict-log gate correctly FAILED on
+SpawnEffect's nullable cached Controller at owner startup. The repair is a
+separate accepted batch (Examples fb1b13d): no missing-controller lock is owned,
+and a later Controller cannot cause an unowned unlock. Real native cache-null/
+foreign-lock probes and ten SpawnEffect pairs plus 28 two-owner authority
+trials pass final Differential02/Network02 gates, 1,468 frozen inputs and normal
+exits. Its earlier Network01 probe failure is retained; comparison now forbids
+new native tasks/effects without assuming old native tasks are absent. No exact
+BP null-receiver-warning parity is claimed.
+
+Pressed Network02 then passes 48 owner trials, 24 foreign-owner observations
+per client, unchanged native grants and inactive LocalOnly authority. All
+strict logs, independent report gates, 1,469 frozen inputs and three actual
+server-last zero exits pass; policy scopes close 0/0 + 48/48 + 48/48. Pending
+completion/stale callback disarming is an intentional safety improvement, not
+exact original stale-reference parity. Inventory/Map Widget BP business is
+still untouched for later UI batches; no UI replication, physical-input,
+pixel/text, filter-token, packet-loss, travel/rejoin or packaged-runtime claim.
+These remain two bounded local batches, not whole-version acceptance or a
+release. No Engine build/cook/package or official-source modification.
 
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,

@@ -3,7 +3,7 @@
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
-      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
+      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
@@ -27,6 +27,7 @@ if($DeviceColor -and ($Network -or $SpawnEffect -or $WeaponInstance -or $Quicksl
 if($Emote -and ($DeviceColor -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Emote is a separate native lane'}
 if($WidgetHeld -and ($Emote -or $DeviceColor -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Held-widget is a separate native lane'}
 if($WidgetHeldMode -ne 'tdm' -and (!$WidgetHeld -or $Network)){throw 'ControlPoint held-widget has its own standalone Experience lane'}
+if($WidgetPressed -and ($WidgetHeld -or $Emote -or $DeviceColor -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Pressed-widget is a separate native lane'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 if($AbilityWidgetFamilyRevisionDirectory -and !$WidgetLifecycle){throw 'Family revision chain currently applies to standalone shared-Widget lifecycle'}
 if($EquipmentGC -and !$WeaponInstance){throw 'Equipment GC requires its standalone equipment lane'}
@@ -78,6 +79,7 @@ try{
     if($SpawnEffect){$expectedAssets=2}
     if($DeviceColor){$expectedAssets=2}
     if($WidgetHeld){$expectedAssets=2}
+    if($WidgetPressed){$expectedAssets=2}
     if($Emote -or ($ADS -and $author.kind -eq 'emoteparent')){$expectedAssets=4}
     if($author.status -ne 'passed' -or $author.runtime_acceptance -or @($author.assets).Count -ne $expectedAssets){throw 'Accepted native ability asset authoring required'}
     $currentAuthorAssets=@($author.assets)
@@ -95,7 +97,7 @@ try{
     Add-JumpInput $authorPath
     $assetReport=Join-Path $AssetAuthoringDirectory 'assets.json'
     $authored=Get-Content -LiteralPath $assetReport -Raw|ConvertFrom-Json -Depth 90
-    if(!$WeaponInstance -and !$SpawnEffect -and !$DeviceColor -and !$Emote -and !$WidgetHeld){
+    if(!$WeaponInstance -and !$SpawnEffect -and !$DeviceColor -and !$Emote -and !$WidgetHeld -and !$WidgetPressed){
     $preserved=if($Cosmetics){$authored.original_classes_defaults_signatures_graphs_preserved}elseif($Quickslot -or $Death -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $ReloadMagazine){$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq $(if($ReloadMagazine){'reloadmagazine'}elseif($DropWeapon){'dropweapon'}elseif($ADS){'adsparent'}elseif($HeroHeal){'heroheal'}elseif($AutoReload){'autoreload'}elseif($Death){'death'}else{'quickslot'})}else{$authored.original_class_defaults_signatures_and_graphs_preserved}
     }
     if($WeaponInstance){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'weaponinstance'}
@@ -106,6 +108,8 @@ try{
     if($SpawnEffect){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'spawneffect' -and $authored.full_spawn_cdo_preserved}
     if($DeviceColor){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'devicecolor' -and $authored.full_device_cdo_preserved -and $authored.native_parent_wiring_preserved}
     if($WidgetHeld){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'widgetheld' -and $authored.original_full_cdo_preserved -and $authored.native_children_unchanged -and $authored.soft_class_path_transport_nodes -eq 4 -and $authored.native_state_teardown_guard_nodes -eq 4}
+    if($WidgetPressed){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'widgetpressed' -and $authored.original_full_cdo_preserved -and
+        $authored.native_children_unchanged -and $authored.native_end_adapter_nodes -eq 3 -and $authored.soft_class_path_transport_nodes -eq 4 -and $authored.original_delegate_cleanup_nodes -eq 4 -and $authored.original_pending_widget_capture_nodes -eq 3}
     if(!$preserved){throw 'Original native ability signature/default/graph proof missing'}
     foreach($entry in $authored.reference_hashes.PSObject.Properties){
         if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Official reference changed'}
@@ -175,6 +179,7 @@ try{
     if($DeviceColor){$flag='-UEPDeviceColorResult';$marker='UEP_DEVICE_COLOR'}
     if($Emote){$flag='-UEPEmoteResult';$marker='UEP_EMOTE'}
     if($WidgetHeld){$flag='-UEPWidgetHeldResult';$marker='UEP_WIDGET_HELD'}
+    if($WidgetPressed){$flag='-UEPWidgetPressedResult';$marker='UEP_WIDGET_PRESSED'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -184,6 +189,7 @@ try{
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
         if($WidgetHeldMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     }
+    if($WidgetPressed){$arguments[1]='/ShooterExplorer/Maps/L_InventoryTestMap?Experience=B_TestInventoryExperience?NumBots=0'}
     if($EquipmentGC){$arguments+=@('-UEPWeaponInstanceGC')}
     if($EquipmentIntegration){$arguments+=@('-UEPWeaponInstanceIntegration')}
     if($EquipmentBlueprintFallback){$arguments+=@('-UEPEquipmentProfile=BlueprintFallback')}
@@ -194,6 +200,7 @@ try{
             $peerArguments=@($arguments|Where-Object {$_ -ne '-game' -and $_ -notlike '-UEPSpawnEffectResult=*' -and $_ -notlike '-UEPReloadMagazineResult=*' -and $_ -notlike '-UEPDropWeaponResult=*' -and $_ -notlike '-UEPADSResult=*' -and $_ -notlike '-UEPHeroHealResult=*' -and $_ -notlike '-UEPAutoReloadResult=*' -and $_ -notlike '-UEPCosmeticResult=*' -and $_ -notlike '-UEPDeathAbilityResult=*' -and $_ -notlike '-UEPJumpAbilityResult=*' -and $_ -notlike '-UEPQuickslotResult=*' -and $_ -notlike '-abslog=*'})
             if($Emote){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPEmoteResult=*'})}
             if($WidgetHeld){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWidgetHeldResult=*'})}
+            if($WidgetPressed){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWidgetPressedResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -205,6 +212,7 @@ try{
             if($SpawnEffect){$resultFlag='-UEPSpawnEffectNetworkResult'}
             if($Emote){$resultFlag='-UEPEmoteNetworkResult'}
             if($WidgetHeld){$resultFlag='-UEPWidgetHeldNetworkResult'}
+            if($WidgetPressed){$resultFlag='-UEPWidgetPressedNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -248,8 +256,9 @@ try{
             if($SpawnEffect){$pass=if($peer -eq 'server'){'UEP_SPAWN_EFFECT_NETWORK_PASSED'}else{'UEP_SPAWN_EFFECT_SHUTDOWN_PASSED'}}
             if($Emote){$pass=if($peer -eq 'server'){'UEP_EMOTE_NETWORK_PASSED'}else{'UEP_EMOTE_SHUTDOWN_PASSED'}}
             if($WidgetHeld){$pass=if($peer -eq 'server'){'UEP_WIDGET_HELD_NETWORK_PASSED'}else{'UEP_WIDGET_HELD_SHUTDOWN_PASSED'}}
+            if($WidgetPressed){$pass=if($peer -eq 'server'){'UEP_WIDGET_PRESSED_NETWORK_PASSED'}else{'UEP_WIDGET_PRESSED_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
-            if($WidgetHeld -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Held-widget native BP runtime warning indicates invalid UI context'}
+            if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
         }
         $module=if($ReloadMagazine){'uep_lyra_abilities.reload_magazine_network_contract'}elseif($DropWeapon){'uep_lyra_abilities.drop_weapon_network_contract'}elseif($ADS){'uep_lyra_abilities.ads_network_contract'}elseif($HeroHeal){'uep_lyra_abilities.hero_heal_network_contract'}elseif($AutoReload){'uep_lyra_abilities.autoreload_network_contract'}elseif($Cosmetics){'uep_lyra_characters.cosmetic_network_contract'}elseif($Quickslot){'uep_lyra_abilities.quickslot_network_contract'}else{'uep_lyra_abilities.jump_network_contract'}
@@ -257,6 +266,7 @@ try{
         if($SpawnEffect){$module='uep_lyra_abilities.spawn_effect_network_contract'}
         if($Emote){$module='uep_lyra_abilities.emote_network_contract'}
         if($WidgetHeld){$module='uep_lyra_abilities.widget_held_network_contract'}
+        if($WidgetPressed){$module='uep_lyra_abilities.widget_pressed_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -270,10 +280,11 @@ try{
         if($DeviceColor){$module='uep_lyra_devices.team_color_contract'}
         if($Emote){$module='uep_lyra_abilities.emote_contract'}
         if($WidgetHeld){$module='uep_lyra_abilities.widget_held_contract'}
+        if($WidgetPressed){$module='uep_lyra_abilities.widget_pressed_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
-        if($WidgetHeld -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Held-widget native BP runtime warning indicates invalid UI context'}
+        if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
         if($log -notmatch ('(?s)'+$marker+'_DIFFERENTIAL_PASSED.*Goodbye Python.*'+$marker+'_SHUTDOWN_PASSED.*Log file closed')){throw 'Ability shutdown ordering incomplete'}
     }
     $python=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
