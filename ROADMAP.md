@@ -998,6 +998,30 @@ invalid-index handling intentionally differs from BP receiver/array warnings;
 only invalid-index safety has native probes. Physical keyboard, nullable native
 probes, travel/loss/packages and remaining Character business stay open.
 
+AddInitialInventory is the fifth retained Character helper, implemented in
+`uep_lyra_characters/initial_inventory_mixin.py` with four accepted local aliases.
+Authority/Controller/InventoryManager guards, original ordered native grant
+(stack one)/slot attempts and final nonempty slot-zero activation remain. It
+preserves the original native unslotted extras for occupied/overflow slots.
+Missing QuickBar is intentionally safe; native null-receiver parity is unclaimed.
+Assets01 keeps original type/full CDO/nine signatures/all graphs and adds only a
+stage-only typed BP caller. Differential01 passes six original/Python config
+pairs and a natural first-Pawn Python grant. Natural02 passes four death pairs/
+two Avatar cases, ten actual new-Pawn Python grants and the original clear/
+empty-before-respawn regression, 10/10 observers. Network02 passes 24 authority
+grants/owner replica observations plus 24 real client BP no-op calls, native
+FastArray/QuickBar replication and foreign-owner isolation. Both clients have
+zero natural startup helper entries; no natural client execution is invented.
+Original item/slot identities and config/Profile/CDO restore, not old equipment
+instance identities. Client observer scopes close 1/1 each; restored native state
+is frozen before one-way release and only POD exits are read after disconnect.
+All strict closed logs/independent gates and server-last three zero exits pass.
+Frozen inputs are 1,584 manual/1,588 natural/network; 1,236 host models pass.
+Ledger 42 excludes failed Natural01 (premature wrapper error marker) and
+Network01 (post-release native-owner reread); fixes have executable regressions
+and complete fresh reruns. Remaining Character business, nullable native probes,
+hardware/travel/loss/packages and whole-version acceptance remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
