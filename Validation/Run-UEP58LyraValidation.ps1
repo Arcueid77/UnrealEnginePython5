@@ -3,7 +3,7 @@ param(
     [string]$EngineRoot = "F:\UnrealEngine",
     [string]$LyraProject,
     [string]$OutputRoot,
-    [ValidateSet("Readiness", "HUDAudit", "GenerateHUDAssets", "Standalone", "Network", "Package", "All")]
+    [ValidateSet("Readiness", "HUDAudit", "GenerateHUDAssets", "MixinCallsite", "HUDVisual", "Standalone", "NetworkPrecheck", "Network", "Package", "All")]
     [string]$Mode = "All",
     [string]$GameplayMap = "/ShooterMaps/Maps/L_Expanse",
     [string]$ExpectedExperience = "B_ShooterGame_Elimination",
@@ -633,13 +633,13 @@ $stageRoot = Join-Path $outputRootPath "Stage\Lyra"
 $stageMarkerPath = Join-Path $stageRoot ".uep-lyra-full-stage.json"
 $packageRoot = Join-Path $outputRootPath "Package"
 $packageMarkerPath = Join-Path $packageRoot ".uep-lyra-full-package.json"
-$gameplaySliceEnabled = !$SkipGameplaySlice.IsPresent -and $Mode -notin @("Readiness", "HUDAudit", "GenerateHUDAssets")
-$hudSliceEnabled = !$SkipHUDSlice.IsPresent -and $Mode -notin @("Readiness", "HUDAudit", "GenerateHUDAssets")
+$gameplaySliceEnabled = !$SkipGameplaySlice.IsPresent -and $Mode -notin @("Readiness", "HUDAudit", "GenerateHUDAssets", "MixinCallsite", "HUDVisual")
+$hudSliceEnabled = !$SkipHUDSlice.IsPresent -and $Mode -notin @("Readiness", "HUDAudit", "GenerateHUDAssets", "MixinCallsite", "HUDVisual")
 $gameplayRuntimeMap = if ($gameplaySliceEnabled) { "${GameplayMap}?NumBots=3" } else { $GameplayMap }
 New-Item -ItemType Directory -Path $resultRoot -Force | Out-Null
 
 $summary = [ordered]@{
-    schema_version = 4
+    schema_version = 5
     status = "failed"
     run_id = $runId
     mode = $Mode
@@ -658,9 +658,12 @@ $summary = [ordered]@{
     editor_build = $null
     asset_registry_prime = $null
     hud_audit = $null
+    mixin_callsite = $null
+    hud_visual = $null
     hud_asset_generation = $null
     standalone = $null
     network = $null
+    multi_client_network = $null
     package = $null
     full_acceptance = $false
     error = $null
@@ -792,7 +795,7 @@ try {
                 Remove-Item -LiteralPath $ownedPluginPath -Recurse -Force
             }
         }
-        foreach ($directory in @("Config", "Resources", "Source")) {
+        foreach ($directory in @("Config", "Resources", "Source", "Content")) {
             Copy-FilteredTree -Source (Join-Path $repoRoot $directory) -Destination (Join-Path $stagedUEP $directory) -ExcludedSegments @(
                 "Binaries", "Intermediate", "__pycache__", ".build", ".git", ".codegraph"
             ) -PruneDestination
@@ -822,6 +825,10 @@ try {
         }
         else {
             Copy-FilteredTree -Source $lyraOverlayContent -Destination $stagedContent -ExcludedSegments @("__pycache__")
+            $lyraOverlayPlugins = Join-Path $repoRoot "Demos\UEPLyraIntegration\Overlay\Plugins"
+            if (Test-Path -LiteralPath $lyraOverlayPlugins -PathType Container) {
+                Copy-FilteredTree -Source $lyraOverlayPlugins -Destination (Join-Path $stageRoot "Plugins") -ExcludedSegments @("__pycache__")
+            }
         }
 
         $stageProject = Join-Path $stageRoot ([System.IO.Path]::GetFileName($lyraProjectPath))
@@ -892,7 +899,7 @@ try {
         $projectDescriptor | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $stageProject -Encoding utf8
         $summary.stage_runtime_disabled_plugins = @("AndroidFileServer") + $runtimeDisabledPlugins
 
-        if ($Mode -in @("Standalone", "Network", "Package", "All")) {
+        if ($Mode -in @("Standalone", "NetworkPrecheck", "Network", "Package", "All")) {
             # A fresh full-content stage has no CachedAssetRegistry. Starting
             # two Editor -game processes while both perform Lyra's uncached
             # initial scan can stall the client before it services the network
@@ -1109,6 +1116,19 @@ try {
             }
         }
 
+        if ($Mode -in @("MixinCallsite", "HUDVisual") -or ($Mode -eq "All" -and $hudSliceEnabled)) {
+            $focusedMode = switch ($Mode) { "MixinCallsite" { "Callsite" }; "HUDVisual" { "Visual" }; default { "All" } }
+            $focusedRoot = Join-Path $resultRoot "FocusedHUD"
+            $focusedArguments = @("-NoProfile", "-NonInteractive", "-File", (Join-Path $PSScriptRoot "Run-UEP58FocusedHUDValidation.ps1"),
+                "-EngineRoot", $engineRootPath, "-StageProject", $stageProject, "-OutputDirectory", $focusedRoot, "-Mode", $focusedMode)
+            $null = Invoke-LoggedProcess -FilePath $powerShellPath -ArgumentList $focusedArguments -WorkingDirectory $repoRoot `
+                -LogPath (Join-Path $resultRoot "focused-hud.log") -Label "Cross-Actor and rendered HUD gates" -TimeoutSeconds 600
+            $focusedReport = Get-Content -LiteralPath (Join-Path $focusedRoot "summary.json") -Raw | ConvertFrom-Json
+            if ($focusedReport.status -ne "passed") { throw "Focused HUD gates failed" }
+            $summary.mixin_callsite = $focusedReport.mixin_callsite
+            $summary.hud_visual = $focusedReport.hud_visual
+        }
+
         if ($Mode -in @("Standalone", "All")) {
             $standaloneResult = Join-Path $resultRoot "standalone.json"
             $standaloneStdout = Join-Path $resultRoot "standalone-stdout.log"
@@ -1120,7 +1140,7 @@ try {
             $summary.standalone = [ordered]@{ process = $standaloneProcess; report = $standaloneResult; unreal_log = $standaloneLog; snapshot = $standaloneReport.snapshot; gameplay_slice = $standaloneReport.gameplay_slice; hud = $standaloneReport.hud; hud_lifecycle = $standaloneReport.hud_lifecycle; shutdown = $standaloneReport.shutdown }
         }
 
-        if ($Mode -in @("Network", "All")) {
+        if ($Mode -eq "NetworkPrecheck") {
             $networkProperties = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
             $activePorts = @($networkProperties.GetActiveTcpListeners().Port) + @($networkProperties.GetActiveUdpListeners().Port)
             if ($activePorts -contains $ServerPort) {
@@ -1169,6 +1189,15 @@ try {
                 server = [ordered]@{ process = $serverProcess; report = $serverResult; unreal_log = $serverLog; snapshot = $serverReport.snapshot; gameplay_slice = $serverReport.gameplay_slice; hud = $serverReport.hud; hud_lifecycle = $serverReport.hud_lifecycle; shutdown = $serverReport.shutdown }
                 client = [ordered]@{ process = $clientProcess; report = $clientResult; unreal_log = $clientLog; snapshot = $clientReport.snapshot; gameplay_slice = $clientReport.gameplay_slice; hud = $clientReport.hud; hud_lifecycle = $clientReport.hud_lifecycle; shutdown = $clientReport.shutdown }
             }
+        }
+
+        if ($Mode -in @('Network', 'All')) {
+            if (!$gameplaySliceEnabled -or !$hudSliceEnabled) { throw 'Two-client network acceptance cannot skip gameplay or HUD' }
+            $networkRoot = Join-Path $resultRoot 'multi-client-network'
+            & (Join-Path $PSScriptRoot 'Run-UEP58FocusedNetworkValidation.ps1') -EngineRoot $engineRootPath -StageProject $stageProject -OutputDirectory $networkRoot -ClientCount 2 -ServerPort $ServerPort -RuntimeTimeoutSeconds 900
+            $networkReport = Get-Content -LiteralPath (Join-Path $networkRoot 'summary.json') -Raw | ConvertFrom-Json
+            Assert-LyraMultiClientNetworkData $networkReport
+            $summary.multi_client_network = $networkReport
         }
 
         if ($Mode -in @("Package", "All")) {
@@ -1282,7 +1311,7 @@ try {
         }
 
         $summary.status = "passed"
-        $summary.full_acceptance = Get-LyraFullAcceptanceFlag -Mode $Mode -GameplaySliceEnabled $gameplaySliceEnabled -HUDSliceEnabled $hudSliceEnabled -HUDAudit $summary.hud_audit
+        $summary.full_acceptance = Get-LyraFullAcceptanceFlag -Mode $Mode -GameplaySliceEnabled $gameplaySliceEnabled -HUDSliceEnabled $hudSliceEnabled -HUDAudit $summary.hud_audit -MixinCallsite $summary.mixin_callsite -HUDVisual $summary.hud_visual -MultiClientNetwork $summary.multi_client_network
     }
 }
 catch {

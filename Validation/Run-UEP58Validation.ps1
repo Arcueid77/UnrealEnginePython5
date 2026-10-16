@@ -278,7 +278,7 @@ try {
 
     $pluginStage = Join-Path $stageRoot "Plugins\UnrealEnginePython"
     New-Item -ItemType Directory -Path $pluginStage -Force | Out-Null
-    foreach ($directoryName in @("Source", "Config", "Resources")) {
+    foreach ($directoryName in @("Source", "Config", "Resources", "Content")) {
         $sourceDirectory = Join-Path $repoRoot $directoryName
         if (Test-Path -LiteralPath $sourceDirectory -PathType Container) {
             Copy-DirectoryContents $sourceDirectory (Join-Path $pluginStage $directoryName)
@@ -292,7 +292,7 @@ try {
     Copy-Item -LiteralPath $pluginHostSource -Destination $pluginHostProject -Force
     $pluginHostPlugin = Join-Path $pluginHostStage "Plugins\UnrealEnginePython"
     New-Item -ItemType Directory -Path $pluginHostPlugin -Force | Out-Null
-    foreach ($directoryName in @("Source", "Config", "Resources")) {
+    foreach ($directoryName in @("Source", "Config", "Resources", "Content")) {
         $sourceDirectory = Join-Path $repoRoot $directoryName
         if (Test-Path -LiteralPath $sourceDirectory -PathType Container) {
             Copy-DirectoryContents $sourceDirectory (Join-Path $pluginHostPlugin $directoryName)
