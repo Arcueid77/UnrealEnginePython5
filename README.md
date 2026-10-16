@@ -3,12 +3,20 @@
 
 ## Unreal Engine 5.8 port
 
-**Latest tagged release: 0.7.0. Development version: 0.8.0 (unreleased).**
+**Latest locally tagged release: 0.7.0. Development: 0.8 closeout through 0.11 runtime BP batches.**
 
-As reviewed on 2026-09-07, both repositories are developing 0.8.0 on
-`dev/release-0.8.0`; core `master` and Examples `main` still point to 0.7.0.
+As reviewed on 2026-10-16, both checkouts are on
+`dev/lyra-blueprint-python`, starting from the unreleased 0.8 baseline.
 The descriptor's 0.8.0 version is not a release or acceptance claim. See the
-[roadmap](ROADMAP.md) for open gates and the revised 0.9/RC/1.0 sequence.
+[roadmap](ROADMAP.md) for open gates and the 0.9–0.14 runtime BP migration sequence.
+
+The current validation engine is the approved upstream UE 5.8.1 update with
+bundled CPython 3.11. Each bounded migration batch is now tested from an isolated
+Git-index snapshot and locally committed with its own native-evidence ledger.
+See [current progress](Demos/UEPLyraIntegration/Migration/PROGRESS.md) and
+[batch evidence](Demos/UEPLyraIntegration/Migration/Acceptance/).
+Historical native runs keep their actual binary hashes; matching a later source
+freeze is not a runtime rerun. No 0.8–0.11 release, tag or push is implied.
 
 The 0.8.0 candidate applies the retained-class Mixin system to Lyra's existing
 `W_Healthbar_C`. Lyra's Game Feature and CommonUI lifecycle still create the
@@ -17,8 +25,34 @@ Destruct, current-Pawn rebinding, Health Component subscriptions,
 normalization and refresh timing. The original Blueprint retains its visual
 material/animation primitives, Lyra GAS retains authority and replication, and
 dedicated servers create no presenter or widget state in retained tests.
-Damage/heal/death visual parity and stricter lifecycle acceptance remain open. See
+Damage/heal/death/respawn animation and numeric interpolation now pass an
+isolated real-UMG fixture; current-source combined release acceptance remains open. See
 [`docs/Lyra_Python_HUD_0.8.0.md`](docs/Lyra_Python_HUD_0.8.0.md).
+The 2026-09-12 focused loopback run also passes one dedicated server/two clients,
+per-player Health/HUD isolation, two travels and leave/rejoin cleanup. It is
+NullRHI evidence, not rendered multiplayer or packaged-network acceptance.
+
+The 0.9 first batch now adds Python behavior for `W_WeaponAmmoAndName` and the
+Pistol/Rifle/Shotgun ammo counters, retaining the same Blueprint widget classes
+and UMG layouts. Persisted Interface/CDO selection, 42 real-UMG BP/Python
+comparisons, four live Profile round trips, native message cancellation and
+three reload/GC cycles pass. Native firing/GAS reload, switching, Pawn restart,
+two travels and two-client ammo ownership pass the current Editor network lane.
+A shared read-only sampler uses native QuickBar/Pawn signals and emits changed
+presentation; Lyra exposes no public ammo replication delegate. Retained 0.9
+package presentation passes after the runtime helper-import fix; dedicated packaged
+networking remains open. See the
+[Examples integration](Demos/UEPLyraIntegration/README.md) and
+[validation history](docs/Validation_History.md); it is not a 0.9 release claim.
+
+The 0.10 pilots add Python touch-fire intent and ammo-bar presentation with
+two-client native weapon/context tests. Corrected `CombatHUDNetwork04` passes
+19 phases and four clean exits, including travel/rejoin, per-owner numeric
+Health and zero final scopes. A delayed-ASC health initialization defect was
+repaired and rendered regressions pass. The ammo-bar is a named test overlay:
+original weapon definitions do not use it. Physical touch, actual production
+reticles, new-asset package proof and the rest of 0.10 remain open. The older
+0.9 package is not exact-current script/asset evidence after these changes.
 
 The 0.7 Blueprint-class Mixin API remains the foundation: one class router can
 host multiple named profiles, choose one per UObject instance without changing
@@ -82,7 +116,8 @@ The release target includes:
   Component delegates, with cleanup paths for respawn, Experience-owned Game
   Feature action replacement, travel, destruction and Python exit; exactly-one
   presenter and post-shutdown zero-callback gates have host tests and a current-
-  script Unreal Standalone pass; network/package closeout remains pending;
+  script Unreal Standalone and focused two-client network passes; combined
+  release/package closeout remains pending;
 * machine-readable evidence that Standalone/network clients observe
   `100 -> 90 -> 100` while the dedicated server creates zero HUD instances; and
 * deterministic Git source archives, checksums and optional UE5.8 `BuildPlugin`
@@ -106,17 +141,41 @@ results above are separate runs, not steps in `All`. Its success field reflects
 the then-implemented checks, not the corrected release contract. It predates
 the final source-only bootstrap fix, does not prove rendered animation parity,
 and does not enforce exactly one active presenter or post-exit zero owned
-callbacks. Fresh full and rendered acceptance remain required; see
+callbacks. Fresh full acceptance remains required; rendered fixture evidence
+was added on 2026-09-10. See
 [Validation history](docs/Validation_History.md) for evidence qualifications.
 
 The closeout code now invokes the audit in HUD-enabled `All`, requires exactly
 one active presenter, and writes `awaiting_shutdown` until Python exit records
-zero owned callbacks/widget references. 17 Python and 28 PowerShell host checks
+zero owned callbacks/widget references. 29 Python and 40 PowerShell host checks
 pass. On 2026-09-07, a fresh strict HUD audit and current-script NullRHI
 Standalone passed, including the final Python-exit snapshot. The initial
 BuildId mismatch was resolved by UBT's two metadata actions, without compiling
-C++, changing Engine source or rebuilding a package. Integrated `All`, network,
-packaged and rendered acceptance are still pending; this is not release approval.
+C++, changing Engine source or rebuilding a package. On 2026-09-10, the
+precompiled cross-Actor caller and eight real UMG frames passed; Python damage
+does not fall through to BP, missing methods fall back, and unregister restores
+the caller's original behavior. Integrated full `All`, network and packaged
+acceptance are still pending; this is not release approval.
+
+A mid-animation profile-switch regression also exposed and now covers two
+cleanup defects: completion reentry during router teardown and zero-sized native
+fallback frames. The former uses a no-completion pause during router teardown;
+the latter is a one-file UEP fix, verified by a four-action incremental plugin
+build. Engine source and package artifacts were not rebuilt.
+
+Repeat only these focused checks on an already-built, marked stage (no UBT,
+cook/package or asset saves; a visible test window and shader-cache work are possible):
+
+```powershell
+.\Validation\Run-UEP58FocusedHUDValidation.ps1 `
+    -StageProject F:\UnrealEnginePython5\.build\LyraValidation\Full\Stage\Lyra\LyraStarterGame.uproject `
+    -OutputDirectory F:\UnrealEnginePython5\.build\LyraValidation\Focused-NewRun
+```
+
+Use a new output directory per run. Stale native sources/module records cause
+a failure, not an automatic build or GUID override. The focused summary always
+sets `full_acceptance: false`; HUD-enabled full `All` now also requires these
+checks in its own invocation.
 
 Repeat-generation result `20260831-012003` and schema-4 headless Mixin
 Standalone result `20260831-012054` pass on UE 5.8.0 and engine CPython 3.11.8.
@@ -205,7 +264,10 @@ The 0.7 Mixin Win64 Cook/package gate passes; its visible-client manual gate
 remains pending as noted above. Lyra 0.8 targets only health-bar presentation and
 its closeout gates. 0.9 focuses on Mixin call/lifecycle/reload engineering plus
 one weapon/ammo HUD chain and a bounded Gameplay Message subscription surface.
-The remaining combat HUD is 1.1+ backlog; an explicit RC phase precedes 1.0.
+The remaining runtime BP business is split across 0.10–0.14, with original-BP/
+Python comparisons after every small batch; an explicit RC phase precedes 1.0.
+Animation, editor/test tools, Engine/general-purpose plugin C++ and authored
+asset shells stay native/retained. Game-project C++ migration is a later phase.
 
 To use this source checkout, place the plugin under a UE 5.8 project's `Plugins`
 directory, regenerate project files, and build it with that UE 5.8 installation.

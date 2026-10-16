@@ -1,7 +1,7 @@
 # Validation history
 
 Historical milestones and retained result identifiers, separated from the
-[current roadmap](../ROADMAP.md). Reviewed on 2026-09-07.
+[current roadmap](../ROADMAP.md). Reviewed on 2026-09-10.
 
 ## How to read this archive
 
@@ -381,10 +381,982 @@ tree, not a new tagged or fully runtime-accepted release:
 - Reference Healthbar hash remains the value above; staged Healthbar remains
   `3247123608F568DCA5A5D48A9ECEE6B02F02DE36EC59716BA27E57515795D1AC`.
 
-Visual animation/interpolation fixes and cross-Actor caller-BP fixtures remain
-open. This follow-up did not run integrated `All`, synchronized network,
-cook/package or rendered acceptance. Those gates still require fresh evidence;
+At that point, visual fixes and caller-BP fixtures remained open (see the next
+follow-up). The 2026-09-07 run did not run full `All`, synchronized network,
+cook/package or rendered acceptance. Combined gates still require fresh evidence;
 neither this focused pass nor the old green run is release approval.
+
+### 2026-09-10 animation and cross-Actor follow-up
+
+The Python presenter now uses retained `OnDamaged`/`OnHealed` animations and
+CommonUI interpolation rather than resetting on each health notification.
+Initial/new-Pawn state uses `InitializeBarVisuals`; max-health normalization
+is no longer hardcoded to 100. The reflected `OnAnimationFinished` event chains
+damage completion to `OnEliminated`. Cancellation disarms pending death before
+stopping animations in normal destruction; router teardown pauses silently.
+Host checks pass 29 Python tests and 40 PowerShell cases.
+
+Retained records under `.build/LyraValidation/Full/Results`:
+
+- `20260907-hud-closeout/standalone-visuals-20260910-summary.json`: real current-
+  animation-script NullRHI Standalone passes health events, Pawn replacement,
+  Game Feature action replacement and travel, then final zero presenters/
+  references and controller 3/3, health 6/6 bindings. It predates the later
+  additive animation-event ledger and isolated visual-test module, and is not
+  assigned to the entire final tree retroactively.
+- `20260910-hud-visuals/callsite-04.json`: a caller BP compiled before Mixin
+  registration invokes two pre-existing same-class Actor targets. Original,
+  mixed, repeated, swapped and restored phases all pass. Python does not
+  implicitly invoke the preserved BP; missing methods do, and unregister
+  restores the already-compiled callsite. No Blueprint asset was saved.
+  Earlier fixture attempts failed on Editor `PostEditChange` reconstruction;
+  runtime-style `set_property` writes isolate the dispatch behavior.
+- `20260910-hud-visuals/visual-02.json` and eight PNGs: actual D3D12 UMG
+  rendering shows damage `100 -> 93 -> 60`, healing `60 -> 67 -> 100`,
+  elimination at 0 and restored full health. Screenshot inspection confirms
+  red damage, green healing and the `ELIMINATED` state. Initial failed attempt
+  called an unreflected current-value getter; the fixture now reads real
+  `GetText()` output and the reflected target. Values are sampled frames, not
+  a promise of exact frame timing.
+- `20260910-hud-closeout-integrated/summary.json`: the checked-in focused
+  validator passes both checks together, records native/script/PNG hashes and
+  final cleanup (one Construct/Destruct, no retained widgets/callbacks).
+  It is explicitly **not** the full Lyra `All`: `full_acceptance: false`,
+  no UBT, C++ compile, cook/package or asset save. The final runner revision is
+  also rechecked under `20260910-hud-closeout-final`.
+
+The visual run uses an isolated real widget with a test-only health reader;
+it is not a GAS/delegate/network or packaged-runtime test. The normal overlay
+imports that fixture only with an explicit visual-validation flag.
+
+Shared Engine activity changed NetCore and module records during iteration.
+Official UBT preflight listed only two metadata actions, then regenerated
+records; the repair itself did not compile/link or change checked DLL hashes.
+Focused combined evidence uses BuildId `347adf8a-0e10-4046-9bb4-c7a62877a03a`.
+No Engine source/reference project was edited; the reference Healthbar SHA-256
+remains `7AD30080E82AF2BB2FB40DD132F632A35E3429076ABAD49A37FDFD657895CF66`.
+The full driver's audit + new checks + Standalone/network/package combination
+has not been rerun, and no 0.8 release tag is implied by these focused passes.
+
+Additional same-turn edge-case records:
+
+- `20260910-hud-switch-probe` reproduced a completion dispatch into a mutating
+  router, then a fatal zero-sized original `Destruct` frame. The subsequent
+  `20260910-hud-switch-fixed` run confirmed that silent pause eliminated the
+  completion reentry but not the independent native fallback assertion.
+- `20260910-hud-visuals/build-native-fallback.log`: official UBT with
+  `-NoEngineChanges` performed exactly four actions in 24.15 seconds: compile
+  `PythonFunction.cpp`, link UEP lib/DLL, and write project metadata. The sole
+  native source change makes the original fallback allocation non-null for
+  zero-sized functions. No Engine source, Game target or package was rebuilt.
+- Earlier focused passes predate this final native change. The post-fix
+  `20260910-hud-native-closeout` record reruns caller routing including the
+  parameterless native fallback, normal rendered cleanup, and a separate
+  immediate animation/profile-switch process. Do not relabel the earlier
+  recorded DLL hashes as the new DLL.
+- `20260907-hud-closeout/standalone-native-final-20260910-summary.json`: the
+  post-native-fix regular Lyra Standalone also passes in 98.906 seconds, with
+  health events, Pawn replacement, widget action replacement, travel, one
+  active presenter, and final 3/3 Constructs/Destructs, 3/3 controller binds,
+  6/6 health binds and zero owned widget references. Both post-fix runs record
+  UEP DLL SHA-256 `39E68245A1919FA901CE5D79AAA9482972B13DA331CBAA97C5672D0588F079C7`.
+  Final overlay script hashes still match the passed focused run. Only the
+  focused runner's rejection of invalid `Mode`/switch combinations and docs
+  were tightened afterward; no runtime scripts/native source changed.
+
+## 2026-09-12 — Two-client network closeout implementation
+
+The expanded contract is one real dedicated server and two independent clients,
+with B0 exiting and B1 rejoining (four process instances). The Examples Bridge
+now exposes explicit World/Player tokens, per-player snapshots, bounded Health
+commands and Pawn restart. The core no-build runner performs fresh HUD audit,
+source/module/hash checks, phase barriers, strict logs and all-process atexit
+cleanup; `Network/All` require this gate, while `NetworkPrecheck` retains the old
+single-client diagnostic. NullRHI networking does not prove rendered or packaged
+network behavior, and never sets the full release flag.
+
+Native build provenance, under `.build/LyraValidation/Full/Results`:
+
+- `20260912-network-build-01`: official UBT with `-NoEngineChanges` stopped
+  before C++ compilation because existing Engine module/version metadata needed
+  regeneration. UHT generated three stage files; this was not a runtime pass.
+- `20260912-network-build-02`: backed up the 326 affected Engine metadata files,
+  inspected the official action export, then ran exactly five actions: Bridge
+  compile, DLL/lib links, Engine metadata and project metadata. Build succeeded
+  in 51.06 seconds. No Engine C++ compilation or cook/package was performed.
+  NetCore DLL SHA-256 before/after remained
+  `E71D3F07887D6376297A23A3B3A65122DCB75CF2ABC9885C7858F8FF1E5DE1A1`.
+  Source/reference assets were not edited; module GUIDs were generated by UBT,
+  not manually spoofed.
+
+Retained failed harness iterations (not acceptance evidence):
+
+- `20260912-network-run-01`: real A joined, but online identity replaced the URL
+  nickname. The probe rejected its own incorrect nickname assumption. Fixed by
+  correlating actual local/server PlayerState ID/name and server token, not join
+  order or a user-provided nickname.
+- `20260912-network-run-02`: damage/heal isolation, reversed ACK order and both
+  restarts progressed, then a transient Windows sharing violation interrupted
+  atomic status-file reading. Added bounded retry, preserving permanent error
+  and malformed-JSON failures.
+- `20260912-network-run-03`: native bot gunfire introduced repeated 12-point
+  Health changes after a tested player restart. The unchanged 100/90/80 checks
+  rejected this interference. The opt-in test now stops only the three bots'
+  brain logic; it retains native Warmup and does not change player immunity,
+  Health storage, replication or bounded GAS command rules.
+- `20260912-network-run-04`: the bot helper initially failed to unpack UEP's
+  single-out-parameter tuple. Its three-isolated-brains barrier stayed closed.
+  Source inspection identified the mistake; this run was deliberately stopped
+  and recorded failed. Added host tests for the real return shape and AI-only
+  write boundary before retrying.
+
+The current host suite has 50 Python tests and 45 PowerShell contracts. This
+includes adversarial ACK identity, wrong-owner HUD/events, missing participants,
+non-finite Health, absent finalization, sharing violations, reflected out-array
+handling and the new mandatory two-client release gate. Host passes alone are
+not the network runtime result.
+
+### Passed focused runtime: `20260912-network-run-05`
+
+- `summary.json`: status passed, `multi_client_acceptance: true`,
+  `full_acceptance: false`; run ID `2fd770b9338043d39a6b1c0436b4d0f3`.
+  UE 5.8.0 / CPython 3.11.8, BuildId
+  `038ca067-a15c-47cf-a35d-073bd334643e` for Engine and staged modules.
+  Core `980587e4bf2d449a4154a7ba2b25ef500829cdc3`, Examples
+  `0395f360136070d96dd3ad17e1fb1023c4cc2595`, both dirty; 408 native source
+  mappings and 99 executable/script/test/config/asset input hashes checked
+  before and after. Later documentation-only changes do not change these inputs.
+- Fresh HUD audit, 50/50 Python and 45/45 PowerShell host contracts pass.
+  Existing asset registry reused; the focused run performs no C++ build,
+  cook/package, asset generation or firewall changes. The necessary earlier
+  Bridge build is recorded separately above.
+- All 20 server phases and N01–N16 pass. A observes 100 → 90 → 100;
+  B0 and B1 observe 100 → 80 → 100. Interleaved 90/80 and reversed ACK order,
+  command dedupe including retarget attempts, client authority denial, separate
+  restarts, two non-seamless same-map travels and obsolete-token rejection are
+  corroborated by each participating client's native snapshots and fresh owned
+  delegate events.
+- B0 exits before the remaining A damage/heal test, then B1 joins with a new
+  native token/Pawn. Server/A/B0/B1 preserve 20/20/13/4 phase records respectively.
+  Final Python-exit report, strict error/log ordering and real OS exit code are
+  checked for all four process instances, not just the final pair.
+
+| Process | Runtime seconds | Exit | Active Constructs / Destructs | Final controller binds/unbinds | Final Health binds/unbinds | Final widget references |
+| --- | ---: | ---: | --- | --- | --- | ---: |
+| server | 187.337 | 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
+| A | 168.506 | 0 | 3 / 2 | 3 / 3 | 7 / 7 | 0 |
+| B0 | 110.955 | 0 | 3 / 2 | 3 / 3 | 6 / 6 | 0 |
+| B1 | 21.051 | 0 | 1 / 0 | 1 / 1 | 1 / 1 | 0 |
+
+The offline Python cross-report validator and the core multi-client release
+contract were independently rerun against these final files. No test UE process
+remained. Retained NullRHI logs contain warning-level native Niagara/footstep
+`Accessed None` messages; this is not a visual/FX certification. No connected
+rendered clients, weak-network/LAN/WAN, stress/repeat-stability, packaged network,
+or new combined `All` release run was executed. No 0.8 release tag is implied.
+
+## 0.9 Batch 1A progress — 2026-10-13
+
+Evidence root: `.build/LyraValidation/BlueprintPython/20261013-batch1a`.
+This is local development evidence, not a release or accepted migration batch.
+Core `980587e4bf2d449a4154a7ba2b25ef500829cdc3` and Examples
+`0395f360136070d96dd3ad17e1fb1023c4cc2595`, both dirty on
+`dev/lyra-blueprint-python`; no commit, push, tag or packaging was performed.
+UE 5.8.0 / engine CPython 3.11.8; Engine and staged module BuildId
+`59220820-55ad-4797-9c21-bdc1adf3f709`.
+
+- The static scope manifest was reconciled to 246 runtime BP business
+  candidates, 182 configuration/layout shells and 63 retained animation,
+  editor/test/interface assets. Examples `Migration/batches.json` assigns
+  5/32/37/75/57/40 candidates to 0.9/0.10/0.11/0.12/0.13/0.14 respectively;
+  11 boundary candidates still require scope review. Counts are not migration
+  acceptance or runtime reachability.
+- The experimental function-body thunk's native-entry output bug was fixed:
+  `ProcessEvent` out values must be copied into `FFrame.OutParms` caller
+  addresses, not just frame locals. Packed bool destinations use their own
+  property masks. `script-body-after-metadata.json` passes a caller compiled
+  before registration, repeated reflected/native entry, integer/bool output
+  writeback, no implicit original BP call, unchanged class identity and
+  unregister restoration. Outputs are 33/false, -6/false, then restored
+  13/true. This narrow thunk remains experimental and is not used by the Lyra
+  profiles; it does not certify all signatures, RPCs or latent functions.
+- `plugin-build.log` records one incremental UEP module compile/library/link
+  (three actions), UBT success, 9.45 seconds total. There was no Engine/Lyra C++
+  rebuild or cook/package. An existing generated module BuildId mismatch blocked
+  the first Editor start. After backing up 916 generated metadata records under
+  `metadata-backup`, official UBT `WriteMetadata` ran two metadata-only actions,
+  5.81 seconds total (`metadata-repair.log`). Engine **source** was not edited;
+  generated Engine/stage module metadata was repaired, so the entire Engine
+  directory is not claimed untouched. The original cause of the earlier
+  Engine/stage ID difference was not established.
+- Four example-owned weapon BPs and four Mixin Sets were generated/compiled in
+  the marked disposable stage and copied into the Examples overlay. The normal
+  class names and layout/material assets remain unchanged. Native inventory,
+  equipment, GAS, input and replication are called, not rewritten. Authoring
+  now checks that Unreal's current project matches the marked stage before
+  any registry or asset mutation. The official Lyra assets were not saved.
+  `weapon-hud-declared-audit-02.json` independently passes the real-UE stage
+  guard and all four persisted selectors. Its first read-only attempt exposed
+  UEP commandlets' absent `__file__`; tool imports were fixed to locate the
+  supplied script argument and the fresh commandlet exits 0 without asset saves.
+- `WeaponDeclaredRegression02/summary.json` passes the persisted Interface/CDO
+  defaults and all 42 isolated real-UMG original-BP/Python comparisons. Exact
+  text/visibility, Pistol/Rifle/Shotgun low-ammo thresholds, both material images,
+  weapon/slot changes, empty slot, brush helper, native reload-input dispatch,
+  unchanged classes, four router restorations and strict normal process/Python
+  exit are checked. Both source/stage inputs and the four original BP reference
+  hashes stay stable during the run. The BP-left/Python-right PNG was inspected;
+  quantitative pixel diff was not executed.
+- The failed `WeaponDeclaredRegression` evidence is retained: the new reload
+  path exposed an invalid `ue.Vector` name. The runner correctly rejected the
+  error log despite the fixture's pass marker. It was repaired to `ue.FVector`,
+  successful-call counters were moved after callback work, and the fresh `02`
+  run passed without weakening the assertions. An earlier `weapon-differential-01`
+  also retained a failed brush expectation; audit of the original graph showed
+  that its resource is the supplied UImage object itself. The implementation
+  and expectation were corrected to the authored behavior, not to a new feature.
+- The same focused `02` run starts ordinary `L_Expanse` without UEP validation
+  flags. All four declarations register, the native Experience loads, and the
+  process remains alive for 20 seconds afterward without probe/quit markers.
+  The driver then intentionally stops only that owned process (exit -1);
+  this NullRHI observation is not rendered/input or graceful-exit acceptance.
+- `HealthRegression/summary.json` passes precompiled cross-Actor calls and
+  rendered damage/heal/death/respawn, with a separate live animation/profile
+  switch process. `NetworkRegression/summary.json` passes the existing
+  dedicated-server/two-client **Health/HUD** contract (N01–N16, 20 protocol
+  phases, B leave/rejoin). Server/A/B0/B1 all exit 0 in
+  189.755/171.747/113.067/20.911 seconds. Both focused lanes remain
+  `full_acceptance: false`; their passing Health result is not new ammo proof.
+- Current host reruns pass 67 Python tests, the existing 45 PowerShell HUD/network
+  contracts and 10 additional narrow weapon-evidence contracts. The network
+  invocation preceded the last weapon-test additions; its own recorded host
+  results must not be relabeled as a 67-test invocation.
+
+Still open for Batch 1A: real fire and GAS reload, replicated per-player ammo/UI,
+weapon/Pawn replacement, event-driven ammo subscriptions and cleanup. The weapon
+profiles currently preserve the original BP Tick polling; the isolated fixture
+uses deterministic native inventory inputs, not real equipment/replication.
+The wider 0.9 call/lifecycle matrix, controlled reload, repeated PIE/GC/travel,
+candidate package and API freeze gates also remain open. No 0.9 completion or
+full gameplay/network acceptance is implied.
+
+## 0.9 Batch 1A runtime follow-up — 2026-10-13
+
+Same dirty Core/Examples source pair as the preceding entry, with additional
+scoped fixes; no commit/push/tag. Current Editor BuildId is
+`2cd71c4e-d118-4430-ab9a-53606fc64e3a`. Scope and actual process configurations
+are recorded per run. Official Engine/Lyra source and original assets were not
+edited. Generated build metadata and disposable stages changed.
+
+- `WeaponNetwork08` passes all 19 real-input weapon phases with a dedicated
+  Editor server and two rendered clients. Server/A/B0/B1 exit 0 after
+  252.162/234.725/161.275/36.268 seconds. Native fire/GAS reload, depletion,
+  existing pickup entry and slot switch, Pawn restart, two travels and B rejoin
+  preserve per-player native ammo/Python HUD/original-BP comparisons. The probe
+  does not write ammo or inventory. Physical pickup overlap is not tested.
+- `WeaponScopeRegression05` passes 42 real-UMG comparisons, native QuickBar
+  message cancellation, four Python -> BP -> Python Profile round trips without
+  Construct replay and three controlled reload/native-GC cycles. One shared
+  read-only sampler replaces per-widget polling. Ammo producer is explicitly
+  `read-only-frame-sampler`, not an invented native replication delegate.
+- `RuntimeImportCoreRegression` passes standalone/shared 21/21 each. Its
+  separate missing-dependency case requires expected exit 1 and the actual
+  dependency name/traceback; an existing ue_site failure must not be suppressed
+  as an absent optional hook. Core subscription tests pass 9; Examples pass 82;
+  HUD/network contracts pass 45, weapon contracts 16.
+- `CallMatrixRegression` passes standalone/shared signature boundaries,
+  precompiled cross-Actor caller, narrow experimental body out-writeback and
+  expected Mixin exception/no-native-fallthrough/recovery. Expected exception
+  exit 1 is isolated, checked and not counted as an ordinary clean process.
+- `PIERegression05` passes three real sessions in one Editor, placed/spawned
+  unchanged Actor classes, spawn Construction, two BeginPlay/EndPlay pairs per
+  session, closed scopes, native GC and original function restoration.
+- `ThirdPersonRendered05` passes both Mixin/Python-first variants with native
+  input, movement/look/jump, six rendered PNGs and strict cleanup/log checks.
+  The 0.7 Mixin visible candidate gate is now recorded; historical missing
+  evidence remains historical. Incremental variant preparation was repaired
+  after it retained the Mixin Character CDO while removing its Python module.
+- `HealthCoreRegression` separately passes health/cross-Actor/eight-frame and
+  live-animation profile-switch regression before the later import-path fix;
+  unchanged health implementation is not relabelled as a newer invocation.
+- `WeaponPackage05` records the current Game build and successful Cook/archive.
+  `WeaponPackagePresentation07` reuses its unchanged inputs/archive and passes
+  the rendered 42-case/native-signal/profile/reload/GC fixture, with explicit
+  packaged-network skip and `full_acceptance: false`. Internal/stable native
+  executable SHA-256 is
+  `F65A8D7342093B064BE7F528AF0473AFEB1F4CA1CB6C329D63B20890FA29C28C`.
+  The core helper sources are loose NonUFS files and actually import in Game.
+
+Retained failures and repairs:
+
+- Early weapon-network fixture failures exposed a non-reflected GetItemDef,
+  stale unrooted InputAction, absent second weapon, an unpacked GetAllActors
+  output tuple and GC of an invisible baseline widget. Native/property lookup,
+  input lifetime and test-owned rooting were corrected; later runs passed.
+- Native GC testing exposed a real UEP crash on `new_object(Object)` where the
+  UClass is abstract. UEP now raises TypeError before UE's native assertion;
+  real UE fixtures verify it.
+- Separate generated Editor module metadata drift blocked validation startup.
+  Official UBT WriteMetadata refreshed existing records after backup under
+  observer/generic metadata backups. No hand-written BuildId replacement or
+  Engine source edit was used.
+- Package01 archived successfully but strict logs rejected two UnrealPak
+  PlatformCrypto module-load errors. `pak-metadata-backup` preserves prior
+  generated records; official WriteMetadata retains UnrealPak BuildId
+  `5fcd6720-663f-4993-8774-c33f25582f7f`. Package02 has clean UAT logs, then
+  failed startup because the stable executable alias lacked its basedir.
+- Package03 used correct basedir, but a real missing runtime plugin-script
+  search path prevented uep_runtime import. The optional-hook handler hid that
+  dependent ModuleNotFoundError, the probe never started, and uncapped offscreen
+  rendering eventually exhausted video memory. Runtime plugin search and
+  accurate dependent-import reporting were fixed; test rendering is capped.
+- The first Game compile of that fix failed because IPluginManager's include
+  was still Editor-only (Package04). The include was corrected; current Editor
+  and Game builds pass. Only the required module/current game target was built.
+- Package05's UMG test passes, but using Game target `-server` cannot produce a
+  dedicated Server role. Package06's Editor-server/cooked-clients attempt then
+  fails on MissingLevelPackage for generated World Partition cells. Neither
+  failed topology is promoted to packaged-network acceptance. LyraServer dry
+  planning exports 1,235 cold actions and 14,064 generated UHT files; no Server
+  C++ compile or Server package was executed. This remains a separate RC debt.
+- Core expected-exception and new driver log-order/schema mistakes were
+  corrected in their dedicated fixtures/drivers, with fresh result directories.
+  Two existing-configuration CC invocations timed out (20 and 10 minutes); no
+  external reviewer decision was received or claimed.
+
+Previous managed packages are recoverable under
+`.build/LyraValidation/Full/PreviousPackage-*`; their paths are recorded in each
+package summary. Package presentation and Editor multiplayer are passed scopes;
+full release, dedicated packaged networking, DebugGame/Shipping, weak-network,
+cross-machine and unrestricted hot reload remain unvalidated. See the new
+call/lifecycle matrix, runtime subscription contract and API inventory.
+
+## 0.10 Batch 2A pilot — 2026-10-13
+
+`20261013-batch2a/assets.json` authors only the marked stage's ammo-reticle BP
+and Mixin Set; original Lyra asset SHA-256 is unchanged. Two example-owned
+persisted assets are copied into the overlay. `reticle_ammo_mixin.py` owns
+material ActiveRange/Segments presentation via the existing shared observer;
+native inventory and UMG layout remain.
+
+`ReticleRegression03` passes ten real-UMG BP/Python material comparisons (two
+magazine sizes, five counts each), class identity, Python -> BP -> Python
+without reconstruction, rendered screenshot and zero final observer/scopes/
+ticker. The process exits 0 with strict logs. No C++ compile/cook/package was
+performed for this pilot. Its first loose invocation lacked the established
+`culture=en` flag and logged UE UnifiedError format-test failures in Chinese;
+the new focused driver uses the same declared culture as other lanes and the
+fresh invocation passes without ignoring error logs. A visual check of `02`
+found zero desired size produced a black image; `03` gives both comparison
+widgets an explicit equal viewport size and the actual two arcs were inspected.
+Native material assertions were never relaxed. Host Examples tests now
+pass 83. Actual reticle use during gameplay, multiplayer/package proof and
+the rest of 0.10 remain open; this pilot is not a completed release/batch.
+
+### Combat HUD native-input/context follow-up
+
+`fire-button-assets.json` passes marked-stage Interface/Set/CDO authoring and
+retains `W_FireButton_C`. Python owns the original bound-click entry and
+injects the same Fire/Fire_Auto actions and FVector(1,1,1); BlueprintFallback
+calls the saved BP entry. No ammo/inventory/GAS/authority/replication writes.
+
+Retained failures and repairs:
+
+- `CombatHUDNetwork01` times out because the fixture incorrectly expects a
+  production ammo-bar reticle. Original Pistol/Rifle/Shotgun defaults use
+  their specific reticles/counters. The corrected test explicitly owns its
+  overlay and initializes candidate/BP baseline from the production counter's
+  native WeaponInstance. No item definition is changed; global reachability
+  remains unreviewed, not declared absent.
+- `CombatHUDNetwork02` fails on uppercase R/G/B/A access: UEP's specialized
+  FLinearColor wrapper uses lowercase channels. A wrapper-shape host test
+  guards the corrected read.
+- `CombatHUDNetwork03` passes its then-current numeric protocol, but rendered
+  review rejects final visual approval: a rolled camera and healthy eliminated
+  UI are visible. UEP's FRotator order is Roll/Pitch/Yaw, so old `(80,0,0)` did
+  not aim up. This qualifies the sky-aim claim of older WeaponNetwork runs,
+  not their measured ammo/replication evidence. Axes are now explicit and
+  schema 4 requires native Pitch=80/Roll=0 at firing ACKs.
+- The presenter could read pre-ASC 0/0, then receive old=100,new=100 and leave
+  OnEliminated visible. It now recognizes the previously presented zero and
+  restores OnSpawned/numeric/material state. Health or max-health can be the
+  first ready notification; ordinary damage/denominator-only updates are not
+  reinitialized.
+
+`HealthBootstrapRegression01` passes current-source caller-BP routing, eight
+rendered health checkpoints and a separate mid-animation Profile-switch
+process. Both visual processes require delayed-ASC recovery. Initial healthy
+and later death/respawn images are inspected.
+
+`CombatHUDNetwork04` passes schema 4: 19 server/A phases, 14 B0, 3 B1; two
+rendered clients; Python/BP fire intent, native reload/depletion, existing
+pickup-entry/slot switch, Pawn restart, two travels and B0 exit/B1 rejoin.
+Eight screenshots are hashed. Each owner's health number/current target/
+material ratio also matches native Health. All exits are 0: server 234.871s,
+A 219.634s, B0 142.821s, B1 38.390s. A/B0/B1 subscriptions balance 17/17,
+13/13 and 3/3, scopes 3/3, 3/3 and 1/1; every peer has zero active observer,
+scope, ticker and errors. Examples host tests pass 111.
+
+The gameplay PNGs retain native `WeaponAudioFunctions.EarlyReflections`
+TapIDs warnings also present in `WeaponNetwork08` under `-NoSound`. Strict
+error checks pass, not a zero-warning or audio acceptance claim. Unmigrated
+audio orchestration is 0.12 scope; its warnings are not hidden or repaired in
+the official BP.
+
+No C++ compile, cook/package, firewall change or reference-project edit was
+performed for this follow-up. Physical touchscreen/gesture dispatch is not
+tested (the bound-click entry is invoked programmatically). Ammo-bar default/
+production reachability, actual production reticles, new-asset package proof
+and the other 30 initial 0.10 candidates remain open. Old 0.9 packages are not
+current script/asset proof. Three parent-only touch shells need parent-call
+review; initial counts remain unchanged. No release/publication or external
+CC approval is claimed.
+
+### World pad parent pilot and inherited selector follow-up
+
+`20261013-batch2b/assets.json` fails because the Editor authoring helper tries
+to redeclare an inherited PythonMixinProfile. The helper now reuses a scalar
+Name and writes only the child CDO default, without changing parent metadata.
+The first unrestricted target build is rejected by `-NoEngineChanges` before
+compiling; module-only UBT then compiles UEPyEditor.cpp plus lib/DLL links (three
+actions, 88.99s). No Engine C++/source modification or cook/package is used.
+
+`inherited-selector04` passes parent Python default, child BlueprintFallback
+default after compile, no redeclaration and two same-child-class instances
+using independent reflected selectors; only the native fallback broadcasts.
+The attempted expansion of child declaration discovery hits the existing
+related-class router guard in `inherited-selector03`. It is reverted, not
+silently allowed: the final UEPyMixin.cpp source retains the original runtime
+contract. Two further module builds verify the attempt/restore (7.42/7.27s).
+`CallMatrixRegression01` passes five fresh signature/shared/caller/body/exception
+fixtures with the final DLL. The general parent/child simultaneous-router and
+explicit-Parent bypass limits remain; this is not hierarchy interception support.
+
+`parent-differential01` passes four real Actor construction comparisons
+(damage/heal/special/invalid), selecting profiles before deferred FinishSpawn.
+Material parent, text/world size, class identity, Python construction count and
+no-ASC overlap no-op agree with BP; all eight test Actors are destroyed.
+Original disconnected PrintString/attribute-read nodes are not migrated as
+runtime business. Level=0 and class/all-stack removal intent preserve authored
+inputs; true GAS execution, physical overlap, child and network remain unverified.
+Only the parent BP/Set copies are added to the example overlay; the child's
+staged experimental configuration is restored from the official reference.
+The generator now targets the parent only. Examples host tests pass 118.
+
+No 0.10 release/complete batch or current-source package is claimed. Earlier
+CombatHUDNetwork04 evidence precedes this Editor authoring fix and is not
+relabeled as a fresh invocation of the final DLL.
+
+### Effect Pad physical GAS and explicit-Parent construction adapter
+
+`20261013-batch2b/PhysicalGAS01` fails on the fixture's unreflected
+GetComponentLocation name; K2_GetComponentLocation fixes the test entry.
+`PhysicalGAS02` then passes the parent-only native GAS comparison on the prior
+DLL. The authored damage/heal effects use Period=1, Level=0 and an empty
+EffectContext. Two physical enter/leave rounds per profile give damage
+75->65->55 and heal 75->85->95; native source-effect count becomes zero and
+Health remains stable outside. Handlers are never invoked manually.
+
+The new Editor-only `blueprint_extract_construction_helper` retains the BP
+body in a virtual helper and leaves a two-node construction forwarder. A module-
+only UEP build compiles UEPyEditor.cpp/UEPyModule.cpp plus lib/DLL links (four
+actions, 23.44s). Engine source/builds and cook/package are untouched. The generic
+`construction-forwarder01` fixture fails on a missing break_all_pin_links
+argument; `construction-forwarder02` passes explicit child Parent -> virtual
+helper -> single parent router, no BP fallthrough, Profile switching, original
+restoration and five invalid/duplicate/non-Actor authoring rejections.
+Related-class router rejection and other cached/final/direct-native bypasses
+remain unchanged.
+
+`assets-forwarder01` returns passed JSON but exits 1 with an old-declaration
+auto-discovery error (the new helper did not exist yet); it is **not accepted**.
+Fresh official parent input in the marked disposable stage gives
+`assets-forwarder02` with a clean exit/log. The cloned original BP helper body
+is retained as BlueprintFallback. Only parent BP/Set overlay copies change;
+the original child asset/default is retained (its name does not imply a heal
+default). The native authoring API does not save automatically.
+
+`parent-child-differential02` passes eight construction/no-ASC cases and sixteen
+Actor destructions. `PhysicalGAS03` on the final DLL/serialized parent asset
+passes eight parent/child cases and sixteen physical native GAS rounds; all
+eight pad Actors/delegates close, parent routing restores, and post-exit HUD/
+weapon scopes are zero. `CallMatrixRegression02` passes seven final-DLL fixtures
+(the former five plus inherited selector and construction forwarder).
+Examples host tests pass 126; core SubscriptionScope tests pass nine.
+
+`PadNetwork01` exposes a fixture setup error after the first case: the existing
+native bridge rejects a zero/no-op Health delta for the unaffected player.
+Setup now skips that no-op; the bridge/game authority contract is unchanged.
+The network state machine also stops active effects on its server deadline,
+without waiting for client Health-number animation convergence. The replacement
+two-client lane `PadNetwork02` passes sixteen parent/child/effect/owner/profile
+cases. Server/A/B0 exit 0 after 135.857/136.065/137.270s; native Health and
+actual number/target/material ratio on each client's production HUD agree,
+and non-target Health stays 75. No original BP fallthrough/replayed Python
+intents occur; all owned pad delegates and post-exit HUD/weapon scopes close.
+Native server teleports are not physical client/manual
+input, client prediction, production-pad reachability, rendered pad comparison
+or packaged-server acceptance. No 0.10 release/complete batch is claimed.
+
+### Debug spread native-context follow-up
+
+`20261013-batch2c/assets01` authors the example-owned debug widget/Set without
+changing its native LyraReticleWidgetBase parent or official reference asset.
+The Python Tick calls native ComputeSpreadAngle and KismetTextLibrary with the
+original HalfToEven/sign/grouping/integral/fractional defaults. No weapon
+spread, inventory/ammo or native calculation is overwritten.
+
+`DebugSpreadNetwork01` passes nineteen native fire/reload/switch/Pawn/travel/
+disconnect/rejoin phases with `-WeaponGameplay -CombatHUD -DebugSpread` on the
+current Editor DLL. Server/A/B0/B1 exit 0 in 251.456/229.197/145.608/45.652s.
+The test-owned overlay receives the production ammo counter's native weapon
+instance, runs native automatic Widget Tick (Python Tick is not manually
+called), and compares original BP and native-formatted text. Native spread
+peaks above ten degrees are observed; accepting only a null-weapon zero is
+explicitly rejected. Owner/item identity and post-exit scopes agree.
+
+Eight screenshots are hashed. Visual inspection includes switched weapon and
+rejoined B1; spread text 2.25, upward aim and healthy 100 HUD are visible.
+Native NoSound EarlyReflections and EditorDataStorageUI purpose-registration
+warnings remain visible/logged; there is no warning-free/audio acceptance
+claim. The debug overlay is not a production reachability proof, and neither
+C++ build nor cook/package runs in this follow-up. Host tests pass 135.
+
+### Typed message transport and production reticle differential
+
+`20261013-batch2d/assets01` fails linking the GetPayload reference-input pin
+directly to a result input. `assets02` generates a typed local temporary plus
+schema connections: ReadUI/ReadVerb have four nodes each, BroadcastUI/Verb two
+each. This twelve-node example-only BP adapter supplies typed VM wildcard
+transport, not business logic; generic ProcessEvent never calls native wildcard
+placeholders. No C++/Engine build, source change or cook/package is required.
+
+`transport01` passes real optional-plugin delivery of unchanged Struct_UIMessaging
+and native LyraVerbMessage, Controller identity, nested copy preservation,
+wrong-reader and outside-delivery rejection, legacy channel-only listener parity
+and idempotent close with zero later callbacks. Core's typed subscription API
+requires a supplied verified payload reader. Thirteen host scope tests pass.
+
+`reticle-assets01` generates the three retained reticle declarations, serialized
+kind/decoder class configuration and Mixin Sets without reference asset edits.
+`reticle-differential01/02` catch the initial Python cast/fixture assumption of
+Character instigator; the original casts LyraPlayerState. The owner/suicide
+filter and fixture are corrected, not the baseline. The first cleanup assumes
+identical async variable names across weapons; enumeration fixes that fixture.
+`reticle-differential03` verifies animations after the cast correction but fails
+on a nonexistent screenshot method; the verified native console screenshot path
+is used instead. None of those failed reports is accepted merely for exit 0.
+
+`ReticleDifferential04` passes three retained layout comparisons on a real
+equipped pistol native instance (source production counter), automatic Python
+Tick, matching radius/width/height, local versus foreign ADS, unchanged
+disconnected ADS animation behavior, native-router elimination/restart and
+suicide filtering. Animation times match at 0.04993333. Five created scopes close,
+zero active/errors remain at Python exit, process/log exit cleanly and the
+paired PNG is hashed/visually inspected. Native r.MotionVectorSimulation warning
+is retained. This is not real ADS/kill input, equipped-shotgun validation or
+multi-client/package approval. Host tests pass 141. Later docstring/API notes
+retain their separate relation to recorded script hashes.
+
+### Production reticle multiplayer and real ADS/shotgun input
+
+`ProductionReticleNetwork01` passes nineteen fire/reload/empty/switch/respawn/
+travel/exit/rejoin phases with actual production Pistol/Rifle reticles. The
+separate hidden BP baseline reads the same native weapon/camera; automatic
+Python Tick, class/profile/owner/item and radius/size agree. Server/A/B0/B1
+exit 0 in 269.24/247.96/157.88/52.45s. Native dedicated server creates no reticle
+scopes; A/B0/B1 close 11/11, 7/7 and 1/1 respectively. Dropping the production
+checkpoint cannot be accepted through an overlay-only/old validation lane.
+No real ADS/kill message is generated by those weapon phases; they do not
+silently certify such input or a network shotgun.
+
+`ReticleNativeADS05` passes thirty native IA_ADS pressed and thirty released
+frames, through the existing Enhanced Input/native ability message producer.
+The four owning production/test reticles receive the press and release state;
+synthetic test messages do not substitute for this phase. `ReticleNativeShotgun06`
+then calls the original/native shotgun pickup entry, selects its native QuickBar
+slot, obtains its equipped WeaponInstance from the actual ammo counter, fires
+8->5 ammo and reruns the three layout comparisons on that weapon. No inventory,
+weapon spread/ammo or ability property is written by the probe. It is not a
+physical-overlap pickup test, real kill gameplay or network shotgun acceptance.
+Native warnings remain retained, no package was produced, and these runs precede
+the subsequent soft-class conversion DLL build. Later host tests pass 148.
+
+### Lazy CommonUI menu and current soft-class DLL
+
+The Unicode `FSoftClassProperty` input stores a soft object path without native
+FindObject/LoadObject/TryLoad. Empty/null and existing UClass inputs retain their
+meaning; malformed paths, missing object-name separators and embedded NUL fail.
+`soft-class01/02` exposed fixture lookup handling and UE's permissive package-
+only validator respectively; neither was promoted to a pass. `soft-class03`
+passes on the final DLL and `CallMatrixRegression04` passes eight fixtures.
+The final incremental UEP module build has three actions (13.68s); no Engine or
+Game compile, cook or package was run. Previous reticle/pad runs keep their own
+DLL provenance and are not current-DLL reruns.
+
+The example-owned `W_OpenMenuTouchButton` Interface/CDO routes its original
+bound-click method through `open_menu_mixin`. Python retains lazy menu loading,
+UI.Layer.Menu and native CommonUI async input-suspend/layer behavior. It does
+not preload the menu class or rewrite streaming/input execution. `menu-
+differential01` caught incorrect generic out-array parameter positions; `02`
+had a correct data report but no visible menu and is not visually accepted.
+Waiting for the native transition fixes the capture. `MenuDifferential04`
+passes the reusable focused driver: initially unloaded class, retained button
+type, Python/BP/Python three native push/deactivation cycles, ordered clean log,
+exit 0 (66.461s), stable source/asset/DLL/reference hashes and an inspected PNG
+showing Options/Quit Game/Back over the blurred game. No compilation or cook
+occurs in this driver. Real touch, input-token resume/cancel behavior, default
+production reachability, two-client menus and packages remain unverified.
+
+### Production reticle host and two-client lifetime
+
+`assets01` fails because CreateDelegate resets an event selection while its
+signature is unconnected. Selecting OnDeathStarted after object/signature
+connections fixes generation; `assets02` compiles and persists the retained
+host's Interface/CDO plus four VM-only cleanup nodes (24.46s, no C++ compile).
+The helper removes only this widget's old BP delegate. It does not execute
+UpdateVisibility through a busy Mixin router or replace native equipment.
+
+`HostDifferential01` passes the early routing/lifetime cases but fails a fixture
+assumption: LyraInventoryItemInstance object names do not identify the weapon.
+Reading the native ReticleConfig fragment fixes pickup selection. `Host-
+Differential02` passes eight original-BP/Python cases on the actual production
+host, native automatic Tick/equipment callbacks, retained class and exact
+child classes/item/weapon/fill alignment. Live Profile switching preserves
+already-created children rather than relying on a nonexistent repeat native
+weapon event. Null/missing-instigator cases, restoration and native Pistol/
+Rifle/Shotgun equip agree. An injected GameplayEvent.Death executes the native
+death ability/component: both wrappers collapse, Python receives exactly one
+death callback and does not reopen that listener on subsequent Tick. This is
+not lethal damage, a kill/score message or physical pickup. Exit 0 (70.062s),
+strict log, inspected/hashed production screenshot and final host/reticle
+scope balances 3/3 and 9/9 pass. Host tests later pass 170.
+
+`ReticleHostNetwork01` passes nineteen native weapon/CombatHUD/debug/production-
+reticle phases with the new mandatory host checkpoint and shutdown gate.
+Actual host children are checked against unchanged native ReticleConfig and
+owner/item/weapon/fill/visibility; Pistol/Rifle geometry has its separate hidden
+original-BP baseline. Missing/old host checkpoints and manufactured Tick or
+weapon-event evidence fail. Server/A/B0/B1 exit 0 in 249.481/228.23/147.788/
+42.291s. Host scopes balance 0/0, 7/7, 5/5, 1/1; child reticle scopes balance
+0/0, 11/11, 7/7, 1/1. Eight PNGs are hashed, selected A/B1 images inspected,
+and known native audio/Editor warnings retained. No C++ compilation or cook/
+package occurred. This is not network shotgun, lethal death, physical input,
+warning-free, current packaged-runtime or complete 0.10 release acceptance.
+
+### Interaction ability progress: implementation only, runtime pending
+
+`assets01` in `20261013-batch2g` passes Editor asset compilation/Interface/CDO
+authoring (27.02s). The retained W_AbilityProgress now points to its Python
+profile. BP transport has six typed functions/eighteen nodes after adding
+ReadDuration/BroadcastDuration; semantic pin/reference digests for the prior
+four UI/Verb graphs remain unchanged. The original async proxy is exposed by
+one ownership-only store node for cancellation, and the explicit hidden-
+profile resume entry is a declaration-only shell. Python uses native game time,
+division, culture-aware formatting and material/visibility calls. Host tests
+pass 179. No C++ compilation, cook or package occurred.
+
+This is not runtime, production reachability, actual interaction, pause,
+multiplayer or package acceptance. A focused original-BP/Python fixture and
+current-adapter reticle regressions remain required at this initial checkpoint. Earlier reticle/host
+network evidence keeps its prior adapter asset hashes; unchanged graph digests
+alone do not replace a current runtime rerun.
+
+### Interaction progress production differential and current adapter regressions
+
+`ProgressDifferential01` fails because its fixture counted all Python listeners:
+an existing production progress widget also received the local synthetic message.
+The corrected fixture uses that actual HUD widget and per-instance counters.
+`ProgressDifferential02` passes eleven BP/Python comparisons in 71.211s, 0 exit,
+strict ordered logs, frozen input/reference hashes and an inspected/hashed PNG.
+It covers owner/foreign/repeated messages, native automatic UMG Tick, matching
+duration/text/material/visibility, native game-time pause over 1.109s wall time,
+last-second precision/completion, hidden Profile resume without lifecycle replay,
+native Destruct and no later callback. Initial StartTime is not equal because
+widgets initialize at different times; broadcast synchronizes it before all
+countdown comparisons. Final scopes balance 3/3 with zero active/errors.
+This is actual production reachability with synthetic typed duration production,
+not a native interaction ability or replicated message test.
+
+`ReticleAdapterRegression01` passes six geometry/three typed message comparisons,
+actual ADS input and native equipped-shotgun fire 8->5 on the eighteen-node
+adapter. Final reticle scopes balance 6/6; its image was inspected (native warning
+banner remains). `TransportAdapterRegression01` times out in NullRHI startup,
+before executing the fixture, and its owned process is stopped. The offscreen
+`TransportAdapterRegression02` passes typed UI/Verb values, legacy signals,
+nested-copy isolation, wrong reader/outside-delivery rejection and closed-listener
+silence, with closed strict logs and stable hashes. These drivers do not build,
+cook or package. Host tests now pass 194.
+
+The optional `AbilityProgressNetwork01` runtime run fails, not accepted:
+each phase uses actual production UI plus a hidden BP baseline, synthetic local
+Pawn/Controller messages, visible countdown comparisons and native completion.
+The Controller is a non-Pawn foreign Instigator fixture, not a remote player.
+Native interaction ability and message replication remain explicitly untested.
+Eleven phases are recorded, but first-travel readiness times out. Server and
+clients load the new map and recover native Health; failed-condition diagnosis
+requires finer readiness evidence, not a larger timeout. All owned processes
+are stopped. `AbilityProgressNetwork02` adds durable per-client readiness
+reason/actual-state history and reproduces the first-travel failure: native
+map/player/Health recovers, but both clients have no active production progress
+scope. A collapsed reused widget cannot Tick to rearm; OnInitialized is one-shot
+and Destruct had cancelled the listener. Python Construct now idempotently
+rearms, while the fallback Construct explicitly resumes its cancelled BP proxy
+without model or lifecycle replay. Two host tests bring the suite to 196.
+`ProgressReconstructRegression01` passes twelve BP/Python cases including
+native same-widget remount into a test-owned viewport. Final scopes balance
+4/4, zero active/errors, ordered strict closed logs and an inspected/hashed
+screenshot. The same Construct rearm fix is now under the complete nineteen-
+phase `AbilityProgressNetwork03` retry. Timeout is unchanged; no completed
+network, native interaction producer or package claim is made yet.
+
+`AbilityProgressNetwork03` then passes the unchanged nineteen-phase gate with
+two clients, restart, two travels and B0 leave/B1 rejoin. Server/A/B0/B1 exit 0
+in 288.844/266.404/155.281/71.214s, ordered strict closed logs and frozen hashes.
+Final progress scopes balance 0/0, 6/6, 6/6, 2/2 with zero active/errors; local
+owner/foreign counters are 0/0, 19/19, 14/14, 3/3. Visible BP/Python countdown
+comparisons and native completion are required for every ACK. Twelve PNGs are
+hashed; A/B0 join and B1 rejoin progress images were inspected. Known native
+Editor/resource-preparation warnings remain. Reticle/host/debug/weapon lanes
+also pass on the current eighteen-node adapter, with zero final subscriptions.
+No C++ build, cook, package or source publication occurs. Full 0.10, real
+interaction ability, remote-player duration producer and packaged acceptance
+remain separate; these messages are local synthetic input in multiple processes.
+
+### 0.10-2H failure UI prototype, startup not accepted (2026-10-14 local)
+
+`ability_failure_mixin.py`, its generator and seventeen host tests are present.
+`20261014-batch2h/host-tests01.json` passes 213 with a workspace-owned temporary
+root. An initial 211-test run has one existing atomic-rename case fail in the
+restricted default temporary directory; this failed run is not relabeled as
+pass. Policy tests do not prove native FText localization identity, actual
+animation callbacks, delay frame timing or the audited deferred BP output model.
+
+`Assets01` exits 0 in 5.976s with empty stdout/stderr and no Unreal log/fixture
+JSON. `StartupDiagnostic01` removes the custom UserDir flag, but also exits 0
+in 0.814s without those files. No asset authoring occurred and no canonical
+failure/transport asset update was copied. The cause is not diagnosed: event
+logs and submodule Git metadata cannot be read in the current restricted
+environment. No further duplicate launch or permission change is attempted.
+Per-process cache/temp paths remain inside the workspace; environment values
+are not logged by the shared process helper. Native source/BuildId checks pass,
+but do not substitute for initialization, compilation or runtime acceptance.
+No C++ build/cook/package, Engine/reference edit or source publication occurred.
+
+The next bounded step prepares (does not execute) a seventeen-case actual
+production UI/original-BP fixture and a focused driver. It covers same-reason
+no-retrigger, pause/one-second native Outro onset (two-observed-game-frame bound,
+maximum 0.15s), natural animation completion, hidden Profile resume, Destruct/
+remount, deferred latest foreign payload, persistent callback visible result
+and teardown while work is pending. Original OnInitialized is not replayed;
+the test-owned baseline resumes only its listener. Its FText is synthetic
+display text, not native localized identity or GAS producer acceptance. Dead/
+invalid health and multi-client/package lanes still need additional evidence.
+
+`20261014-batch2h/host-tests02.json` passes 223, no failures/errors/skips. Ten new
+gate/static checks reject incomplete/reordered or mismatching reports,
+unsupported claims, widened/NaN timer bounds and unbalanced final lifetimes.
+The new focused PowerShell driver parses without errors.
+`fixture-preflight01.json` passes an actual negative preflight against Assets01:
+failed authoring is rejected before a runtime output directory is created;
+no UE process was launched and none remains. This check is not a runtime pass.
+The seventeen-case fixture, asset generation and network acceptance remain
+unrun/unaccepted. Git diff checking is unavailable in this execution context
+(`this operation must be run in a work tree`), so no Git cleanliness/whitespace
+gate is claimed. Mixed changes remain untouched; no publication or heavy build.
+
+### 0.10-2H accepted bounded runtime and native-text checks (2026-10-14)
+
+Restrictions were lifted before these runs. The former pre-log startup results
+remain historical failures, not the current blocker. `Assets06` is the clean
+authoring gate: ten transport functions / 32 nodes, old six semantic digests
+unchanged, original script-Tick flag retained and an empty int32 Linkage native
+delay-completion declaration. No Engine/C++ build or official asset edit.
+
+`FailureDifferential01` hit a cold isolated-cache startup timeout; all owned
+processes were stopped. Runs 02 and 03 exposed non-equivalent paused timing in
+the world-clock and manual UI-delta prototypes. Both were removed in favor of
+the actual native UMG latent scheduler via RetriggerableDelay. Run 04 then
+exposed the named-output shape `(False,)` mistaken for a bare bool; both policy
+and host fake now extract/check the exact shape. None of these runs is a pass.
+Run 05 passes 17 comparisons (69.280s), first Outro at 1.000s on both sides,
+observed frame 0.016s/tolerance 0.032s and scopes 4/4, zero active/errors. Its
+early screenshot contains no visible label and is not visual acceptance.
+Run 06 repeats all 17 with visible `UEP resumed` on both sides, opacity 1.0;
+the actual PNG was inspected. The cases include native pause/animations,
+hidden Profile resume, Destruct/remount, deferred latest foreign payload and
+persistent native callback order. The baseline resumes only its old listener,
+never replays original OnInitialized.
+
+`TextFixtureAssets01` creates a stage-only four-node native live-table seed
+(InputKeys/LeftMouseButton). `NativeCulture01` passes its data gate but deferred
+screenshots show swapped language labels. `NativeCulture02` adds separate shot
+waits and passes the one-broadcast en/zh-Hans/en comparison in 47.859s; corrected
+PNGs were inspected (Left Mouse Button / 鼠标左键 on both widgets). The test
+explicitly cancels timers to hold received text. Scopes 2/2, zero active/errors.
+This proves native FText localization identity, not native GAS production.
+Known native render-thread and translation warnings remain visible.
+
+`host-tests08.json` passes 237 with no failures/errors/skips, including six
+new synthetic network contract negatives. These are supporting checks only.
+`AbilityFailureNetwork01` has no complete report/driver summary and is recorded
+incomplete; no owned processes remained before retry. Network02 passes server/A
+19 phases, B0 14 and B1 3, with two travels, rejoin and four normal exits.
+Final failure scopes server/A/B0/B1: 0/0, 6/6, 6/6, 2/2; zero active/errors.
+Selected A/B0/B1 PNGs were inspected. Messages are locally synthetic and the
+foreign case uses a null controller, not remote-player replication. Native
+weapons/GAS remain real in the existing network lane. Current ten-function
+`TransportAdapterRegression01` passes original UI/Verb copy/rejection/cancel
+checks (32.720s); Duration and Failure are exercised by the other lanes.
+Native failure producer, dead/invalid health, packaging and whole-version
+acceptance remain open.
+
+The active 0.10-2I Dash record is in Examples Migration/PROGRESS.md and
+NEXT_DashCooldown.md. Assets01 passes; DashDifferential05 passes 11 comparisons
+in 50.422s, scopes 11/11, inspected PNG and 0.00001 material tolerance. Earlier
+runs retain a real live-animation teardown bug and fixture failures. The
+production UI is a native UIExtension pool entry; viewport lifecycle fixtures
+are explicitly separate. DashNetwork01 fails on its second travel with two
+active production pool entries. A read-only shared native-membership cleanup
+fix has 269 supporting host checks and is currently being retested. No network
+pass, native producer, death, package or full batch was implied by that code.
+
+The later `DashDifferential06` repeats all eleven on the membership fix
+(50.297s, scopes 11/11, pool watches 2/2, zero active/errors). DashNetwork02
+reaches two travels/B0 exit but fails at B1 rejoin on Windows status-file
+replacement. Network03 is stopped by host preflight before UE launch; the held-
+reader test exposes that os.replace is insufficient on this filesystem.
+Delete-sharing readers/ReplaceFileW solve that test, retaining permanent
+access errors as failures. Network04 exposes a second-read TOCTOU; per-peer
+once-per-frame snapshots now avoid it without using previous-frame data.
+
+`DashNetwork05` passes all nineteen phases, both travels/rejoin and four
+normal exits. Final scopes server/A/B0/B1 0/0,14/14,12/12,3/3; Health bindings
+0/0,7/7,5/5,1/1; pool watches 0/0,4/4,4/4,1/1. A/B0 each show one native pool
+deactivation. No final active/ticker/errors. Selected PNGs inspected; existing
+weapon/progress/failure/reticle/host lanes pass together. Durations in this
+network lane are local synthetic messages, not native Dash or message RPC.
+
+`NativeDash01` passes native Dash/death steps but fails a fixture's null-owner
+assumption; UserWidget falls back to player zero. `NativeDash02` uses native
+UnPossess and passes five cases (45.141s), original granted GA_Hero_Dash native
+ASC -> 1.5s duration -> production Python/original-BP UI, rejected repeat,
+completion, exact-once native death/hidden wrapper and absent-Pawn failure
+rejection. Dash/failure scopes 4/4 and4/4, pool watches1/1, no residue/errors.
+PNG inspected. No ability/Health/CDO/velocity writes, manual widget events,
+lethal damage or physical key claim. Native repeat emits zero user-facing
+failure messages, so that producer stays untested. Host-tests12 passes282.
+
+Respawn Assets01 compiles preserved class/CDO and a five-node exact original
+animation delegate cleanup; no Engine/reference changes or build/package.
+Host tests pass290. RespawnDifferential01 fails before comparisons because
+TimeUntilRespawn is a BP function-local, not a UObject field. Policy now uses
+a Python local; reports label remaining time as a derived native deadline,
+not a read of Blueprint stack storage. Runtime retest is in progress; no full
+2J or version acceptance is implied.
+
+## 2026-10-15: approved UE 5.8.1 update and bounded Editor acceptance
+
+Evidence root: `.build/LyraValidation/BlueprintPython/20261015-ue581-acceptance`.
+The user approved the official 5.8.1 source/dependency update and matching
+Editor build, then explicitly allowed all cores and requested progress updates.
+The upstream delta and independent backups precede EditorBuild01: 4,610 actions,
+Result Succeeded in 5,714.65s, BuildId `2f7b5df8-1c9a-4414-a598-6d3b022aa38d`.
+This is not authorization for custom Engine implementation edits or packaging.
+
+Two full-build deprecation warnings identify UEP's old unsafe package callback.
+The Editor path now consumes completed OnEndLoadPackage batches; ordinary
+non-Editor discovery still needs a safe replacement and packaged acceptance.
+HostBuild02/03 and UEPRefresh01/02 are guarded incremental project/plugin builds,
+not another Engine build. The latest protected Engine hashes remain unchanged.
+
+Nameplate testing additionally exposes an old UEP multicast bug: passing the
+UObject address to GetMulticastDelegate, which expects the property's value
+address. NameplateDifferential05 crashes with bogus access-detector state;
+failure evidence is retained. UEP now resolves the value pointer and handles
+an empty sparse delegate pointer (sparse runtime coverage is not claimed).
+HostBuild03/UEPRefresh02 pass in 25.27/20.62s with zero compiler warnings.
+Latest Lyra UEP DLL SHA-256:
+`A37911F9105E33A130BE049C93F86911CAD5C2B305CEB04C702CCE8AF5B65555`.
+
+Final-DLL bounded results, all with source/module/input guards and closed logs:
+
+- CallMatrix02: eleven lanes, including native/Python multicast, bad-parameter
+  recovery/unsubscribe, shared/standalone signatures, caller, named outputs,
+  inheritance, construction forwarding, soft paths and declared exceptions.
+- Lifecycle02: three real PIE sessions in one Editor; placed/spawned Actors,
+  two Begin/End events per session, closed scopes, native GC and restored routers.
+- PackageLoad02: saved Main/Companion BP packages load/discover in a fresh
+  process without registration calls; imported-package and fallback/restore proof.
+- Transport02: compiled-VM nested copy/owner checks, wrong-reader and
+  outside-delivery rejection, idempotent close and no later callback.
+- QuickBarDifferential02: twelve production/original-BP cases, nine named
+  Python queries, scopes 12/12 and an inspected 1280x720 PNG.
+- NameplateDifferential06: fourteen Widget/original-BP cases, scopes 23/23,
+  team proxies 13/13, init delegates explicitly removed 10/10, zero residual/
+  errors/ensures; inspected PNG. Earlier failures include CompareTeams output
+  shape, a released fixture ticker, missing fixture APIs, mismatched resume
+  epochs, shutdown-manager availability and the multicast crash. None is erased.
+- Network03: nineteen phases, two rendered clients plus dedicated Editor server,
+  two travels, B0 leave/B1 rejoin and four normal exits. Existing optional HUD
+  gates pass, with final A/B0/B1 quickbar scopes 12/12,12/12,6/6 and queries
+  15/8/2; progress scopes 6/6,6/6,2/2. Twenty-four PNGs hashed; selected switched-
+  fire/rejoin-respawn frames inspected. The controlled steep aiming frame is not
+  free-camera/physical-input proof. Native Editor warning banners remain.
+
+Network01 fails on harness ReplaceFileW WinError 1175, before completing the
+scenario. Bounded retry now includes that error without deleting destinations;
+partial-replace/unrelated errors remain fatal. Network02 then passes on the
+preceding DLL; Network03 is the required final-DLL repeat. The final network
+run also passes all 397 host checks; host checks alone are not runtime proof.
+
+Version stays 0.10.0 development. Nameplate Source/Manager component authoring,
+native differential and nameplate-specific multiplayer remain open; the next
+plan is `Demos/UEPLyraIntegration/Migration/NEXT_NameplateComponents.md`.
+No new cooked package, standalone Server target, physical touch, native
+interaction producer, replicated duration-message or full-version acceptance
+is claimed. No commit, push, tag or release is performed.
+
+## 2026-10-16: per-batch local commit backfill
+
+The user requested coherent modify/verify/commit batches and the same backfill
+for earlier completed work. Examples checks now run from the Git index in a
+fresh archive plus committed core, so missing unstaged dependencies cannot be
+masked by the mixed worktree. Compact per-batch ledgers live at
+`Demos/UEPLyraIntegration/Migration/Acceptance/`; they reference raw local
+reports and preserve native DLL/report hashes. Models, source provenance and
+native gameplay evidence are separate. No push, tag or publication is implied.
+
+Core `6fd3d79` records the verified runtime foundations. Subsequent Examples
+commits separate shared HUD/network infrastructure, individual HUD business,
+world actors, the shared Widget/Jump/ADS/Emote family and other hero/weapon
+abilities. Current-DLL Emote/ADS/shared-Widget report gates pass, while older
+Jump and other feature runs stay explicitly historical. The current combined
+native HUD report rechecks nineteen phases, two clients, two travels and
+leave/rejoin across ten HUD groups using isolated staged modules. Four old
+reload-family network gates recheck 36 authority rows each; these checks do not
+launch fresh clients or become a current-DLL family rerun.
+
+An old weapon-instance report cannot pass the evolved gate because it lacks
+the later `profile` field. Its report is not patched and the gate is not
+weakened: a serial current-DLL rifle/shotgun two-owner network rerun is used
+instead, at `20261016-batch-backfill`. Keep the pending/failed closeout attempt
+and final results distinct. See PROGRESS for observed exits and acceptance;
+gameplay markers alone do not pass a batch. No new compile/cook/package or
+official Lyra/Engine implementation edit is part of this backfill.
+
+Final backfill outcome: 32 bounded Examples ledgers and separate local commits;
+893 isolated Examples checks and full-index closure for 438 Python files pass.
+Current-DLL rifle-Network01 and shotgun-Network02 each pass 36 authority trials,
+two-owner equipment observations, independent report/log gates and three real
+zero exits. Shotgun-Network01 remains a failed 520-second shutdown-timeout run.
+Engine source explicitly supports NoDDCCleanup; adding only that process switch
+produces a passing fresh retry with D3D12/cases/gates unchanged. This does not
+prove all shutdown delays have that cause. Native warnings remain qualified.
+Third Person historical fixture hashes and both old normal exits recheck, not
+a new 5.8.1 native run. Incomplete held-widget drafts remain uncommitted; full
+0.10/0.11/version/package-network gates are still open. Unrelated repository
+URL-owner edits are preserved outside this task's staged commits.
 
 ## Candidate record template
 

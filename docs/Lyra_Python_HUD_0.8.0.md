@@ -8,9 +8,21 @@ configured copy of `/Game/UI/Hud/W_Healthbar`; the live object is still
 `W_Healthbar_C` and is still created and removed by Lyra's Game Feature
 `Add Widgets` action.
 
-Data updates and lifecycle hooks are implemented; damage/heal/death visual
-parity and release acceptance remain incomplete. The [roadmap](../ROADMAP.md)
+Data/lifecycle and animation/interpolation are implemented. The 2026-09-10
+isolated real-UMG fixture passes; full release acceptance remains incomplete.
+The [roadmap](../ROADMAP.md)
 defines the remaining work, not an already-passed contract.
+
+The [network acceptance plan](Lyra_Network_Acceptance_Plan.md) specifies the
+required one-server/two-independent-client closeout, including player targeting,
+HUD ownership isolation, interleaved commands and leave/rejoin cleanup. A
+one-client run is only a diagnostic precheck. Explicit player snapshots/tokens,
+restart/health targeting and the no-build 20-phase driver are implemented;
+runtime outcomes and failed iterations are recorded in Validation history.
+Focused run `20260912-network-run-05` passes all 20 phases, both-client ownership
+and B0 leave/B1 rejoin, with clean server/A/B0/B1 Python/OS exits. This is a
+loopback NullRHI pass; integrated full release and packaged networking remain
+unvalidated.
 
 ## Ownership boundary
 
@@ -21,7 +33,7 @@ defines the remaining work, not an already-passed contract.
 | Widget `Construct`/`Destruct`, controller and health subscriptions | Python mixin presenter |
 | Current-pawn selection and rebinding after possession changes | Python mixin presenter |
 | Health normalization and refresh timing | Python mixin presenter |
-| Dynamic materials, bar animation and numeric widget primitives | Retained `W_Healthbar` Blueprint functions; Python animation/interpolation orchestration still needs parity fixes |
+| Dynamic materials, bar animation and numeric widget primitives | Retained `W_Healthbar` assets/helpers; Python selects animations, normalizes materials and starts interpolation |
 | Dedicated-server UI | None; the acceptance contract requires zero widget/presenter instances |
 
 The presenter is intentionally narrow. It reads replicated health and invokes
@@ -39,8 +51,10 @@ The Examples repository owns two overlay assets:
 - `/Game/UEPMixins/DA_LyraHealthbarMixin`, whose `Python` and
   `BlueprintFallback` profiles point to the two presenter classes.
 
-The default `Python` profile replaces the widget's reflected `Construct` and
-`Destruct` functions at runtime. `BlueprintFallback` calls the preserved
+The default `Python` profile replaces the widget's reflected `Construct`,
+`Destruct` and inherited `OnAnimationFinished` functions at runtime. The last
+event preserves its original implementation before completing the death chain.
+`BlueprintFallback` calls the preserved
 Blueprint `Construct`, providing a per-instance escape hatch without changing
 the object's Unreal type. The original Blueprint graphs remain in the copied
 asset and are restored when the router unregisters.
@@ -90,9 +104,10 @@ The 0.8 full-content lane must prove all of the following on UE 5.8 and the
 engine-bundled CPython 3.11. This is the target contract, not a statement that
 every item has passed on the current source:
 
-- 17 host-side presenter/bootstrap/shutdown tests cover source-only asset absence,
+- 29 host-side presenter/bootstrap/shutdown tests cover source-only asset absence,
   exact callback identity, event-driven rendering, Pawn replacement, Blueprint
-  fallback, Destruct, registry teardown and final Python exit, plus 28 PowerShell
+  fallback, animation interruption, interpolation, Destruct, registry teardown
+  and final Python exit, plus 40 PowerShell
   positive/negative acceptance checks before an Unreal process is launched;
 - generation preserves the untouched reference widget, while the read-only
   audit proves that the staged copy declares the expected Interface, Mixin Set,
@@ -110,6 +125,11 @@ every item has passed on the current source:
   balanced active presenter;
 - a dedicated server records zero health-bar constructs, subscriptions or
   health presentation events;
+- the required two-client network lane identifies both players explicitly,
+  checks each client's own Health/HUD and interleaved command idempotency, then
+  verifies one client's departure/rejoin without disrupting the other. The
+  current single-client driver and role-only target selector do not satisfy
+  this new gate; all started connection processes need their own final evidence;
 - explicit widget destruction, mixin teardown and Python shutdown leave no
   stale callback balance; and
 - strict logs contain no compiler, fatal, assertion, unhandled-exception or
@@ -127,22 +147,64 @@ Current closeout gaps:
   process completion. Host negative tests and the actual UE Standalone exit
   path pass on the current scripts; synchronized network/package validation
   remains outstanding.
-- The presenter currently calls `InitializeBarVisuals` and then numeric
-  `SetCurrentValue` on updates. Correct damage/heal/death animation selection and
-  interpolation remain to be implemented and visibly checked.
-- After fixing these gaps, repeat current-source full and rendered acceptance.
+- The presenter initializes only for an initial/new Pawn or respawn. Damage and
+  healing use retained animations and `InterpolateToValue(health, 1, 4, 0)`;
+  materials use actual max health. Death waits for `OnDamaged` completion before
+  `OnEliminated`. Pawn replacement and ordinary destruction disarm completion
+  before stopping animations. Router teardown pauses without a finish event,
+  since dispatch is unavailable during mutation. These paths have host and
+  real UMG regression coverage.
+- Repeat current-source full runtime/network/package acceptance.
   Use native Lyra gameplay or an isolated fixture for lethal/death coverage;
   do not expand the non-lethal bridge's authority for test convenience.
 
 Existing cleanup paths and historical cleanup logs are real evidence; these
-gaps do not establish a current leak. The 17 Python tests use fake reflected
+gaps do not establish a current leak. The 29 Python tests use fake reflected
 objects and real CPython-only subprocess exits, not a running Unreal game.
 The first 2026-09-07 Editor attempt failed on mismatched module BuildIds. After
 UBT's metadata-only repair, a fresh strict audit and current-script NullRHI
 Standalone passed. Active presenter/reference counts were 1/1; after Python
 exit both were 0, controller bindings were 3/3 and health bindings 6/6. No C++
 compile, cook/package or asset save was performed. The integrated `All` path
-and rendered parity still need their own evidence.
+still needs its own evidence. Rendered evidence was added on 2026-09-10.
+
+## Focused no-build self-acceptance
+
+`Validation/Run-UEP58FocusedHUDValidation.ps1` reuses an already-built, marked
+Lyra stage. It never invokes UBT, saves Blueprint assets, cooks or packages.
+It syncs only example scripts after checking native source/module parity;
+stale binaries/records fail rather than being silently repaired. Modes are
+`All` (both focused checks), `Callsite`, and `Visual`. Use a fresh output directory:
+
+```powershell
+.\Validation\Run-UEP58FocusedHUDValidation.ps1 `
+    -StageProject F:\UnrealEnginePython5\.build\LyraValidation\Full\Stage\Lyra\LyraStarterGame.uproject `
+    -OutputDirectory F:\UnrealEnginePython5\.build\LyraValidation\Focused-NewRun
+```
+
+The caller fixture compiles two transient BPs before registration, spawns two
+same-class targets, then proves original/mixed/repeated/swapped/restored routes.
+Only the caller entry is invoked from Python; its bytecode calls the target via
+an Actor reference. Editor fixture writes use `set_property`, avoiding
+`PostEditChange` reconstruction; this is not a property-editor regression.
+
+The visual fixture uses real `W_Healthbar_C`, materials, CommonUI numeric text
+and UMG animations in the isolated `/Engine/Maps/Entry` map. An explicitly
+enabled test-only health reader drives `100 -> 60 -> 100 -> 0 -> 100`; it does
+not attach to a Pawn/ASC, grant authority or widen the gameplay bridge. Eight
+PNG frames, actual displayed/target numbers, animation history and final
+cleanup counts are checked. Its visible window can populate shader caches.
+Normal Lyra runs never import this fixture. Source/binary/screenshot hashes
+and actual process-exit evidence are retained; `full_acceptance` remains false.
+This proves presentation, not GAS delegates, network or packaged runtime.
+
+Focused `All` also repeats `Visual` with `-SwitchDuringAnimation` in a separate
+process. It switches to `BlueprintFallback` immediately after starting lethal
+damage, then removes the widget. The old presenter closes through router
+teardown (not a synthetic Python Destruct). This exposed the parameterless
+native fallback bug fixed in `PythonFunction.cpp`: allocate at least one byte
+even when `PropertiesSize` is zero. A four-action plugin-only incremental build
+verified that correction; the focused script itself still never builds.
 
 A fresh staged Lyra tree has no asset-registry cache. Before multi-process
 runtime tests, the driver completes one headless Editor scan and retains the
@@ -161,8 +223,12 @@ Run the existing combined runtime/package lane with:
 ```
 
 `All` includes a full Win64 cook/package and can take substantially longer
-than `Standalone` or `Network`. HUD-enabled `All` includes the audit, but rendered
-visual acceptance still needs its own check. Do not equate a green summary with
+than `Standalone` or `Network`. HUD-enabled `All` now includes the audit,
+both focused HUD checks and the two-client network result in its success
+condition (driver summary schema 5).
+The main driver also exposes `MixinCallsite`/`HUDVisual`, but unlike the focused
+script those modes retain the driver's staging/build preamble.
+Do not equate a green summary with
 release approval; the updated combined lane has not yet passed in Unreal.
 Use the narrower modes during iteration.
 
