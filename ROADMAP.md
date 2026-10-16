@@ -978,6 +978,26 @@ animation-notify production, audio playback/hardware or replicated references.
 Remaining Character business, travel/rejoin/packages and full-version gates
 remain open. No Engine/official project changes or C++ build/cook/package.
 
+The next retained Character method, ChangeQuickbarSlot, is now script-owned in
+`uep_lyra_characters/quickbar_input_mixin.py`; accepted three helpers are explicit
+local aliases. Original occupied-slot condition, supplied GameplayTag and
+double slot-index magnitude remain; no payload object fields are invented.
+Assets01 preserves original type/full CDO/nine signatures/all complete graphs;
+a stage-only second BP invokes the original method on a typed Actor reference.
+Differential01 passes six original/Python pairs plus two Python-only invalid-
+index safety cases. Native GAS observers verify exact payloads; native equipment
+matches independently expected item definitions. Network01 passes 28 owning-
+client calls/28 authority equipment results through the original QuickBar Server
+RPC, exact foreign-owner isolation and server-last three normal exits. Local
+GameplayEvents are not claimed as replicated. Each owner closes fourteen native
+observer tasks/scopes while the original three Quickslot tasks remain active;
+original inventory identities/field/Profile/CDO restore. Strict logs and gates
+pass with 1,568 standalone/1,572 network frozen inputs; 1,192 host models pass.
+Ledger 41 is this bounded helper revision. Safe missing Controller/QuickBar and
+invalid-index handling intentionally differs from BP receiver/array warnings;
+only invalid-index safety has native probes. Physical keyboard, nullable native
+probes, travel/loss/packages and remaining Character business stay open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
