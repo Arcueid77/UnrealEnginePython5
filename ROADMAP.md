@@ -1091,6 +1091,30 @@ syntax/local-import checks pass. Ledger 45 excludes the earlier-gate Differentia
 standalone proof. No pixels/stencil/team/material replication, hardware/travel/
 loss/package, whole Character/parent-family/version or publication claim.
 
+K2_OnDeathFinished and K2_OnReset add two retained Character event bodies in
+`uep_lyra_characters/lifecycle_mixin.py`, explicitly aliasing eight prior methods
+(ten routed methods total). Original native CPP events still trigger them;
+Python forwards once to selected ClearInventory, fallback invokes only its saved
+BP event. Native authority/GAS/destruction/respawn/replication remain. Assets01
+preserves type/full CDO/twelve signatures/every original graph. Natural01 passes
+four real death pairs plus two bare Avatar trials, exact event/helper counts,
+independent empty inventory windows and restored definitions with new native
+item identities. Bare Avatar still has the original unslotted-pistol delta;
+only that newly observed orphan receives fixture-only native cleanup. Reset01
+passes eight actual existing Reset requests and exact Reset-not-death entry.
+Network01 passes twelve authority/twelve owner event trials and twelve passive
+foreign observations: real owner replication, zero client removals, actual
+callback role 1 (legal non-authority roles 1/2), unchanged foreign inventory AND
+event POD. Inventory scopes close 10/10,
+8/8, 12/12 + 6/6 + 6/6; old Actor evidence needs only its retained dict, never
+Actor/GAS roots or dead-wrapper reads. Private selectors prevent imported legacy
+fixtures from starting a second lane. Strict closed logs/independent gates,
+1,648 / 1,652 / 1,648 frozen inputs and server-last three zero exits pass.
+All 1,363 isolated-index models and 575-file all-index syntax/import checks pass. Ledger
+46 has four passed runs/thirteen matched scoped inputs. Remaining component
+callbacks/team listener/init/input/health business and parent/sibling families,
+physical input/hardware/travel/loss/packages and whole-version gates remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
