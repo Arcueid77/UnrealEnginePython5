@@ -5,13 +5,15 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
-      [switch]$CharacterInventory,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterInventory,[switch]$CharacterAudio,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CharacterAudio -and ($CharacterInventory -or $AutoRespawnReset -or $AutoRespawnLifecycle -or !$CharacterAuthoringDirectory)){throw 'Character audio requires its Interface lane and asset proof'}
+if($CharacterAudio){$AutoRespawnActivation=$true}
 if($CharacterInventory -and ($AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character inventory helper requires natural/network or standalone Reset and Character asset proof'}
 if($CharacterInventory){$AutoRespawnActivation=$true}
 if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
@@ -147,15 +149,17 @@ try{
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
-    if($CharacterInventory){
+    if($CharacterInventory -or $CharacterAudio){
         $characterRoot=[IO.Path]::GetFullPath($CharacterAuthoringDirectory)
         if(!$characterRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Character evidence must stay in workspace build directory'}
         $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
         $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
         $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
-        if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne 'characterinventory' -or
+        $expectedCharacterKind=if($CharacterAudio){'characteraudio'}else{'characterinventory'}
+        $expectedCharacterMethods=if($CharacterAudio){3}else{1}
+        if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne $expectedCharacterKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
-            @($proof.implemented_methods).Count -ne 1 -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
+            @($proof.implemented_methods).Count -ne $expectedCharacterMethods -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
         foreach($asset in $other.assets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Character authored asset changed'}
             Add-JumpInput $path
@@ -163,6 +167,17 @@ try{
         foreach($path in @($characterSummary,$characterReport,'F:/LyraStarterGame/Source/LyraGame/Character/LyraCharacter.cpp',
             'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
             (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
+        if($CharacterAudio){
+            $probe=$proof.caller_probe
+            if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.original_animation_notify_unchanged -or @($probe.functions).Count -ne 2 -or
+                [IO.Path]::GetFullPath($probe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterAudioInterfaceProbe.uasset') -or
+                (Get-FileHash -LiteralPath $probe.asset).Hash -ne $probe.sha256){throw 'Native Character BP Interface caller proof incomplete'}
+            foreach($entry in $probe.reference_hashes.PSObject.Properties){
+                if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Retained animation notify changed'}
+                Add-JumpInput $entry.Name
+            }
+            Add-JumpInput $probe.asset
+        }
     }
     if($AutoRespawnReset){
         $probeRoot=[IO.Path]::GetFullPath($ResetProbeAssetDirectory)
@@ -242,6 +257,7 @@ try{
     if($AutoRespawnHelpers){$flag='-UEPAutoRespawnHelpersResult';$marker='UEP_AUTO_RESPAWN_HELPERS'}
     if($AutoRespawnLifecycle){$flag='-UEPAutoRespawnLifecycleResult';$marker='UEP_AUTO_RESPAWN_LIFECYCLE'}
     if($AutoRespawnReset){$flag='-UEPAutoRespawnResetResult';$marker='UEP_AUTO_RESPAWN_RESET'}
+    if($CharacterAudio){$flag='-UEPCharacterAudioResult';$marker='UEP_CHARACTER_AUDIO'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -269,6 +285,7 @@ try{
             if($WidgetPressed){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWidgetPressedResult=*'})}
             if($AutoRespawnHelpers){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPAutoRespawnHelpersResult=*'})}
             if($AutoRespawnReset){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPAutoRespawnResetResult=*'})}
+            if($CharacterAudio){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterAudioResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -283,6 +300,7 @@ try{
             if($WidgetPressed){$resultFlag='-UEPWidgetPressedNetworkResult'}
             if($AutoRespawnHelpers){$resultFlag='-UEPAutoRespawnHelpersNetworkResult'}
             if($AutoRespawnReset){$resultFlag='-UEPAutoRespawnResetNetworkResult'}
+            if($CharacterAudio){$resultFlag='-UEPCharacterAudioNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -329,6 +347,7 @@ try{
             if($WidgetPressed){$pass=if($peer -eq 'server'){'UEP_WIDGET_PRESSED_NETWORK_PASSED'}else{'UEP_WIDGET_PRESSED_SHUTDOWN_PASSED'}}
             if($AutoRespawnHelpers){$pass=if($peer -eq 'server'){'UEP_AUTO_RESPAWN_HELPERS_NETWORK_PASSED'}else{'UEP_AUTO_RESPAWN_HELPERS_SHUTDOWN_PASSED'}}
             if($AutoRespawnReset){$pass=if($peer -eq 'server'){'UEP_AUTO_RESPAWN_RESET_NETWORK_PASSED'}else{'UEP_AUTO_RESPAWN_RESET_SHUTDOWN_PASSED'}}
+            if($CharacterAudio){$pass=if($peer -eq 'server'){'UEP_CHARACTER_AUDIO_NETWORK_PASSED'}else{'UEP_CHARACTER_AUDIO_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -345,6 +364,7 @@ try{
         if($AutoRespawnActivation){$module='uep_lyra_abilities.auto_respawn_activation_contract'}
         if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_network_contract'}
         if($CharacterInventory){$module='uep_lyra_characters.inventory_clear_network_contract'}
+        if($CharacterAudio){$module='uep_lyra_characters.emote_audio_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -366,6 +386,7 @@ try{
         if($AutoRespawnLifecycle){$module='uep_lyra_abilities.auto_respawn_lifecycle_contract'}
         if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_contract'}
         if($CharacterInventory){$module='uep_lyra_characters.inventory_clear_contract'}
+        if($CharacterAudio){$module='uep_lyra_characters.emote_audio_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw

@@ -961,6 +961,23 @@ nullable-controller/Character-Profile-switch probes, Reset networking for this
 Character change, travel/rejoin, physical input, packages and whole-version
 acceptance remain open. ABPs/animation and Engine/official projects stay intact.
 
+The next bounded Character helper batch adds Get/SetEmoteAudioComponent in
+`uep_lyra_characters/emote_audio_mixin.py`, explicitly retaining the accepted
+ClearInventory alias. Original Character type, complete graphs/full CDO/eight
+signatures and ANS_EmoteSound animation-notify bytes stay unchanged. A stage-only
+second BP sends actual typed Interface messages; Python getter returns the
+named AudioComponent object out pin, setter only updates the original field.
+Software02 passes twelve original/Python/cross-Profile nullable/object/repeat/
+replace round trips, two same-class mixed-instance cases, native GC with held
+references, non-interface defaults and actual component destruction/restoration.
+Network01 passes the same local software matrix in server/two-client native
+worlds (36 round trips), owner/foreign roles and server-last three zero exits.
+Strict logs/independent gates pass with 1,562 frozen inputs in each final lane;
+all 1,162 host models pass. Ledger 40 records this helper-only scope, not actual
+animation-notify production, audio playback/hardware or replicated references.
+Remaining Character business, travel/rejoin/packages and full-version gates
+remain open. No Engine/official project changes or C++ build/cook/package.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
