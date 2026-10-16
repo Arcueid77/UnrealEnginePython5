@@ -770,6 +770,28 @@ The first Emote five-pair-per-owner network lane also passes twenty authority
 trials with 20/20 server and 10/10 scopes per owner and 1,439 frozen inputs. Network movement,
 crouch interruption and pause are not yet exercised. Whole 0.11 remains open.
 
+The held-input Widget root now uses Python activation/create/remove/native-End
+orchestration, retaining both scoreboard child types/configuration and native
+GAS/async streaming/CommonUI layers. `20261016-widget-held/Assets02` preserves
+full CDO, public signatures and original business graphs; typed soft-class
+transport and explicit teardown-only state guards avoid eager loads and router
+reentry. Elimination03 and ControlPoint01 each pass seven original/Python
+pairs in their actual native Experience plus three canceled/replaced/pending
+Profile-handoff GC regressions, with 21/21 scopes and original state restored.
+Pause correctly invalidates the original non-pause scoreboard input: native
+WaitInputRelease removes UI while game time is frozen, not an invented
+keep-active-on-pause rule. Network02 passes 24 Elimination LocalOnly owner
+trials, twelve independent foreign-UI observations per client, inactive native
+authority, 0/0 + 12/12 + 12/12 scopes, strict logs, independent gate, 1,453
+frozen inputs and three real server-last zero exits. Five failed fixture/
+teardown attempts remain recorded. Python intentionally clears canceled proxy
+references and cancels a previous owned pending request; those are safety
+improvements, not exact parity with the original stale-reference behavior.
+CP networking, travel/rejoin, physical input, scoreboard pixel/text parity and
+packages remain untested here. The scoreboard Widget's own BP business is
+still a later UI/scoring batch. Next separate input family is pressed Widgets;
+whole 0.11 remains open, and no Engine build/cook/package was needed.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
