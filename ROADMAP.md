@@ -883,7 +883,7 @@ and independent Death/EndPlay delivery pass; both fixture scope ledgers close
 10/10. Differential01 is retained as failed: bare destruction loses the same
 three pistol grants in both original BP and Python. The probe now separately
 records/compares that raw native behavior, then restores equipment using native
-QuickBar empty/original slot RPCs and requires original inventory identities,
+QuickBar empty/original slot RPCs and requires original QuickBar slot item identities,
 logical classes and persistent handles. Production behavior is unchanged.
 
 Network01 passes twelve authority/owner trials and six independent foreign
@@ -928,6 +928,38 @@ pass 1,096. Original runtime business is now script-owned, but whole-asset/
 version acceptance stays open: active Clear without a preceding explicit End,
 travel/rejoin, loss, physical input and packages are not certified. Native
 warnings remain. No Engine/official project changes, C++ build or cook/package.
+
+The next Character batch migrates only `B_Hero_ShooterMannequin.ClearInventory`
+to `uep_lyra_characters/inventory_clear_mixin.py`. Native C++ death/Reset enters
+the unchanged original BP events, then invokes the same retained helper type.
+Python preserves authority, the QuickBar-valid guard, every slot before copied
+item-list removal, and native QuickBar/inventory operations and replication.
+Only two Mixin Interface declarations are added; complete original graphs,
+full CDO and six public signatures stay unchanged. Controller/missing-inventory
+handling is intentionally safe, not original null-warning parity.
+
+`20261017-character-inventory/Differential02` passes four death pairs and a bare
+Avatar pair, independently observing an empty inventory before replacement
+Pawn and native item re-creation. `Network02` passes twelve authority/owner
+trials and twelve passive foreign observations: no client removals, legal
+client callback roles 1/2 rather than an assumed fixed role 2, unchanged foreign
+inventory and native replicated item-definition restore. Inventory observers
+close 10/10 standalone and 12/12 + 6/6 + 6/6 networking. `Reset01` passes eight
+existing native Reset requests through the original Character BP with 8/8
+inventory observer closure. All strict logs, independent gates and normal exits
+pass; network server exits last. Frozen inputs are 1,540 / 1,544 / 1,551.
+
+This reveals a qualification in the older bare-Avatar proof: original slot
+identities/specs were checked, not every InventoryManager entry. Both BP and
+Python bypass ClearInventory on direct destruction, and native initial grants
+add one new un-slotted pistol. The new probe records that raw delta and removes
+only the new orphan using the native API before requiring exact original
+item/slot identities. It does not change production behavior or relabel the
+earlier failed runs as passes. Ledger 39 records this bounded helper batch;
+all 1,134 host models pass. Other Character business, native multi-item/
+nullable-controller/Character-Profile-switch probes, Reset networking for this
+Character change, travel/rejoin, physical input, packages and whole-version
+acceptance remain open. ABPs/animation and Engine/official projects stay intact.
 
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,

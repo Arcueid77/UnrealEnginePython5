@@ -5,12 +5,15 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
+      [switch]$CharacterInventory,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CharacterInventory -and ($AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character inventory helper requires natural/network or standalone Reset and Character asset proof'}
+if($CharacterInventory){$AutoRespawnActivation=$true}
 if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
 if($AutoRespawnReset -and ($AutoRespawnLifecycle -or !$ResetProbeAssetDirectory)){throw 'Native Reset requires its separate lane and stage-only typed probe proof'}
 if($AutoRespawnReset){$AutoRespawnActivation=$true}
@@ -144,6 +147,23 @@ try{
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
+    if($CharacterInventory){
+        $characterRoot=[IO.Path]::GetFullPath($CharacterAuthoringDirectory)
+        if(!$characterRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Character evidence must stay in workspace build directory'}
+        $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
+        $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
+        $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
+        if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne 'characterinventory' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
+            @($proof.implemented_methods).Count -ne 1 -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
+        foreach($asset in $other.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Character authored asset changed'}
+            Add-JumpInput $path
+        }}
+        foreach($path in @($characterSummary,$characterReport,'F:/LyraStarterGame/Source/LyraGame/Character/LyraCharacter.cpp',
+            'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
+            (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
+    }
     if($AutoRespawnReset){
         $probeRoot=[IO.Path]::GetFullPath($ResetProbeAssetDirectory)
         if(!$probeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Reset probe evidence must stay in workspace build directory'}
@@ -230,6 +250,7 @@ try{
     if($AutoRespawnListeners){$arguments+=@('-UEPAutoRespawnListeners')}
     if($AutoRespawnEvents){$arguments+=@('-UEPAutoRespawnEvents')}
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
+    if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($WidgetHeld){
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
         if($WidgetHeldMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -323,6 +344,7 @@ try{
         if($AutoRespawnEvents){$module='uep_lyra_abilities.auto_respawn_events_contract'}
         if($AutoRespawnActivation){$module='uep_lyra_abilities.auto_respawn_activation_contract'}
         if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_network_contract'}
+        if($CharacterInventory){$module='uep_lyra_characters.inventory_clear_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -343,7 +365,9 @@ try{
         if($AutoRespawnActivation){$module='uep_lyra_abilities.auto_respawn_activation_contract'}
         if($AutoRespawnLifecycle){$module='uep_lyra_abilities.auto_respawn_lifecycle_contract'}
         if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_contract'}
+        if($CharacterInventory){$module='uep_lyra_characters.inventory_clear_contract'}
         $gateArgs=@('--report',"$output/jump.json")
+        if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
         if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
