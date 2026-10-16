@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 
-def inspect(repo):
+def inspect(repo, all_index=False):
     def git(*args):
         return subprocess.check_output(["git", "-C", str(repo), *args], text=True, encoding="utf-8")
     indexed = set(git("ls-files").splitlines())
@@ -19,8 +19,8 @@ def inspect(repo):
             if parts[-1] == "__init__": parts.pop()
             if parts: modules[".".join(parts)] = file.relative_to(repo).as_posix()
     missing, deferred, parsed = [], [], 0
-    for name in staged:
-        if not name.endswith(".py"): continue
+    for name in sorted(indexed) if all_index else staged:
+        if not name.endswith(".py") or ".nepy" in Path(name).parts: continue
         source = git("show", ":" + name)
         tree = ast.parse(source, filename=name); parsed += 1
         file = repo / name
@@ -46,13 +46,16 @@ def inspect(repo):
                 target = modules.get(module)
                 if target is not None and target not in indexed:
                     (deferred if lazy else missing).append(dict(source=name, module=module, missing_index_path=target))
-    return dict(status="failed" if missing else "passed", staged_python_files=parsed, missing_local_imports=missing,
+    return dict(status="failed" if missing else "passed", staged_python_files=parsed,
+                checked_scope="all_index" if all_index else "staged_changes", missing_local_imports=missing,
                 deferred_feature_imports=deferred, deferred_paths_require_isolated_batch_tests=True,
                 dynamic_asset_profile_dependencies_checked=False, native_runtime_acceptance=False)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(); parser.add_argument("--repo", required=True)
-    result = inspect(Path(parser.parse_args().repo).resolve())
+    parser.add_argument("--all-index", action="store_true")
+    args = parser.parse_args()
+    result = inspect(Path(args.repo).resolve(), all_index=args.all_index)
     print(json.dumps(result, ensure_ascii=False))
     raise SystemExit(1 if result["status"] != "passed" else 0)
