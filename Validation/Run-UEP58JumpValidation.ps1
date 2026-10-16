@@ -5,7 +5,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
-      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
@@ -20,6 +20,8 @@ if($CharacterLoadoutNatural -and $Network){throw 'Character loadout natural deat
 if($CharacterLoadoutNatural){$CharacterLoadout=$true}
 if($CharacterLoadout -and ($CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnReset -or $AutoRespawnLifecycle -or !$CharacterAuthoringDirectory)){throw 'Character loadout requires its own native grant lane and asset proof'}
 if($CharacterLoadout){$AutoRespawnActivation=$true}
+if($CharacterOutline -and ($CharacterLoadout -or $CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnReset -or $AutoRespawnLifecycle -or !$CharacterAuthoringDirectory)){throw 'Character outline requires its own BP/material Interface lane and asset proof'}
+if($CharacterOutline){$AutoRespawnActivation=$true}
 if($CharacterInventory -and ($AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character inventory helper requires natural/network or standalone Reset and Character asset proof'}
 if($CharacterInventory){$AutoRespawnActivation=$true}
 if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
@@ -155,14 +157,14 @@ try{
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
-    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout){
+    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout -or $CharacterOutline){
         $characterRoot=[IO.Path]::GetFullPath($CharacterAuthoringDirectory)
         if(!$characterRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Character evidence must stay in workspace build directory'}
         $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
         $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
         $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
-        $expectedCharacterKind=if($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
-        $expectedCharacterMethods=if($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
+        $expectedCharacterKind=if($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
+        $expectedCharacterMethods=if($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
         if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne $expectedCharacterKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
             @($proof.implemented_methods).Count -ne $expectedCharacterMethods -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
@@ -173,6 +175,19 @@ try{
         foreach($path in @($characterSummary,$characterReport,'F:/LyraStarterGame/Source/LyraGame/Character/LyraCharacter.cpp',
             'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
             (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
+        if($CharacterOutline){
+            $probe=$proof.caller_probe
+            if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.typed_actor_reference -or !$probe.virtual_bp_function_call -or
+                $probe.nodes -ne 3 -or $probe.target -ne 'CreateOrUpdateOutlineIfNeeded' -or !$proof.native_camera_interface_signature -or
+                [IO.Path]::GetFullPath($probe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterOutlineCallProbe.uasset') -or
+                (Get-FileHash -LiteralPath $probe.asset).Hash -ne $probe.sha256){throw 'Character outline native BP/camera Interface proof incomplete'}
+            Add-JumpInput $probe.asset
+            $outlineMaterial='Content/Effects/Materials/PostProcess/MPP_Outline_Inst.uasset'
+            $outlineOriginal=Join-Path 'F:/LyraStarterGame' $outlineMaterial
+            $outlineStaged=Join-Path $stage $outlineMaterial
+            if((Get-FileHash -LiteralPath $outlineOriginal).Hash -ne (Get-FileHash -LiteralPath $outlineStaged).Hash){throw 'Original outline parent material changed'}
+            Add-JumpInput $outlineOriginal;Add-JumpInput $outlineStaged
+        }
         if($CharacterLoadout){
             $probe=$proof.caller_probe
             if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.typed_actor_reference -or !$probe.virtual_bp_function_call -or
@@ -282,6 +297,7 @@ try{
     if($CharacterAudio){$flag='-UEPCharacterAudioResult';$marker='UEP_CHARACTER_AUDIO'}
     if($CharacterQuickbar){$flag='-UEPCharacterQuickbarResult';$marker='UEP_CHARACTER_QUICKBAR'}
     if($CharacterLoadout){$flag='-UEPCharacterLoadoutResult';$marker='UEP_CHARACTER_LOADOUT'}
+    if($CharacterOutline){$flag='-UEPCharacterOutlineResult';$marker='UEP_CHARACTER_OUTLINE'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -313,6 +329,7 @@ try{
             if($CharacterAudio){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterAudioResult=*'})}
             if($CharacterQuickbar){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterQuickbarResult=*'})}
             if($CharacterLoadout){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterLoadoutResult=*'})}
+            if($CharacterOutline){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterOutlineResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -330,6 +347,7 @@ try{
             if($CharacterAudio){$resultFlag='-UEPCharacterAudioNetworkResult'}
             if($CharacterQuickbar){$resultFlag='-UEPCharacterQuickbarNetworkResult'}
             if($CharacterLoadout){$resultFlag='-UEPCharacterLoadoutNetworkResult'}
+            if($CharacterOutline){$resultFlag='-UEPCharacterOutlineNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -379,6 +397,7 @@ try{
             if($CharacterAudio){$pass=if($peer -eq 'server'){'UEP_CHARACTER_AUDIO_NETWORK_PASSED'}else{'UEP_CHARACTER_AUDIO_SHUTDOWN_PASSED'}}
             if($CharacterQuickbar){$pass=if($peer -eq 'server'){'UEP_CHARACTER_QUICKBAR_NETWORK_PASSED'}else{'UEP_CHARACTER_QUICKBAR_SHUTDOWN_PASSED'}}
             if($CharacterLoadout){$pass=if($peer -eq 'server'){'UEP_CHARACTER_LOADOUT_NETWORK_PASSED'}else{'UEP_CHARACTER_LOADOUT_SHUTDOWN_PASSED'}}
+            if($CharacterOutline){$pass=if($peer -eq 'server'){'UEP_CHARACTER_OUTLINE_NETWORK_PASSED'}else{'UEP_CHARACTER_OUTLINE_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -398,6 +417,7 @@ try{
         if($CharacterAudio){$module='uep_lyra_characters.emote_audio_network_contract'}
         if($CharacterQuickbar){$module='uep_lyra_characters.quickbar_input_network_contract'}
         if($CharacterLoadout){$module='uep_lyra_characters.initial_inventory_network_contract'}
+        if($CharacterOutline){$module='uep_lyra_characters.outline_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -422,6 +442,7 @@ try{
         if($CharacterAudio){$module='uep_lyra_characters.emote_audio_contract'}
         if($CharacterQuickbar){$module='uep_lyra_characters.quickbar_input_contract'}
         if($CharacterLoadout){$module=if($CharacterLoadoutNatural){'uep_lyra_characters.initial_inventory_natural_contract'}else{'uep_lyra_characters.initial_inventory_contract'}}
+        if($CharacterOutline){$module='uep_lyra_characters.outline_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw

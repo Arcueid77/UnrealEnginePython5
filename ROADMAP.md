@@ -1022,6 +1022,29 @@ Network01 (post-release native-owner reread); fixes have executable regressions
 and complete fresh reruns. Remaining Character business, nullable native probes,
 hardware/travel/loss/packages and whole-version acceptance remain open.
 
+CreateOrUpdateOutlineIfNeeded is the sixth retained Character helper in
+`uep_lyra_characters/outline_mixin.py`, with five accepted explicit aliases.
+Original local-control/create-if-missing/attach-once/scalar-then-vector decisions
+remain; existing detached MIDs stay detached and repeats reuse the same object.
+Native material, camera TScriptInterface, rendering and GC remain unchanged.
+Assets01 preserves type/full CDO/ten signatures/all graphs. Software03 passes
+eight real BP/Python pairs, full camera-setting/field/Profile/CDO/inventory undo,
+signed/HDR parameters, true unpossessed Actor and held-reference native GC.
+Natural startup enters Python three times, creates/adds one MID/blendable and
+updates three scalar/vector pairs. Network01 passes 48 case trials/54 BP calls
+in actual server/two-client worlds: own-player server nonlocal no-op, both client
+owners local create/update, all unpossessed fixtures nonlocal. Natural Python
+startup is observed twice per world, with zero/one/one material creations.
+All fixture material and caller-class roots balance; production roots nothing.
+Cleanup freezes before release and three zero exits finish server last. Strict
+closed logs/independent gates pass with 1,600 final standalone/1,602 network
+inputs; original/staged parent material hashes match. All 1,270 models pass.
+Ledger 43 excludes failed Software01 (unowned test-caller class collected by GC)
+and records complete fresh reruns after explicit test-class lifetime ownership.
+No rendered-pixel/material-replication/all-transient-MID-reclamation or full
+Character/version claim. Remaining team/cosmetic orchestration and other business,
+hardware/travel/loss/packages remain open; animations/ABPs remain untouched.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
