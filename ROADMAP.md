@@ -897,6 +897,38 @@ travel/rejoin, physical input, loss and packages are not certified. The remainin
 AutoRespawn activation, Reset subscription/filter, UI registration and end/
 removal business is next; whole asset and versions remain open.
 
+The next bounded AutoRespawn batch now moves that remaining entry/reset/UI/
+lifetime business to `auto_respawn_activation_mixin.py`: twelve original methods
+have script business through eleven original entries and a retained-parent End
+gate (sixteen routed functions total). It keeps the original typed native Reset
+listener, both latent nodes, delegates, GameMode restart and reliable GameState
+RPC. Explicit Python/BP startup variants pass natural grants/Added/AvatarSet/
+OnSpawn, four death pairs, a real Avatar-destroy pair and the twelve-trial
+two-owner natural regression. Native End/observe-original-deadline/Clear/Give
+passes three pairs with exact resource cleanup and explicitly new grant handles.
+Native End removes latent actions; the fixture does not replay cancelled
+callbacks or root garbage-marked GAS instances.
+
+`20261017-auto-respawn-activation/ResetDifferential02` passes four real native
+Reset pairs, including repeat, pending death and mid-pending Profile switch.
+`ResetNetwork02` passes sixteen authority/owner trials and sixteen passive
+foreign-client observations, 16/16 scope closure per peer, typed exact owners,
+foreign authority filtering and server-last three normal exits. A stage-only
+four-node VM reader independently observes Reset; the production message
+adapter is unchanged. The foreign client receives completion through native
+reliable RPC, not a replicated Reset router payload. UI validity preserves the
+measured role baseline: false/false on dedicated server, true/true on owning
+clients. Final Reset runs freeze 1,525 inputs. Lifecycle03 freezes 1,513.
+Earlier failed fixture/driver runs remain failed and preserved. End/removal's
+explicit listener/UI cancellation is an intentional lifetime improvement in
+both Profiles, not a claim about unmodified BP stale-callback behavior.
+
+This batch receives ledger 38 and isolated-index verification; full host models
+pass 1,096. Original runtime business is now script-owned, but whole-asset/
+version acceptance stays open: active Clear without a preceding explicit End,
+travel/rejoin, loss, physical input and packages are not certified. Native
+warnings remain. No Engine/official project changes, C++ build or cook/package.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

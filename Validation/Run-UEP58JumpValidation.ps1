@@ -3,14 +3,19 @@
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
-      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
-      [string]$AbilityWidgetFamilyRevisionDirectory,
+      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
+      [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
+if($AutoRespawnReset -and ($AutoRespawnLifecycle -or !$ResetProbeAssetDirectory)){throw 'Native Reset requires its separate lane and stage-only typed probe proof'}
+if($AutoRespawnReset){$AutoRespawnActivation=$true}
+if($AutoRespawnLifecycle){$AutoRespawnActivation=$true}
+if($AutoRespawnActivation){$AutoRespawnEvents=$true}
 if($AutoRespawnEvents){$AutoRespawnListeners=$true}
 if($AutoRespawnListeners){$AutoRespawnHelpers=$true}
 if($Network -and $WidgetLifecycle){throw 'Select either two-owner Jump or standalone UI lifecycle'}
@@ -122,18 +127,34 @@ try{
         $authored.named_query_output -eq 'IsDeadOrDying' -and @($authored.implemented_methods).Count -eq 5 -and
         $authored.death_listener_orchestration_migrated -and $authored.typed_listener_transport_nodes -eq 16 -and
         @($authored.typed_listener_transports).Count -eq 4 -and !$authored.death_listener_timer_restart_business_migrated}
-    if($AutoRespawnEvents){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnevents' -and
+    if($AutoRespawnEvents -and !$AutoRespawnActivation){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnevents' -and
         $authored.original_full_cdo_preserved -and !$authored.original_graphs_unmodified -and $authored.original_business_graphs_preserved_with_dispatch -and
         @($authored.implemented_methods).Count -eq 9 -and $authored.death_listener_timer_restart_business_migrated -and
         $authored.event_transport.native_delay_nodes_reused -eq 2 -and $authored.event_transport.continuation_dispatch_nodes -eq 4 -and
         $authored.event_transport.native_entry_nodes -eq 2 -and $authored.event_transport.gate_function_nodes -eq 4 -and
         @($authored.event_transport.dispatch_transport_endpoints).Count -eq 4 -and $authored.typed_listener_transport_nodes -eq 16}
+    if($AutoRespawnActivation){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnactivation' -and
+        $authored.original_full_cdo_preserved -and $authored.original_business_graphs_preserved_with_dispatch -and
+        @($authored.implemented_methods).Count -eq 16 -and $authored.activation_reset_ui_removal_business_migrated -and
+        $authored.activation_transport.native_listener_node_reused -and $authored.activation_transport.native_parent_end_forwarding_preserved -and
+        @($authored.activation_transport.dispatch_transport_endpoints).Count -eq 10 -and $authored.event_transport.native_delay_nodes_reused -eq 2}
     if(!$preserved){throw 'Original native ability signature/default/graph proof missing'}
     foreach($entry in $authored.reference_hashes.PSObject.Properties){
         if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Official reference changed'}
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
+    if($AutoRespawnReset){
+        $probeRoot=[IO.Path]::GetFullPath($ResetProbeAssetDirectory)
+        if(!$probeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Reset probe evidence must stay in workspace build directory'}
+        $probeSummary=Join-Path $probeRoot 'summary.json';$probeReport=Join-Path $probeRoot 'assets.json'
+        $proof=Get-Content -LiteralPath $probeReport -Raw|ConvertFrom-Json
+        if((Get-Content -LiteralPath $probeSummary -Raw|ConvertFrom-Json).status -ne 'passed' -or $proof.status -ne 'passed' -or !$proof.stage_only -or
+            !$proof.typed_vm_reader -or $proof.function -ne 'ReadReset' -or $proof.nodes -ne 4 -or $proof.gameplay_logic -or $proof.broadcast_graphs -ne 0 -or
+            [IO.Path]::GetFullPath($proof.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_AutoRespawnResetProbe.uasset') -or
+            (Get-FileHash -LiteralPath $proof.asset).Hash -ne $proof.sha256){throw 'Native typed Reset observer proof mismatch'}
+        foreach($path in @($probeSummary,$probeReport,$proof.asset,'F:/LyraStarterGame/Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Reset.cpp')){Add-JumpInput $path}
+    }
     if($EquipmentIntegration -or $EquipmentDeath){
         $equipmentSummary=Join-Path $EquipmentAuthoringDirectory 'summary.json'
         $equipmentReport=Join-Path $EquipmentAuthoringDirectory 'assets.json'
@@ -199,6 +220,8 @@ try{
     if($WidgetHeld){$flag='-UEPWidgetHeldResult';$marker='UEP_WIDGET_HELD'}
     if($WidgetPressed){$flag='-UEPWidgetPressedResult';$marker='UEP_WIDGET_PRESSED'}
     if($AutoRespawnHelpers){$flag='-UEPAutoRespawnHelpersResult';$marker='UEP_AUTO_RESPAWN_HELPERS'}
+    if($AutoRespawnLifecycle){$flag='-UEPAutoRespawnLifecycleResult';$marker='UEP_AUTO_RESPAWN_LIFECYCLE'}
+    if($AutoRespawnReset){$flag='-UEPAutoRespawnResetResult';$marker='UEP_AUTO_RESPAWN_RESET'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -206,6 +229,7 @@ try{
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
     if($AutoRespawnListeners){$arguments+=@('-UEPAutoRespawnListeners')}
     if($AutoRespawnEvents){$arguments+=@('-UEPAutoRespawnEvents')}
+    if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($WidgetHeld){
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
         if($WidgetHeldMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -223,6 +247,7 @@ try{
             if($WidgetHeld){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWidgetHeldResult=*'})}
             if($WidgetPressed){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWidgetPressedResult=*'})}
             if($AutoRespawnHelpers){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPAutoRespawnHelpersResult=*'})}
+            if($AutoRespawnReset){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPAutoRespawnResetResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -236,6 +261,7 @@ try{
             if($WidgetHeld){$resultFlag='-UEPWidgetHeldNetworkResult'}
             if($WidgetPressed){$resultFlag='-UEPWidgetPressedNetworkResult'}
             if($AutoRespawnHelpers){$resultFlag='-UEPAutoRespawnHelpersNetworkResult'}
+            if($AutoRespawnReset){$resultFlag='-UEPAutoRespawnResetNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -281,6 +307,7 @@ try{
             if($WidgetHeld){$pass=if($peer -eq 'server'){'UEP_WIDGET_HELD_NETWORK_PASSED'}else{'UEP_WIDGET_HELD_SHUTDOWN_PASSED'}}
             if($WidgetPressed){$pass=if($peer -eq 'server'){'UEP_WIDGET_PRESSED_NETWORK_PASSED'}else{'UEP_WIDGET_PRESSED_SHUTDOWN_PASSED'}}
             if($AutoRespawnHelpers){$pass=if($peer -eq 'server'){'UEP_AUTO_RESPAWN_HELPERS_NETWORK_PASSED'}else{'UEP_AUTO_RESPAWN_HELPERS_SHUTDOWN_PASSED'}}
+            if($AutoRespawnReset){$pass=if($peer -eq 'server'){'UEP_AUTO_RESPAWN_RESET_NETWORK_PASSED'}else{'UEP_AUTO_RESPAWN_RESET_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -294,6 +321,8 @@ try{
         if($AutoRespawnHelpers){$module='uep_lyra_abilities.auto_respawn_helpers_network_contract'}
         if($AutoRespawnListeners){$module='uep_lyra_abilities.auto_respawn_listeners_contract'}
         if($AutoRespawnEvents){$module='uep_lyra_abilities.auto_respawn_events_contract'}
+        if($AutoRespawnActivation){$module='uep_lyra_abilities.auto_respawn_activation_contract'}
+        if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -311,6 +340,9 @@ try{
         if($AutoRespawnHelpers){$module='uep_lyra_abilities.auto_respawn_helpers_contract'}
         if($AutoRespawnListeners){$module='uep_lyra_abilities.auto_respawn_listeners_contract'}
         if($AutoRespawnEvents){$module='uep_lyra_abilities.auto_respawn_events_contract'}
+        if($AutoRespawnActivation){$module='uep_lyra_abilities.auto_respawn_activation_contract'}
+        if($AutoRespawnLifecycle){$module='uep_lyra_abilities.auto_respawn_lifecycle_contract'}
+        if($AutoRespawnReset){$module='uep_lyra_abilities.auto_respawn_reset_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
