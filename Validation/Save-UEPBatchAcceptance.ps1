@@ -28,12 +28,21 @@ foreach($directory in $EvidenceDirectories){
     $path=Join-Path $root 'summary.json';$summary=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json -Depth 100
     if($summary.status -ne 'passed' -or (Field $summary 'error')){throw "Unpassed native evidence: $root"}
     $process=Field $summary 'process';$processes=Field $summary 'processes';$gate=Field $summary 'external_gate'
-    if($null -ne $process -and $process.exit_code -ne 0){throw 'Failed native process'}
+    if($null -eq $gate){$gate=Field $summary 'validation'}
+    if($null -ne $process -and (Field $process 'exit_code') -ne 0){throw 'Failed or missing native process exit code'}
     $exits=[ordered]@{}
-    if($null -ne $processes){foreach($peer in $processes.PSObject.Properties){
-        if($peer.Value.exit_code -ne 0){throw 'Failed native peer'};$exits[$peer.Name]=$peer.Value.exit_code
-    }}
-    if($null -ne $gate -and $gate.exit_code -ne 0){throw 'Failed independent semantic gate'}
+    if($null -ne $processes){
+        # Older drivers record an array; newer drivers use a peer-name object.
+        $peers=if($processes -is [Array]){@($processes|ForEach-Object {
+            @{name=(Field $_ 'name');value=$_}
+        })}else{@($processes.PSObject.Properties|ForEach-Object {@{name=$_.Name;value=$_.Value}})}
+        foreach($peer in $peers){
+            $code=Field $peer.value 'exit_code'
+            if(!$peer.name -or $null -eq $code -or $code -ne 0 -or $exits.Contains($peer.name)){throw 'Failed, duplicate or incomplete native peer'}
+            $exits[$peer.name]=$code
+        }
+    }
+    if($null -ne $gate -and (Field $gate 'exit_code') -ne 0){throw 'Failed or missing independent semantic gate exit code'}
     $rows=@()
     foreach($name in @('hashes','input_hashes','source_hashes','binary_hashes')){
         $values=Field $summary $name;if($null -ne $values){$rows+=@($values)}
