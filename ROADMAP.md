@@ -850,6 +850,26 @@ latent delays and restart business are still BP. Next migrate listener bind/
 clear orchestration, then the remaining event/delay/restart business in
 separate verified batches. Whole AutoRespawn, 0.10 and 0.11 remain open.
 
+The next accepted listener batch moves BindDeathListener/ClearDeathListener
+orchestration to Python and explicitly reuses the three helper function objects
+in each Profile's local dictionary. Differential01 correctly fails when plain
+inheritance left those helpers unregistered by the current collector; its
+normal exit is not counted as acceptance. No C++ change or rebuild is needed.
+Four exact named native delegate transports (16 nodes) preserve foreign
+subscribers and the original cached-Avatar rule, full CDO/twelve signatures/
+business graphs. Final `20261017-auto-respawn-listeners/Differential02` passes
+four pairs/eight actual deaths and restarts, repeated/cross-Profile clear and
+binding, pause and mid-death handoff. Independent native Death/EndPlay callbacks
+each fire once, fixture scopes close 8/8 and original native events traverse
+Python after explicit-probe counters are snapshotted. Network01 passes twelve
+authority and owner rows, six foreign-owner observations per client, fixture
+scopes 12/12 + 6/6 + 6/6, strict logs/independent gates/restore and actual
+server-last zero exits. Both final runs freeze 1,489 inputs. Production policy
+owns no Python delegate callback, scope, timer or ability lifetime. Activation,
+reset/UI, death/avatar event decisions and delay/restart/completion business
+remain the next implementation work; these five methods do not complete the
+whole asset or release.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
