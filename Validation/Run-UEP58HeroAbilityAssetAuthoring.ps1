@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed')][string]$Kind)
+      [Parameter(Mandatory=$true)][ValidateSet('quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers')][string]$Kind)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -47,6 +47,7 @@ try{
     if($Kind -eq 'devicecolor'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_TeamColor_DeviceProperty.uasset'}
     if($Kind -eq 'widgetheld'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhileInputHeld.uasset'}
     if($Kind -eq 'widgetpressed'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhenInputPressed.uasset'}
+    if($Kind -eq 'autorespawnhelpers'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Respawn/GA_AutoRespawn.uasset'}
     $marker=Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json
     $original=Join-Path (Split-Path $marker.source -Parent) $relative;$copy=Join-Path $stage $relative
     if((Get-FileHash -LiteralPath $original).Hash -ne (Get-FileHash -LiteralPath $copy).Hash){throw 'Fresh original hero ability stage asset required'}
@@ -61,12 +62,13 @@ try{
     if($Kind -eq 'devicecolor'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_device_color_assets.py')}
     if($Kind -eq 'widgetheld'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_widget_held_assets.py')}
     if($Kind -eq 'widgetpressed'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_widget_pressed_assets.py')}
+    if($Kind -eq 'autorespawnhelpers'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_auto_respawn_helper_assets.py')}
     $arguments=@($project,'-run=Py',$script,'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-UTF8Output','-DisablePython',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup',
         "-UEPHeroAbilityStageRoot=$stage","-UEPHeroAbilityKind=$Kind","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
-    $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor')){0}else{4}
+    $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers')){0}else{4}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne 2 -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'widgetheld' -and (!$report.original_full_cdo_preserved -or !$report.native_children_unchanged -or $report.soft_class_path_transport_nodes -ne 4 -or $report.native_state_teardown_guard_nodes -ne 4)){
@@ -75,6 +77,11 @@ try{
     if($Kind -eq 'widgetpressed' -and (!$report.original_full_cdo_preserved -or !$report.native_children_unchanged -or $report.soft_class_path_transport_nodes -ne 4 -or
         $report.original_delegate_cleanup_nodes -ne 4 -or $report.original_pending_widget_capture_nodes -ne 3)){
         throw 'Pressed-widget original CDO/children/typed transport/cleanup proof incomplete'
+    }
+    if($Kind -eq 'autorespawnhelpers' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or
+        $report.original_entry_transport_nodes -ne 0 -or $report.named_query_output -ne 'IsDeadOrDying' -or
+        @($report.implemented_methods).Count -ne 3 -or $report.death_listener_timer_restart_business_migrated)){
+        throw 'AutoRespawn helper-only original graph/default scope proof incomplete'
     }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
     Assert-UEPFocusedLog $log 'UEP_HERO_ABILITY_ASSETS_PASSED'

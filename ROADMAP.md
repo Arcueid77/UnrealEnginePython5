@@ -825,6 +825,31 @@ pixel/text, filter-token, packet-loss, travel/rejoin or packaged-runtime claim.
 These remain two bounded local batches, not whole-version acceptance or a
 release. No Engine build/cook/package or official-source modification.
 
+AutoRespawn now has a separately accepted three-helper pilot: Python implements
+GetOwningPlayerState, Is Avatar Dead or Dying and EndDeathAbilities. Its retained
+BP identity/full CDO, twelve signatures and complete original business graphs
+are preserved, with no business transport added. The existing named-output
+binding handles the original non-reference IsDeadOrDying out pin. Final
+`20261016-auto-respawn-helpers/Differential06` passes four BP/Python pairs,
+eight actual lethal GAS deaths/restarts, native five-second delay, pause and
+mid-death Profile switch. Network05 passes twelve authority/owning trials and
+six independent foreign-owner observations per client, exact persistent
+AutoRespawn/Death handles and native equipment class multiplicities. Both runs
+pass strict logs, independent semantic gates, normal exits and 1,479 frozen
+inputs; the network server exits after actual client exits.
+
+The original K2_HasAuthority checks activation mode, not Pawn role. The native
+inactive client ability retains default Authority mode 0, so original BP and
+Python both call EndDeathAbilities once there. Three measured snapshots per
+trial verify that behavior alongside actual roles 3/2/2 and GameMode presence
+true/false/false. Clients apply no damage or ability activation; native restart
+remains on the server. Network04's incorrect client-helper-zero gate and all
+earlier failed attempts remain retained, without being relabeled as passes.
+Original avatar/death/EndPlay listeners, activation, reset messages, UI,
+latent delays and restart business are still BP. Next migrate listener bind/
+clear orchestration, then the remaining event/delay/restart business in
+separate verified batches. Whole AutoRespawn, 0.10 and 0.11 remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
