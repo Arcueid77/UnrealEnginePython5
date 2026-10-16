@@ -870,6 +870,33 @@ reset/UI, death/avatar event decisions and delay/restart/completion business
 remain the next implementation work; these five methods do not complete the
 whole asset or release.
 
+AutoRespawn death/Avatar/restart decisions now have bounded native acceptance
+in `20261017-auto-respawn-events`: seven original methods plus two new
+continuation gates route to Python. Assets01 keeps class/full CDO/twelve
+signatures and original business digests around four declared continuation
+endpoints. It reuses the original five-second and 0.1-second Delay nodes,
+adding two entries/four dispatch/four gate-body nodes and retaining the sixteen
+exact-listener transport nodes. Final Differential02 passes four real death
+pairs plus an original/Python live-Pawn K2_DestroyActor pair. Real duration and
+completion payloads, native restart/RPC calls, pause, mid-delay Profile switch
+and independent Death/EndPlay delivery pass; both fixture scope ledgers close
+10/10. Differential01 is retained as failed: bare destruction loses the same
+three pistol grants in both original BP and Python. The probe now separately
+records/compares that raw native behavior, then restores equipment using native
+QuickBar empty/original slot RPCs and requires original inventory identities,
+logical classes and persistent handles. Production behavior is unchanged.
+
+Network01 passes twelve authority/owner trials and six independent foreign
+reliable-completion payload observations per client. Dedicated server has no
+local cosmetic completion; clients have no GameMode restart path. Native
+listener scopes close 12/12 + 6/6 + 6/6; message scopes close 12/12 on all three
+peers. Both final runs pass strict logs, independent gates, restoration,
+1,499 frozen inputs and normal exits, server last in networking. Forced
+Avatar destruction is standalone-only here; pending Reset/removal cancellation,
+travel/rejoin, physical input, loss and packages are not certified. The remaining
+AutoRespawn activation, Reset subscription/filter, UI registration and end/
+removal business is next; whole asset and versions remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

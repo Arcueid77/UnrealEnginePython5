@@ -3,7 +3,7 @@
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
-      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
+      [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
@@ -11,6 +11,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($AutoRespawnEvents){$AutoRespawnListeners=$true}
 if($AutoRespawnListeners){$AutoRespawnHelpers=$true}
 if($Network -and $WidgetLifecycle){throw 'Select either two-owner Jump or standalone UI lifecycle'}
 if($Quickslot -and $WidgetLifecycle){throw 'Quickslot and standalone UI lifecycle are separate lanes'}
@@ -116,11 +117,17 @@ try{
     if($AutoRespawnHelpers -and !$AutoRespawnListeners){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnhelpers' -and
         $authored.original_full_cdo_preserved -and $authored.original_graphs_unmodified -and $authored.original_entry_transport_nodes -eq 0 -and
         $authored.named_query_output -eq 'IsDeadOrDying' -and @($authored.implemented_methods).Count -eq 3 -and !$authored.death_listener_timer_restart_business_migrated}
-    if($AutoRespawnListeners){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnlisteners' -and
+    if($AutoRespawnListeners -and !$AutoRespawnEvents){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnlisteners' -and
         $authored.original_full_cdo_preserved -and $authored.original_graphs_unmodified -and $authored.original_entry_transport_nodes -eq 0 -and
         $authored.named_query_output -eq 'IsDeadOrDying' -and @($authored.implemented_methods).Count -eq 5 -and
         $authored.death_listener_orchestration_migrated -and $authored.typed_listener_transport_nodes -eq 16 -and
         @($authored.typed_listener_transports).Count -eq 4 -and !$authored.death_listener_timer_restart_business_migrated}
+    if($AutoRespawnEvents){$preserved=$authored.original_class_defaults_signature_graphs_preserved -and $authored.kind -eq 'autorespawnevents' -and
+        $authored.original_full_cdo_preserved -and !$authored.original_graphs_unmodified -and $authored.original_business_graphs_preserved_with_dispatch -and
+        @($authored.implemented_methods).Count -eq 9 -and $authored.death_listener_timer_restart_business_migrated -and
+        $authored.event_transport.native_delay_nodes_reused -eq 2 -and $authored.event_transport.continuation_dispatch_nodes -eq 4 -and
+        $authored.event_transport.native_entry_nodes -eq 2 -and $authored.event_transport.gate_function_nodes -eq 4 -and
+        @($authored.event_transport.dispatch_transport_endpoints).Count -eq 4 -and $authored.typed_listener_transport_nodes -eq 16}
     if(!$preserved){throw 'Original native ability signature/default/graph proof missing'}
     foreach($entry in $authored.reference_hashes.PSObject.Properties){
         if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Official reference changed'}
@@ -198,6 +205,7 @@ try{
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
     if($AutoRespawnListeners){$arguments+=@('-UEPAutoRespawnListeners')}
+    if($AutoRespawnEvents){$arguments+=@('-UEPAutoRespawnEvents')}
     if($WidgetHeld){
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
         if($WidgetHeldMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -285,6 +293,7 @@ try{
         if($WidgetPressed){$module='uep_lyra_abilities.widget_pressed_network_contract'}
         if($AutoRespawnHelpers){$module='uep_lyra_abilities.auto_respawn_helpers_network_contract'}
         if($AutoRespawnListeners){$module='uep_lyra_abilities.auto_respawn_listeners_contract'}
+        if($AutoRespawnEvents){$module='uep_lyra_abilities.auto_respawn_events_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -301,6 +310,7 @@ try{
         if($WidgetPressed){$module='uep_lyra_abilities.widget_pressed_contract'}
         if($AutoRespawnHelpers){$module='uep_lyra_abilities.auto_respawn_helpers_contract'}
         if($AutoRespawnListeners){$module='uep_lyra_abilities.auto_respawn_listeners_contract'}
+        if($AutoRespawnEvents){$module='uep_lyra_abilities.auto_respawn_events_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
