@@ -1069,6 +1069,28 @@ hardware/pixels, replicated team changes/material state, travel/loss/packages,
 whole Character or release claim. Remaining runtime BP business continues in
 independently implemented, verified and locally committed batches.
 
+UpdateCustomStencilFromTeamID adds the eighth retained Character helper in
+`uep_lyra_characters/stencil_mixin.py`, explicitly aliasing seven prior helpers.
+It shadows this inherited method only on the retained Shooter Character; the
+original parent asset/function and other subclass families remain unchanged.
+Local AND player control selects zero; otherwise TeamId reaches the native
+setter unchanged. Native recursive primitive discovery and 0..255 clamping/
+render-state behavior remain. Assets01 preserves class/full CDO/twelve signatures/
+all graphs. Final Differential02 has eight team plus twelve direct BP/Python
+pairs (40 trials/52 BP calls), true ChildActor/extra primitive, native negative/
+overflow clamps, unchanged render-depth enable flags, repeats and 24 actual GC
+calls. Both original and Python nested team-to-stencil dispatch counts are exact.
+Natural Python startup has three calls/queries and sixteen component writes.
+Network01 has 120 trials/156 BP calls/72 actual GC calls in three actual worlds;
+natural stencil enters twice/world. Native role/control/device-subsystem
+differences, nonreplicated parent/child fixture destruction, two caller-class
+root scopes/world and full visual/camera/Profile/CDO/inventory restore pass.
+Strict independent gates/closed logs, 1,636 inputs/final run and server-last
+three zero exits pass. All 1,336 isolated-index models and 567-file all-index
+syntax/local-import checks pass. Ledger 45 excludes the earlier-gate Differential01 pass from final
+standalone proof. No pixels/stencil/team/material replication, hardware/travel/
+loss/package, whole Character/parent-family/version or publication claim.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
