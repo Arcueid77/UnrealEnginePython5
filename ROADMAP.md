@@ -1045,6 +1045,30 @@ No rendered-pixel/material-replication/all-transient-MID-reclamation or full
 Character/version claim. Remaining team/cosmetic orchestration and other business,
 hardware/travel/loss/packages remain open; animations/ABPs remain untouched.
 
+OnTeamOrCosmeticsChanged is the seventh retained Character helper in
+`uep_lyra_characters/team_cosmetics_mixin.py`, with six accepted explicit aliases.
+Its two function arguments and original color/outline/stencil -> optional native
+display application -> platform/device Sequence remain. Inherited parent stencil
+business is still BP. Assets01 preserves class/full CDO/eleven signatures/every
+graph. Final Differential03 passes eight BP/Python pairs/twenty real BP calls,
+actual material/stencil state, three natural Python startup callbacks and sixteen
+naturally evaluated/removed device properties. Network02 passes 48 trials/60 BP
+calls in actual server/two-client worlds, with two natural callbacks per world.
+The Engine deliberately has no device subsystem on the dedicated server; zero
+activation there, sixteen actual scheduled properties per client. Native disabled
+color marker handles bracket synchronous calls for bounded read-only public
+handle queries; only handle POD copies change, never native allocation/sets or
+production handles. Markers finish naturally, roots balance 0/0 + 48/48 + 48/48,
+and full visual/camera/Profile/CDO/inventory state restores before release.
+Strict closed logs, independent gates, 1,618 inputs per final run and server-last
+three zero exits pass. Ledger 44 preserves failed Differential01 (unhashable
+native-set observation) and Network01 (fixture assumed a server device subsystem)
+as failures; both fixture fixes have executable regressions and fresh runs.
+All 1,307 isolated-index models and 558-file all-index syntax/import checks pass. No
+hardware/pixels, replicated team changes/material state, travel/loss/packages,
+whole Character or release claim. Remaining runtime BP business continues in
+independently implemented, verified and locally committed batches.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
