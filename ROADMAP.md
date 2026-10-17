@@ -1169,6 +1169,31 @@ replay or fixture-injected AI report, physical input/pixels/travel/loss/package/
 whole-Character/version claim. Team listener/init/input and parent/sibling
 business remain open.
 
+Five original QuickSlot EnhancedInput receivers add seventeen retained Character
+routes in `uep_lyra_characters/enhanced_input_mixin.py`, with twelve explicit
+accepted aliases. Assets04 preserves type/full CDO/nineteen logical signatures/
+every graph and five action/Triggered binding semantics. UE recompilation really
+renumbers generated receiver symbols; callable descriptors resolve current
+native names at every registration rather than hardcoding a compiler suffix.
+Python implements seventeen functions, BlueprintFallback twelve: existing native
+Original dispatch preserves the full input frame. Manual Python bool/vector ->
+FInputActionValue roundtrip is still unsupported, not claimed fixed by a C++ build.
+Differential02 PASSes sixteen actual input injections/eight BP-Python pairs,
+twelve native GAS events and exact equipment. Five actions, repeated selection,
+empty selection/default-zero-cycle noop and original zero event magnitude match;
+sixteen scopes/tasks and original item/slot/Profile/CDO restore. Network01 has
+two native input owners/sixteen trials each/thirty-two authority RPC-equipment
+comparisons/twenty-four owner GAS events. Actual Client role2, unchanged foreign
+Actor input/helper/Profile, unchanged other authority inventory and zero server
+Character input/helper calls PASS. Cleanup freezes before release, server exits
+last with three zero exits; strict closed logs/independent gates and 1,710 frozen
+inputs/final run PASS. Ledger 49 has exactly three accepted native runs/thirteen
+matched scoped inputs; all 1,495 isolated-index models and 602-file all-index
+syntax/import closure PASS. Keep Assets01/02 and Differential01 failed, Assets03 as
+earlier prototype proof only. No direct input-receiver calls, mapping changes,
+physical keyboard/hardware/pixels/travel/loss/package/whole-version claim.
+Team listener/init/possession readiness and parent/sibling business remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
