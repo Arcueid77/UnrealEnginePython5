@@ -1425,6 +1425,39 @@ and whole-version acceptance remain separate. Next migrate Ragdoll's project
 call ordering/impulse choice, not native physics or animation. No Engine /
 official Lyra/animation changes, C++ build/cook/package or publication.
 
+Batch59 migrates inherited Ragdoll project orchestration in
+`uep_lyra_characters/ragdoll_mixin.py`: native collision Profile -> native bone
+simulation -> native bVelChange impulse. Original fourteen-node parent graph
+dataflow/literals, root type/full CDO/all graphs/twenty-six signatures and
+Python28/fallback23 PASS Assets03; the original physics asset remains byte-equal.
+Differential01 is a preserved failed immediate-velocity assumption: BP and
+Python both queue an impulse, not immediately update the readable velocity.
+PhysicsCore source confirms the accumulation. Assets02 preserves an unreflected
+getter failure. Assets03 adds a deep-copied stage-only single Pelvis body/no
+constraints control. Quantitative moving/zero-strength/repeat cases use only
+that owned test mesh, native gravity/damping/known-velocity setup, and observe
+after at least two engine frames. Differential02 PASSes all eight direct cases,
+both natural-death Profiles and the entire preceding regression. Largest actual
+velocity-component error0.0000578486 stays under the unchanged0.02 gate.
+Stationary and real death retain the full original rig; its coupled trajectory/
+pose is not numerically certified by the single-body control. Owned resources,
+original bot identities/Health, strict closed logs, independent gate, exit0 and
+1,897 frozen inputs PASS. Network01 is a preserved A-early/B0-still-testing
+global-proxy equality failure. Network02 waits for all24 inventory restores and
+both hide/undo tokens before a shared start barrier. Six actual local typed BP/
+Python Ragdoll calls across server/A/B0, full-rig body state, one owned observer
+per Actor collected, quiet destroyed Actors and exact original proxy sets PASS.
+Caller roots1/1 each world, eight prior hide/undo calls,24 authority/24 replica
+inventory regressions, independent gate/strict closed logs/server-last zero
+exits and1,897 frozen inputs PASS. The network-only barrier revision is not a
+new standalone re-execution. All1,912 host/isolated-index checks and704-file
+closure precede ledger59/local commit. No owner ragdoll/death replication,
+physical pixels, full-rig trajectory, Engine/animation implementation, package
+or version/release claim. Next migrate the real Health.OnDeathStarted bound
+receiver's montage/sense/native random delay and post-delay Ragdoll/Hide/Death
+calls. Keep the empty Death endpoint, animations/physics native and broader
+ancestor/sibling/version gates separate; no C++ build/cook/package/publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

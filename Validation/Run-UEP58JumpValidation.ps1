@@ -5,13 +5,17 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
-      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[switch]$CharacterObserver,[switch]$CharacterListener,[switch]$CharacterLegacy,[switch]$CharacterReady,[switch]$CharacterWait,[switch]$CharacterPossessed,[switch]$CharacterVisibility,[switch]$CharacterBeginPlay,[switch]$CharacterEquipmentHide,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[switch]$CharacterObserver,[switch]$CharacterListener,[switch]$CharacterLegacy,[switch]$CharacterReady,[switch]$CharacterWait,[switch]$CharacterPossessed,[switch]$CharacterVisibility,[switch]$CharacterBeginPlay,[switch]$CharacterEquipmentHide,[switch]$CharacterRagdoll,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CharacterRagdoll){
+    if($CharacterEquipmentHide -or $CharacterBeginPlay -or $CharacterVisibility -or $CharacterPossessed -or $CharacterWait -or $CharacterReady -or $CharacterLegacy -or $CharacterListener -or $CharacterObserver){throw 'Choose one Character Ragdoll/equipment-hide lane'}
+    $CharacterEquipmentHide=$true
+}
 if($CharacterEquipmentHide){
     if($CharacterBeginPlay -or $CharacterVisibility -or $CharacterPossessed -or $CharacterWait -or $CharacterReady -or $CharacterLegacy -or $CharacterListener -or $CharacterObserver){throw 'Choose one Character equipment-hide/BeginPlay lane'}
     $CharacterBeginPlay=$true
@@ -209,8 +213,8 @@ try{
         $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
         $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
         $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
-        $expectedCharacterKind=if($CharacterEquipmentHide){'characterequipmenthide'}elseif($CharacterBeginPlay){'characterbeginplay'}elseif($CharacterVisibility){'charactervisibility'}elseif($CharacterPossessed){'characterpossessed'}elseif($CharacterWait){'characterwait'}elseif($CharacterReady){'characterready'}elseif($CharacterLegacy){'characterlegacy'}elseif($CharacterListener){'characterlistener'}elseif($CharacterObserver){'characterobserver'}elseif($CharacterInput){'characterinput'}elseif($CharacterHealth){'characterhealth'}elseif($CharacterParts){'characterparts'}elseif($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
-        $expectedCharacterMethods=if($CharacterEquipmentHide){27}elseif($CharacterBeginPlay){26}elseif($CharacterVisibility){25}elseif($CharacterPossessed){23}elseif($CharacterWait){22}elseif($CharacterReady){21}elseif($CharacterLegacy){20}elseif($CharacterListener){19}elseif($CharacterObserver){18}elseif($CharacterInput){17}elseif($CharacterHealth){12}elseif($CharacterParts){11}elseif($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
+        $expectedCharacterKind=if($CharacterRagdoll){'characterragdoll'}elseif($CharacterEquipmentHide){'characterequipmenthide'}elseif($CharacterBeginPlay){'characterbeginplay'}elseif($CharacterVisibility){'charactervisibility'}elseif($CharacterPossessed){'characterpossessed'}elseif($CharacterWait){'characterwait'}elseif($CharacterReady){'characterready'}elseif($CharacterLegacy){'characterlegacy'}elseif($CharacterListener){'characterlistener'}elseif($CharacterObserver){'characterobserver'}elseif($CharacterInput){'characterinput'}elseif($CharacterHealth){'characterhealth'}elseif($CharacterParts){'characterparts'}elseif($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
+        $expectedCharacterMethods=if($CharacterRagdoll){28}elseif($CharacterEquipmentHide){27}elseif($CharacterBeginPlay){26}elseif($CharacterVisibility){25}elseif($CharacterPossessed){23}elseif($CharacterWait){22}elseif($CharacterReady){21}elseif($CharacterLegacy){20}elseif($CharacterListener){19}elseif($CharacterObserver){18}elseif($CharacterInput){17}elseif($CharacterHealth){12}elseif($CharacterParts){11}elseif($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
         if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne $expectedCharacterKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
             @($proof.implemented_methods).Count -ne $expectedCharacterMethods -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
@@ -222,9 +226,9 @@ try{
             'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
             (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
         if($CharacterParts -or $CharacterHealth -or $CharacterInput -or $CharacterObserver){
-            if(!$proof.native_component_receiver_register_restore_passed -or @($proof.extra_signatures.PSObject.Properties).Count -ne $(if($CharacterEquipmentHide){25}elseif($CharacterVisibility){24}elseif($CharacterWait){23}else{($expectedCharacterMethods+$(if($CharacterListener){2}elseif($CharacterObserver){3}else{2}))}) -or
+            if(!$proof.native_component_receiver_register_restore_passed -or @($proof.extra_signatures.PSObject.Properties).Count -ne $(if($CharacterRagdoll){26}elseif($CharacterEquipmentHide){25}elseif($CharacterVisibility){24}elseif($CharacterWait){23}else{($expectedCharacterMethods+$(if($CharacterListener){2}elseif($CharacterObserver){3}else{2}))}) -or
                 $proof.actual_native_registered_profile_method_counts.Python -ne $expectedCharacterMethods -or
-                $proof.actual_native_registered_profile_method_counts.BlueprintFallback -ne $(if($CharacterEquipmentHide){22}elseif($CharacterBeginPlay){21}elseif($CharacterVisibility){20}elseif($CharacterPossessed){18}elseif($CharacterWait){17}elseif($CharacterReady){16}elseif($CharacterLegacy){15}elseif($CharacterListener){14}elseif($CharacterObserver){13}elseif($CharacterInput){12}else{$expectedCharacterMethods}) -or
+                $proof.actual_native_registered_profile_method_counts.BlueprintFallback -ne $(if($CharacterRagdoll){23}elseif($CharacterEquipmentHide){22}elseif($CharacterBeginPlay){21}elseif($CharacterVisibility){20}elseif($CharacterPossessed){18}elseif($CharacterWait){17}elseif($CharacterReady){16}elseif($CharacterLegacy){15}elseif($CharacterListener){14}elseif($CharacterObserver){13}elseif($CharacterInput){12}else{$expectedCharacterMethods}) -or
                 @($proof.native_parts_signatures.PSObject.Properties).Count -ne 3){throw 'Character component-bound receiver actual native registration proof incomplete'}
             foreach($file in @('F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.cpp',
                 'F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.h',
@@ -333,6 +337,31 @@ try{
                     Add-JumpInput $hideProbe.asset
                     foreach($file in @('F:/LyraStarterGame/Source/LyraGame/Equipment/LyraEquipmentInstance.cpp',
                         'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraEquipmentManagerComponent.cpp')){Add-JumpInput $file}
+                }
+                if($CharacterRagdoll){
+                    $ragdollProbe=$proof.ragdoll_probe
+                    if(!$proof.ragdoll_orchestration_migrated -or $proof.native_physics_or_animation_implementation_changed -or
+                        $proof.ragdoll_original_owner -ne '/Game/Characters/Heroes/B_Hero_Default.B_Hero_Default_C' -or
+                        $proof.original_ragdoll_semantics.nodes -ne 14 -or ($proof.original_ragdoll_semantics.order -join ',') -ne 'collision,simulation,impulse' -or
+                        !$ragdollProbe.stage_only -or $ragdollProbe.gameplay_business -or $ragdollProbe.nodes -ne 3 -or !$ragdollProbe.typed_actor_reference -or !$ragdollProbe.virtual_bp_function_call -or
+                        @($proof.native_ragdoll_signatures.PSObject.Properties).Count -ne 7 -or
+                        [IO.Path]::GetFullPath($ragdollProbe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterRagdollProbe.uasset') -or
+                        (Get-FileHash -LiteralPath $ragdollProbe.asset).Hash -ne $ragdollProbe.sha256){throw 'Character inherited Ragdoll native caller/graph proof incomplete'}
+                    Add-JumpInput $ragdollProbe.asset
+                    $physicsFixture=$proof.ragdoll_physics_fixture
+                    if(!$physicsFixture.stage_only -or $physicsFixture.gameplay_business -or !$physicsFixture.original_assets_unmodified -or !$physicsFixture.fixture_owned_body -or
+                        $physicsFixture.bodies -ne 1 -or $physicsFixture.constraints -ne 0 -or
+                        [IO.Path]::GetFullPath($physicsFixture.asset) -ne (Join-Path $stage 'Content/UEPValidation/PA_CharacterRagdollProbe.uasset') -or
+                        (Get-FileHash -LiteralPath $physicsFixture.asset).Hash -ne $physicsFixture.sha256){throw 'Quantitative Ragdoll physics control is not the immutable owned single-body fixture'}
+                    Add-JumpInput $physicsFixture.asset
+                    foreach($entry in $physicsFixture.source_hashes.PSObject.Properties){
+                        if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Original native physics asset changed'}
+                        Add-JumpInput $entry.Name
+                    }
+                    Add-JumpInput (Join-Path $EngineRoot 'Engine/Source/Runtime/PhysicsCore/Private/ChaosEngineInterface.cpp')
+                    foreach($relative in @('Engine/Source/Runtime/Engine/Private/PrimitiveComponentPhysics.cpp','Engine/Source/Runtime/Engine/Private/SkeletalMeshComponentPhysics.cpp',
+                        'Engine/Source/Runtime/Engine/Private/PhysicsEngine/BodyInstance.cpp','Engine/Source/Runtime/Engine/Classes/Components/PrimitiveComponent.h',
+                        'Engine/Source/Runtime/Engine/Classes/Components/SkeletalMeshComponent.h')){Add-JumpInput (Join-Path $EngineRoot $relative)}
                 }
                 foreach($relative in @('Engine/Source/Runtime/Engine/Private/LatentActionManager.cpp','Engine/Source/Runtime/Engine/Private/KismetSystemLibrary.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
             }
@@ -511,6 +540,7 @@ try{
     if($CharacterVisibility){$flag='-UEPCharacterVisibilityResult';$marker='UEP_CHARACTER_VISIBILITY'}
     if($CharacterBeginPlay){$flag='-UEPCharacterBeginPlayResult';$marker='UEP_CHARACTER_BEGIN_PLAY'}
     if($CharacterEquipmentHide){$flag='-UEPCharacterEquipmentHideResult';$marker='UEP_CHARACTER_EQUIPMENT_HIDE'}
+    if($CharacterRagdoll){$flag='-UEPCharacterRagdollResult';$marker='UEP_CHARACTER_RAGDOLL'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -558,6 +588,7 @@ try{
             if($CharacterVisibility){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterVisibilityResult=*'})}
             if($CharacterBeginPlay){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterBeginPlayResult=*'})}
             if($CharacterEquipmentHide){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterEquipmentHideResult=*'})}
+            if($CharacterRagdoll){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterRagdollResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -591,6 +622,7 @@ try{
             if($CharacterVisibility){$resultFlag='-UEPCharacterVisibilityNetworkResult'}
             if($CharacterBeginPlay){$resultFlag='-UEPCharacterBeginPlayNetworkResult'}
             if($CharacterEquipmentHide){$resultFlag='-UEPCharacterEquipmentHideNetworkResult'}
+            if($CharacterRagdoll){$resultFlag='-UEPCharacterRagdollNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -655,6 +687,7 @@ try{
             if($CharacterVisibility){$pass=if($peer -eq 'server'){'UEP_CHARACTER_VISIBILITY_NETWORK_PASSED'}else{'UEP_CHARACTER_VISIBILITY_SHUTDOWN_PASSED'}}
             if($CharacterBeginPlay){$pass=if($peer -eq 'server'){'UEP_CHARACTER_BEGIN_PLAY_NETWORK_PASSED'}else{'UEP_CHARACTER_BEGIN_PLAY_SHUTDOWN_PASSED'}}
             if($CharacterEquipmentHide){$pass=if($peer -eq 'server'){'UEP_CHARACTER_EQUIPMENT_HIDE_NETWORK_PASSED'}else{'UEP_CHARACTER_EQUIPMENT_HIDE_SHUTDOWN_PASSED'}}
+            if($CharacterRagdoll){$pass=if($peer -eq 'server'){'UEP_CHARACTER_RAGDOLL_NETWORK_PASSED'}else{'UEP_CHARACTER_RAGDOLL_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -690,6 +723,7 @@ try{
         if($CharacterVisibility){$module='uep_lyra_characters.visibility_network_contract'}
         if($CharacterBeginPlay){$module='uep_lyra_characters.begin_play_network_contract'}
         if($CharacterEquipmentHide){$module='uep_lyra_characters.equipment_hide_network_contract'}
+        if($CharacterRagdoll){$module='uep_lyra_characters.ragdoll_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -730,6 +764,7 @@ try{
         if($CharacterVisibility){$module='uep_lyra_characters.visibility_contract'}
         if($CharacterBeginPlay){$module='uep_lyra_characters.begin_play_contract'}
         if($CharacterEquipmentHide){$module='uep_lyra_characters.equipment_hide_contract'}
+        if($CharacterRagdoll){$module='uep_lyra_characters.ragdoll_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
