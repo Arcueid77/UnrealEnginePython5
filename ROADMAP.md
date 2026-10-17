@@ -1267,6 +1267,36 @@ Engine/official Lyra/animation changes or publication claim. Ledger52 has three
 accepted native runs and fifteen matched scoped sources/assets; all 1,606
 isolated-index models and 632-file all-index syntax/import closure PASS.
 
+ExperienceReady's generated OnReady continuation adds the twenty-first Character
+route in `uep_lyra_characters/inventory_ready_mixin.py`. Only the immediately-ready
+Controller -> InventoryManager -> Quickbar path becomes Python; missing components
+still enter the original three-delay BP macro. Native grants/authority remain.
+Assets03 preserves original type/full CDO/every graph/twenty-three signatures,
+Python21/BlueprintFallback16. A four-node exact named delegate transport and
+five-node stage-only actual Experience factory producer never directly replay
+the callback. Preload dependent probes against the original and perform temporary
+router verification after compiler work; Assets01/02 remain failed. Differential01
+fails a runtime fixture syntax error before validation; Host now parses actual
+working-tree runtime/tools/tests. Final Differential02 PASSes six inventory pairs/
+twelve real delayed native signals, two missing-controller original-wait controls,
+distinct items/overflow/occupied slots and exact native identity/configuration/
+Profile/CDO restoration. No early/late grant around owned Actor destruction and
+fourteen collected Experience proxies/caller root1/1 PASS. Network01's async
+recapture overwrites measured grants after undo and remains failed; freeze that
+capture in restore phase and add an AST regression. Network02 PASSes 24 authority/
+24 owner replica-noop trials with actual FastArray/Quickbar replication, natural
+authority Experience delivery/zero invented client startup and foreign inventory
+isolation. All owned proxies24/12/12 collect, caller roots1/1 per world, inventory
+observer scopes close, original state restores and cleanup freezes before
+server-last three zero exits. Strict closed logs/independent gates and 1,776
+frozen inputs/final run PASS. Network-only fixture repair is executed in Network02;
+unchanged standalone production/fixture proof stays Differential02. All 1,640 host
+models PASS. Full deferred waits/factory/initialization/Character/version,
+hardware/pixels/travel/loss/package gates remain open; no Engine/official Lyra/
+animation changes, C++ build or publication claim. Ledger53 contains three
+accepted native runs/seventeen matched scoped sources/assets; all 1,640
+isolated-index models and 643-file all-index syntax/import closure PASS.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
