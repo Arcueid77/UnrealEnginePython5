@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory,
-    [ValidateSet('dashrpcinput','dashlocaldirection','dashactivation','dashtasks')][string]$Kind='dashrpcinput')
+    [ValidateSet('dashrpcinput','dashlocaldirection','dashactivation','dashtasks','meleeactivation')][string]$Kind='dashrpcinput')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -17,9 +17,10 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $previousRoot=[IO.Path]::GetFullPath($PreviousDashDirectory)
 if(!$previousRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Previous Dash proof must be workspace-owned'}
 $previous=Get-Content -LiteralPath (Join-Path $previousRoot 'summary.json') -Raw|ConvertFrom-Json -Depth 90
-$previousKind=switch($Kind){'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
+$previousKind=switch($Kind){'meleeactivation'{'meleehitmontage'} 'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
 if($previous.status -ne 'passed' -or $previous.kind -ne $previousKind -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted preceding Dash authoring required'}
 $relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset','Content/UEPMixins/DA_DashSelectorMixin.uasset')
+if($Kind -eq 'meleeactivation'){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset','Content/UEPMixins/DA_MeleeHitMontageMixin.uasset')}
 foreach($name in $relative){
     $from=Join-Path $stage $name;$other=Join-Path $overlay $name
     $row=@($previous.assets|Where-Object {$_.stage -eq $from -and $_.overlay -eq $other})
@@ -60,25 +61,31 @@ try{
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
         Add-DashHash $file.FullName;Add-DashHash $target
     }
-    $generator=switch($Kind){'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
+    $generator=switch($Kind){'meleeactivation'{'generate_melee_activation_assets.py'} 'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
     $script=Join-Path $repo "Demos/UEPLyraIntegration/Tools/$generator"
     foreach($path in @($PSCommandPath,$script,(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py'),
         (Join-Path $stage 'Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll'))){Add-DashHash $path}
+    if($Kind -eq 'meleeactivation'){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_melee_hit_montage_assets.py')}
     $mutating=$true
     $arguments=@($project,'-run=Py',$script,'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-AsyncLoadingThread',
         "-UEPDashRPCStageRoot=$stage","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Dash native RPC receiver two-store authoring' 240
     $proof=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 90
-    $methods=switch($Kind){'dashtasks'{7} 'dashactivation'{4} 'dashlocaldirection'{3} default{2}}
+    $methods=switch($Kind){'meleeactivation'{3} 'dashtasks'{7} 'dashactivation'{4} 'dashlocaldirection'{3} default{2}}
     if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.native_server_rpc_flags_preserved -or
         !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_commit_tasks_animation_movement_retained -or
         $proof.whole_dash_activation_migrated -or $proof.new_business_nodes -ne 0 -or !$proof.native_register_restore_passed -or
         $proof.actual_registered_profile_method_counts.Python -ne $methods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $methods -or
         ($proof.assets -join ',') -ne ($relative -join ',')){throw 'Dash RPC receiver authoring proof incomplete'}
     if($Kind -eq 'dashrpcinput' -and (!$proof.python_replaces_two_remote_stores -or $proof.transport_nodes -ne 4)){throw 'RPC two-store dispatch proof incomplete'}
+    if($Kind -eq 'meleeactivation' -and (!$proof.actual_activation_event_overridden -or !$proof.native_end_teardown_bypass -or
+        $proof.native_end_transport_signature.owner -ne $proof.original_class -or $proof.native_end_guard -ne 'UEPMeleeTearingDown' -or
+        $proof.native_end_gate -ne 'UEPMeleeNativeEnded' -or $proof.native_trace_entry -ne 'UEPMeleeAuthorityTrace' -or
+        @($proof.native_trace_signature.parameters).Count -ne 0 -or ($proof.native_trace_signature.flags -band 0x40) -or
+        $proof.transport_nodes -ne 7 -or $proof.whole_melee_trace_damage_business_migrated)){throw 'Melee activation/native trace entry/guarded End proof incomplete'}
     if($Kind -eq 'dashlocaldirection' -and ($proof.local_direction_transport_nodes -ne 5 -or !$proof.unused_positive_output_retained -or !$proof.native_direction_property_read)){
         throw 'Local direction original graph/five-node/current-property dispatch proof incomplete'
     }
@@ -94,7 +101,7 @@ try{
         throw 'Task/Delay dispatch, original latent node and no double remote body proof incomplete'
     }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
-    $marker=switch($Kind){'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
+    $marker=switch($Kind){'meleeactivation'{'UEP_MELEE_ACTIVATION_ASSETS_PASSED'} 'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
     Assert-UEPFocusedLog $log $marker
     if($log -notmatch ('(?s)'+$marker+'.*Goodbye Python.*Log file closed')){throw 'Dash authoring exit incomplete'}
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Dash authoring frozen input changed'}}

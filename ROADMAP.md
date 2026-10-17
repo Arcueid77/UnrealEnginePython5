@@ -1635,6 +1635,28 @@ local commit. Melee activation, trace/team/occlusion/damage/tasks/Cue and actual
 null-Actor VM behavior are not accepted from this helper. No C++ build/cook/
 package/full-version or publication claim; continue the remaining Melee body.
 
+Batch68 moves Melee's actual activation, ignored native Commit return, first
+equipment-index/cast/MeleeAttackMontage selection and original native montage
+task/Completed/BlendOut/Interrupted/Cancelled lifecycle to Python. Three Profile
+methods retain the67 helper; seven native transport nodes add an actual guarded
+End override and a non-Net authority-trace entry without changing original
+class/CDO/three accepted signatures/graphs. Original native/BP trace, target/
+team/occlusion, root motion, damage and Cue business remain behind that entry,
+explicitly NOT migrated. Assets01 and8 actual standalone ASC natural/interrupt/
+cancel/active-Profile controls PASS using equipped AM_MM_Pistol_Melee,4/4 scopes,
+all Pawn Health invariant and exact Profile/spec/config/pose/control restoration.
+Network01 PASSes12 owner requests/12 remote authority activations across2 native
+owners, actual montage-before-intervention confirmation, natural/cancel/active
+Profile cleanup, foreign location/velocity/active/spec/config/Profile/equipment
+and all-Pawn Health invariants. Scope balances server/A/B0=6/6,3/3,3/3, inactive/
+error-free. Helper regressions PASS32 pairs standalone and32 in each of3 native
+worlds. Strict independent gates/closed logs/real server-last exits pass;
+standalone inputs1,911, network1,915.2,324 host models/781-file closure gate the
+bounded local commit. No C++ build/cook/package, native Commit failure/no-weapon
+warning parity, genuine hostile/friendly/occluded trace/damage/Cue, network
+pause/travel/rejoin/loss, full Melee/version or publication claim. Continue the
+original authority trace/damage body as the next business batch.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

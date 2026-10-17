@@ -9,6 +9,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterDeathReplication,
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
+      [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
       [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
       [switch]$DashLocalDirection,[string]$DashLocalDirectionAuthoringDirectory,
       [switch]$DashActivation,[string]$DashActivationAuthoringDirectory,
@@ -21,6 +22,11 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MeleeActivation){
+    if(!$MeleeActivationAuthoringDirectory){throw 'Melee activation requires its native task lane and revision proof'}
+    $MeleeHitMontage=$true
+}
+if($MeleeActivationAuthoringDirectory -and !$MeleeAuthoringDirectory){throw 'Melee activation revision requires original helper provenance'}
 if($MeleeHitMontage){
     if(!$MeleeAuthoringDirectory -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Melee helper requires its own typed caller and authored proof'}
     $AutoRespawnActivation=$true
@@ -338,7 +344,31 @@ try{
             $proof.original_selector.nodes -ne 24 -or $proof.original_selector.min -ne -.5 -or $proof.original_selector.max -ne .5 -or
             !$proof.caller_probe.stage_only -or $proof.caller_probe.gameplay_business -or !$proof.caller_probe.typed_ability_and_actor_references -or
             $proof.caller_probe.nodes -ne 3 -or !$proof.caller_probe.virtual_bp_function_call -or $proof.whole_melee_activation_trace_damage_migrated){throw 'Accepted retained Melee helper/caller proof required'}
-        foreach($asset in $auth.assets){
+        $currentMelee=@($auth.assets)
+        if($MeleeActivationAuthoringDirectory){
+            $entryRoot=[IO.Path]::GetFullPath($MeleeActivationAuthoringDirectory)
+            if(!$entryRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Melee entry proof must be workspace-owned'}
+            $entryPath=Join-Path $entryRoot 'summary.json';$entryReport=Join-Path $entryRoot 'assets.json'
+            $revision=Get-Content -LiteralPath $entryPath -Raw|ConvertFrom-Json -Depth 100;$entryProof=Get-Content -LiteralPath $entryReport -Raw|ConvertFrom-Json -Depth 100
+            if($revision.status -ne 'passed' -or $revision.kind -ne 'meleeactivation' -or $entryProof.status -ne 'passed' -or
+                !$entryProof.original_full_cdo_preserved -or !$entryProof.original_business_graphs_preserved_with_dispatch -or
+                !$entryProof.native_register_restore_passed -or !$entryProof.actual_activation_event_overridden -or
+                !$entryProof.native_end_teardown_bypass -or $entryProof.native_end_transport_signature.owner -ne $proof.original_class -or
+                $entryProof.actual_registered_profile_method_counts.Python -ne 3 -or $entryProof.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or
+                $entryProof.transport_nodes -ne 7 -or $entryProof.new_business_nodes -ne 0 -or $entryProof.whole_melee_trace_damage_business_migrated -or
+                $entryProof.native_trace_entry -ne 'UEPMeleeAuthorityTrace' -or ($entryProof.native_trace_signature.flags -band 0x40) -or
+                [IO.Path]::GetFullPath($revision.previous_dash_directory) -ne $meleeRoot){throw 'Accepted guarded Melee activation revision required'}
+            foreach($method in @('Slelect Hit Montage','K2_ActivateAbility','MontageHit')){
+                if(($entryProof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress) -ne ($proof.extra_signatures.$method|ConvertTo-Json -Depth 30 -Compress)){throw 'Melee entry changed accepted signatures'}
+            }
+            foreach($old in $auth.assets){
+                $before=@($revision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+                if($before.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
+                    (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256){throw 'Melee helper-to-entry before provenance differs'}
+            }
+            $currentMelee=@($revision.assets);Add-JumpInput $entryPath;Add-JumpInput $entryReport
+        }
+        foreach($asset in $currentMelee){
             if((Get-FileHash -LiteralPath $asset.stage).Hash -ne $asset.sha256 -or (Get-FileHash -LiteralPath $asset.overlay).Hash -ne $asset.sha256){throw 'Authored Melee asset bytes changed'}
             Add-JumpInput $asset.stage;Add-JumpInput $asset.overlay
         }
@@ -696,6 +726,7 @@ try{
     if($CharacterDeathStarted){$flag='-UEPCharacterDeathStartedResult';$marker='UEP_CHARACTER_DEATH_STARTED'}
     if($DashSelector){$flag='-UEPDashSelectorResult';$marker='UEP_DASH_SELECTOR'}
     if($MeleeHitMontage){$flag='-UEPMeleeHitMontageResult';$marker='UEP_MELEE_HIT_MONTAGE'}
+    if($MeleeActivation){$flag='-UEPMeleeActivationResult';$marker='UEP_MELEE_ACTIVATION'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -751,6 +782,7 @@ try{
             if($CharacterDeathStarted){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterDeathStartedResult=*'})}
             if($DashSelector){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashSelectorResult=*'})}
             if($MeleeHitMontage){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeHitMontageResult=*'})}
+            if($MeleeActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeActivationResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
             if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
@@ -792,6 +824,7 @@ try{
             if($CharacterDeathReplication){$resultFlag='-UEPCharacterDeathReplicationNetworkResult'}
             if($DashSelector){$resultFlag='-UEPDashSelectorNetworkResult'}
             if($MeleeHitMontage){$resultFlag='-UEPMeleeHitMontageNetworkResult'}
+            if($MeleeActivation){$resultFlag='-UEPMeleeActivationNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -866,6 +899,7 @@ try{
             if($CharacterDeathReplication){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_REPLICATION_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_REPLICATION_SHUTDOWN_PASSED'}}
             if($DashSelector){$pass=if($peer -eq 'server'){'UEP_DASH_SELECTOR_NETWORK_PASSED'}else{'UEP_DASH_SELECTOR_SHUTDOWN_PASSED'}}
             if($MeleeHitMontage){$pass=if($peer -eq 'server'){'UEP_MELEE_HIT_MONTAGE_NETWORK_PASSED'}else{'UEP_MELEE_HIT_MONTAGE_SHUTDOWN_PASSED'}}
+            if($MeleeActivation){$pass=if($peer -eq 'server'){'UEP_MELEE_ACTIVATION_NETWORK_PASSED'}else{'UEP_MELEE_ACTIVATION_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -913,6 +947,7 @@ try{
         if($DashRPCInput){$module='uep_lyra_abilities.dash_rpc_input_contract'}
         if($MeleeHitMontage){$module='uep_lyra_abilities.melee_hit_montage_contract'}
         if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
+        if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
@@ -963,6 +998,7 @@ try{
         if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
+        if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
