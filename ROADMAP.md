@@ -1676,6 +1676,27 @@ networkpause/travel/rejoin/loss, C++ build/cook/package/full-Melee/version or
 publication claim. Next batch70 proves actual two-owner authority damage and
 replicated observations before moving on to remaining hero/weapon BP business.
 
+Batch70 adds two-owner native authority damage/two-viewer functional comparison,
+not a general-stability or release gate. Current final Network08/09 each PASS20
+real client requests/authority activations,40 viewer rows and4 actual100-damage
+hostile hits across original/Python miss/no-ASC/friendly/occluded/hostile paths.
+Native predicting mode2/authority-only trace, root configuration/query-derived
+direction, empty hit context, unique replicated Bot names and zero native
+immunity at activation are observed. Both clients receive Health; original GAS
+local-prediction-key filtering produces exactly0 owner/1 foreign Hit Cue, not
+an invented local replay. Stage-only replicated native floor, before/after
+original-handler reads once, restored observers/Profile/spec/config/poses,
+quiet20 ticks and scopes10/10,5/5,5/5 pass independent gates/strict closed logs/
+real server-last exits;1,936 inputs per network run. StandaloneRegression02
+PASSes10 controls.2,423 models and793-file closure gate the bounded local commit.
+Failed Network05/07 expose an UNRESOLVED readiness discrepancy before friendly
+activation: authority/one viewer Health100, another viewer Health0. New native
+HealthSet/ASC/canonical-Pawn diagnostics and two repeated successes do not
+prove a fix. Continue70b to isolate initialization/replication against original
+character behavior; do not widen timeout/write Health or mark the full asset/
+version stable. Physical input/PvP avatar turnover/quantitative movement/loss/
+travel/rejoin/packages remain open; no Engine/C++ build or publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
