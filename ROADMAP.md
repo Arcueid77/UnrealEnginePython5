@@ -1458,6 +1458,30 @@ receiver's montage/sense/native random delay and post-delay Ragdoll/Hide/Death
 calls. Keep the empty Death endpoint, animations/physics native and broader
 ancestor/sibling/version gates separate; no C++ build/cook/package/publication.
 
+Batch60 migrates that actual inherited Health.OnDeathStarted generated receiver
+in `uep_lyra_characters/death_started_mixin.py`: native random configured montage,
+PlayAnimMontage, native Sight unregister, native random Delay(0.1..0.6), then
+virtual Ragdoll/HideEquippedWeapons/empty Death. Assets01 preserves the original
+fourteen-node death span, delegate binding, parent bytes/root CDO/all graphs/
+twenty-eight signatures and registers Python30/fallback25. Differential04 PASSes
+all prior scenarios and ten new lethal-GAS default/single/empty-montage,
+destroy-pending and both-direction Profile-switch cases. A read-only actual
+Health delegate witness records montage/senses after the original receiver;
+the later native HitReact overwriting current montage remains separate evidence.
+Actual Sight removal preserves Hearing. Native game-clock/frame delay, no
+prefix replay, weak-owner cancellation beyond0.6s and owned resource cleanup
+are gated. Preserve failed Differential01(initialization),02(UUID reporting),
+03(post-damage montage timing) and Network01(early pending startup snapshot).
+Network02 waits only for the outstanding native startup-show action; unchanged
+final visibility gates,24 authority/24 replica inventory rows,8 hide/undo and6
+local nonreplicated Ragdoll calls PASS. Both final lanes pass strict closed
+logs/independent gates/normal zero exits and1,915 frozen inputs. All1,963 host/
+isolated-index models and714-file closure precede ledger60/local commit. This
+network lane is regression, not real death ingress or physics replication.
+Next batch61 verifies actual authority/owner/foreign death and native respawn;
+no callback replay, animation/physics implementation change, C++ build, package,
+whole-version acceptance or publication is implied.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
