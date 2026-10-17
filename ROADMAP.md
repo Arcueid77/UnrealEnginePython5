@@ -1590,6 +1590,33 @@ the local commit. Native Commit-failure branch, remaining task/Cue/UI/Delay
 business, physical input, quantitative movement and whole-version acceptance
 remain open. No C++ build/cook/package/push/tag/release.
 
+Batch66 moves native montage/RootMotion task creation, authority Cue parameters,
+typed cooldown UI production, original root-finish/Kismet Delay/script-End
+continuation and per-ability delegate cleanup to Python. The native reliable
+RPC body also calls native Commit/task start from script without a second BP
+body; the original ignored server Commit return is retained. Assets03 preserves
+original class/CDO/accepted signatures/graphs except15 declared transport nodes,
+12 old dispatch endpoints and zero/false duration/teardown fields. Seven methods
+per Profile use a real Dash-owned BP End override and a native teardown guard.
+Earlier direct-End routing errors and the unbound override attempt remain
+failed evidence. Standalone04 PASSes12 native controls; Network04 PASSes8 real
+RPC/owner trials with actual client Cue and local typed UI payloads.
+Lifecycle03 PASSes10 native BP/Python root/Delay pause, montage interruption,
+native cancellation and active Profile switch controls, measured game-time
+boundaries and5/5 scope closure. NetworkLifecycle03 PASSes8 two-owner cancel/
+active-Profile interventions after actual authority RPC/task confirmation;
+scope balances are server/A/B0=4/4,2/2,2/2, all inactive/error-free. Selector
+regression PASSes42 pairs. Independent gates/closed logs/real exits pass;
+normal/lifecycle runs freeze1,908 inputs, two-owner lifecycle1,912. Atomic exit
+publication repairs a partial-JSON coordination race without hiding malformed
+messages. Original/Python native cancellation can interrupt montages on both
+worlds; replicated End can cancel the other world's pending Delay, so gates
+check actual per-world observations instead of replaying callbacks.2,247 host
+models/765-file closure gate the local commit. A pre-existing native GameplayTag
+weak-owner warning remains unresolved. No Engine/C++ build/cook/package,
+native Commit-failure, quantitative movement/physical input, network pause/
+travel/rejoin, full Dash/version or publication acceptance is implied.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

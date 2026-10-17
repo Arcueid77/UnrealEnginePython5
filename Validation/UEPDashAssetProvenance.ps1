@@ -61,7 +61,7 @@ function Get-UEPDashLocalDirectionRevision {
 }
 
 function Get-UEPDashActivationRevision {
-    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory,[string]$ActivationDirectory)
+    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory,[string]$ActivationDirectory,[switch]$Historical)
     $local=Get-UEPDashLocalDirectionRevision $BaseDirectory $RPCDirectory $LocalDirectory -Historical
     $path=Join-Path $ActivationDirectory 'summary.json';$reportPath=Join-Path $ActivationDirectory 'assets.json'
     $revision=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json -Depth 90
@@ -86,8 +86,46 @@ function Get-UEPDashActivationRevision {
         $before=@($revision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
         $current=@($revision.assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
         if($before.Count -ne 1 -or $current.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
-            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256 -or (Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
-            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256){throw 'Local-to-activation provenance/current bytes differ'}
+            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256){throw 'Local-to-activation provenance differs'}
+        if(!$Historical -and ((Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
+            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256)){throw 'Current activation asset bytes differ'}
     }
     return @{assets=@($revision.assets);evidence=@($local.evidence)+@($path,$reportPath);proof=$proof}
+}
+
+function Get-UEPDashTasksRevision {
+    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory,[string]$ActivationDirectory,[string]$TasksDirectory)
+    $activation=Get-UEPDashActivationRevision $BaseDirectory $RPCDirectory $LocalDirectory $ActivationDirectory -Historical
+    $path=Join-Path $TasksDirectory 'summary.json';$reportPath=Join-Path $TasksDirectory 'assets.json'
+    $revision=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json -Depth 90
+    $proof=Get-Content -LiteralPath $reportPath -Raw|ConvertFrom-Json -Depth 90
+    if($revision.status -ne 'passed' -or $revision.kind -ne 'dashtasks' -or $revision.runtime_acceptance -or @($revision.assets).Count -ne 2 -or
+        $proof.status -ne 'passed' -or $proof.kind -ne 'dashtasks' -or !$proof.original_full_cdo_preserved -or
+        !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_server_rpc_flags_preserved -or !$proof.native_register_restore_passed -or
+        !$proof.original_native_delay_reused -or !$proof.transport_default_zero -or !$proof.python_rpc_body_has_no_original_fallthrough -or
+        $proof.task_transport_nodes -ne 15 -or !$proof.native_end_teardown_bypass -or $proof.native_end_guard -ne 'UEPDashTearingDown' -or
+        $proof.native_end_gate -ne 'UEPDashNativeEnded' -or @($proof.dispatch_transport_endpoints).Count -ne 12 -or $proof.new_business_nodes -ne 0 -or
+        $proof.native_end_transport_signature.owner -ne $proof.original_class -or
+        $proof.whole_dash_activation_migrated -or $proof.native_task_entry -ne 'UEPDashStartNativeTasks' -or $proof.native_delay_entry -ne 'UEPDashBeginNativeDelay' -or
+        $proof.delay_transport_property -ne 'UEPDashDelayDuration' -or $proof.actual_registered_profile_method_counts.Python -ne 7 -or
+        $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 7 -or @($proof.after_delay_signature.parameters).Count -ne 1 -or
+        @($proof.native_delay_signature.parameters).Count -ne 1 -or ($proof.native_delay_signature.flags -band 0x40) -or
+        $proof.original_signatures.K2_OnEndAbility.owner -ne '/Script/GameplayAbilities.GameplayAbility' -or
+        [IO.Path]::GetFullPath($revision.previous_dash_directory) -ne [IO.Path]::GetFullPath($ActivationDirectory)){throw 'Accepted task/Delay revision required'}
+    foreach($method in @('SelectDirectionalMontage','K2_ActivateAbility','SendInfo','UEPDashStoreRemoteInput','UEPDashPrepareLocalDirection')){
+        if(($proof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress) -ne ($activation.proof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress)){
+            throw 'Task revision changed accepted original signature/Net flags'
+        }
+    }
+    if(($proof.original_signatures.UEPDashStartNativeTasks|ConvertTo-Json -Depth 30 -Compress) -ne ($activation.proof.task_entry_signature|ConvertTo-Json -Depth 30 -Compress)){
+        throw 'Task revision changed accepted native task entry signature'
+    }
+    foreach($old in $activation.assets){
+        $before=@($revision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+        $current=@($revision.assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+        if($before.Count -ne 1 -or $current.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
+            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256 -or (Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
+            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256){throw 'Activation-to-tasks provenance/current bytes differ'}
+    }
+    return @{assets=@($revision.assets);evidence=@($activation.evidence)+@($path,$reportPath);proof=$proof}
 }

@@ -11,12 +11,28 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
       [switch]$DashLocalDirection,[string]$DashLocalDirectionAuthoringDirectory,
       [switch]$DashActivation,[string]$DashActivationAuthoringDirectory,
+      [switch]$DashTasks,[string]$DashTasksAuthoringDirectory,
+      [switch]$DashTasksLifecycle,
+      [switch]$DashTasksNetworkLifecycle,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($DashTasksNetworkLifecycle){
+    if(!$Network -or $DashTasksLifecycle){throw 'Two-owner task lifecycle requires its separate native Network lane'}
+    $DashTasks=$true
+}
+if($DashTasksLifecycle){
+    if($Network){throw 'Standalone native task lifecycle matrix is separate from two-owner lifecycle regression'}
+    $DashTasks=$true
+}
+if($DashTasks){
+    if(!$DashTasksAuthoringDirectory){throw 'Dash task business requires its accepted Delay/dispatch revision'}
+    $DashActivation=$true
+}
+if($DashTasksAuthoringDirectory -and !$DashActivationAuthoringDirectory){throw 'Task revision requires complete activation provenance'}
 if($DashActivation){
     if(!$DashActivationAuthoringDirectory){throw 'Actual Dash activation requires its accepted task-entry revision'}
     $DashLocalDirection=$true
@@ -150,6 +166,19 @@ $summary=[ordered]@{schema_version=1;status='failed';bounded_runtime_acceptance=
     hashes=@();process=$null;external_gate=$null;error=$null;threaded_loading_requested=[bool]$ThreadedLoading}
 $handles=@{};$summary.processes=@{}
 function Add-JumpInput([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
+function Write-UEPJumpExitToken {
+    param([string]$Path,[hashtable]$Token,[string]$OutputRoot)
+    $target=[IO.Path]::GetFullPath($Path);$parent=[IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    if([IO.Path]::GetDirectoryName($target) -ne $parent -or $Token.peer -notin @('A','B0') -or
+        [IO.Path]::GetFileName($target) -ne ($Token.peer+'-exited.json') -or $Token.exit_code -ne 0 -or !$Token.run_id){throw 'Invalid owned native exit token'}
+    if([IO.File]::Exists($target)){throw 'Do not overwrite a previously published native exit token'}
+    $temporary=Join-Path $parent ('.'+[IO.Path]::GetFileName($target)+'.'+[guid]::NewGuid().ToString('N')+'.tmp')
+    try{
+        [IO.File]::WriteAllText($temporary,($Token|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+        # First creation: rename only after the complete JSON stream is closed.
+        [IO.File]::Move($temporary,$target)
+    }finally{if([IO.File]::Exists($temporary)){Remove-Item -LiteralPath $temporary -Force}}
+}
 try{
     $id=(Get-Content -LiteralPath (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.modules') -Raw|ConvertFrom-Json).BuildId
     foreach($relative in @('Binaries/Win64/UnrealEditor.modules','Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor.modules','Plugins/UEPLyraBridge/Binaries/Win64/UnrealEditor.modules')){
@@ -261,7 +290,11 @@ try{
                 if($DashActivationAuthoringDirectory){
                     $activationRoot=[IO.Path]::GetFullPath($DashActivationAuthoringDirectory)
                     if(!$activationRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Activation proof must be workspace-owned'}
-                    $revision=Get-UEPDashActivationRevision $dashRoot $revisionRoot $localRoot $activationRoot
+                    if($DashTasksAuthoringDirectory){
+                        $tasksRoot=[IO.Path]::GetFullPath($DashTasksAuthoringDirectory)
+                        if(!$tasksRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Tasks proof must be workspace-owned'}
+                        $revision=Get-UEPDashTasksRevision $dashRoot $revisionRoot $localRoot $activationRoot $tasksRoot
+                    }else{$revision=Get-UEPDashActivationRevision $dashRoot $revisionRoot $localRoot $activationRoot}
                 }else{$revision=Get-UEPDashLocalDirectionRevision $dashRoot $revisionRoot $localRoot}
             }else{$revision=Get-UEPDashRPCInputRevision $dashRoot $revisionRoot}
             $currentDashAssets=@($revision.assets)
@@ -271,6 +304,17 @@ try{
         foreach($asset in $currentDashAssets){
             if((Get-FileHash -LiteralPath $asset.stage).Hash -ne $asset.sha256 -or (Get-FileHash -LiteralPath $asset.overlay).Hash -ne $asset.sha256){throw 'Dash authored asset changed'}
             Add-JumpInput $asset.stage;Add-JumpInput $asset.overlay
+        }
+        if($DashTasks){
+            $sourceProject=(Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json).source
+            $cueRelative='Plugins/GameFeatures/ShooterCore/Content/GameplayCues/GCNL_Dash.uasset'
+            $stageCue=Join-Path $stage $cueRelative;$sourceCue=Join-Path (Split-Path $sourceProject -Parent) $cueRelative
+            if((Get-FileHash -LiteralPath $stageCue).Hash -ne (Get-FileHash -LiteralPath $sourceCue).Hash){throw 'Native Dash Cue observer requires unchanged official Cue bytes'}
+            Add-JumpInput $stageCue;Add-JumpInput $sourceCue
+            $typedRelative='Content/UEPInterop/BP_UEPGameplayMessages.uasset'
+            $typedStage=Join-Path $stage $typedRelative;$typedOverlay=Join-Path $repo "Demos/UEPLyraIntegration/Overlay/$typedRelative"
+            if((Get-FileHash -LiteralPath $typedStage).Hash -ne (Get-FileHash -LiteralPath $typedOverlay).Hash){throw 'Typed producer reader/broadcaster bytes differ'}
+            Add-JumpInput $typedStage;Add-JumpInput $typedOverlay
         }
         $private=@($dashProof.caller_probe)+@($dashProof.inherited_declaration_probe.assets)
         foreach($item in $private){$path=if($item.PSObject.Properties['asset']){$item.asset}else{$item.path};if((Get-FileHash -LiteralPath $path).Hash -ne $item.sha256){throw 'Dash private probe changed'};Add-JumpInput $path}
@@ -628,6 +672,8 @@ try{
     if($DashSelector){$flag='-UEPDashSelectorResult';$marker='UEP_DASH_SELECTOR'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
+    if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
+    if($DashTasksLifecycle){$flag='-UEPDashTasksLifecycleResult';$marker='UEP_DASH_TASKS_LIFECYCLE'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -680,6 +726,7 @@ try{
             if($DashSelector){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashSelectorResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
+            if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -720,6 +767,8 @@ try{
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
+            if($DashTasks){$resultFlag='-UEPDashTasksNetworkResult'}
+            if($DashTasksNetworkLifecycle){$resultFlag='-UEPDashTasksNetworkLifecycleResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -741,7 +790,7 @@ try{
                     $summary.processes[$peer]=Complete-UEPValidationProcess $handles[$peer]
                     if($summary.processes[$peer].exit_code -ne 0){throw "Native Jump $peer process failed"}
                     if($peer -ne 'server'){
-                        @{peer=$peer;run_id=$run;exit_code=0}|ConvertTo-Json|Set-Content -LiteralPath "$output/$peer-exited.json" -Encoding utf8
+                        Write-UEPJumpExitToken -Path "$output/$peer-exited.json" -Token @{peer=$peer;run_id=$run;exit_code=0} -OutputRoot $output
                     }
                 }
                 if(Test-Path -LiteralPath "$output/$peer.json"){
@@ -791,6 +840,8 @@ try{
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
+            if($DashTasks){$pass=if($peer -eq 'server'){'UEP_DASH_TASKS_NETWORK_PASSED'}else{'UEP_DASH_TASKS_SHUTDOWN_PASSED'}}
+            if($DashTasksNetworkLifecycle){$pass=if($peer -eq 'server'){'UEP_DASH_TASKS_NETWORK_LIFECYCLE_NETWORK_PASSED'}else{'UEP_DASH_TASKS_NETWORK_LIFECYCLE_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -833,7 +884,9 @@ try{
         if($DashRPCInput){$module='uep_lyra_abilities.dash_rpc_input_contract'}
         if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
+        if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
+        if($DashTasksNetworkLifecycle){$module='uep_lyra_abilities.dash_tasks_network_lifecycle_contract'}
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
         $report=Get-Content -LiteralPath "$output/jump.json" -Raw|ConvertFrom-Json -Depth 90
@@ -878,7 +931,9 @@ try{
         if($DashSelector){$module='uep_lyra_abilities.dash_selector_contract'}
         if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
+        if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--report',"$output/jump.json")
+        if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
