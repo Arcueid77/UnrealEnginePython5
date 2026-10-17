@@ -5,6 +5,19 @@
 class UPythonFunction;
 class UFunction;
 
+// Lexical router context for nested parent/child dispatch and lifecycle hooks.
+// Does not own or root the UObject; game-thread scopes must remain balanced.
+class FUEPyScopedMixinInvocation
+{
+public:
+	FUEPyScopedMixinInvocation(UObject* context, uint64 registration_id);
+	~FUEPyScopedMixinInvocation();
+	FUEPyScopedMixinInvocation(const FUEPyScopedMixinInvocation&) = delete;
+	FUEPyScopedMixinInvocation& operator=(const FUEPyScopedMixinInvocation&) = delete;
+private:
+	int32 EntryDepth = INDEX_NONE;
+};
+
 enum class EUEPyMixinDispatch : uint8
 {
 	NotMixin,

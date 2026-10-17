@@ -13,6 +13,7 @@ signatures, build configurations or direct C++ invocation.
 | Reflected name lookup / `call_function` / native ProcessEvent entry | Tested supported for identified signatures | `mixin_signature_validation.py`: integer return, const struct input, struct return, native event |
 | Return plus const array input, including inherited Blueprint owner | Tested supported | Mixin Third Person `interface_probe`: AddInstances and BatchUpdateInstancesTransforms, Python and native fallback |
 | Explicit `call_mixin_original` | Tested supported | Signature fixture and Mixin Third Person: preserved native return values and BP input movement |
+| Explicit parent/child routers with same-name preserved originals | Bounded 0.11 development support | Dash `generate_mixin_inheritance_probe.py`: literal Object BPs, both registration/unregister orders, owned37/inherited23 originals, class-qualified nested parent return, initializer/teardown and fallback. Does not imply interception of all explicit-parent VM opcodes |
 | Profile omits one method from the router union | Tested supported | Caller/signature/Third Person fixtures; the original executes once |
 | Python callback raises | Tested supported exception boundary | `mixin_exception_validation.py`: no implicit native broadcast, later profile recovery, original restored on unregister; expected error log is required |
 | Python `object.broadcast` -> reflected native multicast -> Python subscriber | Tested separately from Mixin interception | `delegate_broadcast_validation.py`: empty inline delegate, native/Python delivery, bad-parameter rejection/recovery and unsubscribe; the 5.8.1 property-value address fix is required. No sparse-delegate coverage claim |
@@ -33,6 +34,7 @@ signatures, build configurations or direct C++ invocation.
 | Construction on newly spawned Actor | Tested supported with prior registration | PIE fixture sees Python UserConstructionScript. A Construction event that already ran is not replayed |
 | BeginPlay and EndPlay | Tested supported | Three real PIE sessions in one Editor; two BeginPlay/two EndPlay events per session |
 | Per-instance profile, inherited Interface/CDO, fallback, initializer/teardown reentry guards | Tested supported | Mixin Third Person runtime and its parent/child Interface probe |
+| Child owns an Interface provider override after compiler removes duplicate Interface descriptors | Bounded 0.11 development support | Dash authoring control accepts owned GetPythonMixinSet plus native Interface implementation, rejects ordinary inherited sibling; original class/signatures restored |
 | Live weapon profile Python -> BP -> Python | Tested supported in the weapon fixture | No Construct replay; teardown removes observation and first Python Tick resumes it once |
 | Controlled unregister -> module reload -> register -> NEW widget | Tested supported | Weapon fixture, three cycles; explicit native CollectGarbage and stale-wrapper checks |
 | Native UObject GC between PIE sessions | Tested supported | PIE Actors become invalid, subscription scopes close and original function identity is restored |

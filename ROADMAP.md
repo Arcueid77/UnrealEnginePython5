@@ -1505,6 +1505,30 @@ acceptance. No new assets/compile, pose replication, standalone re-execution or
 version promotion is claimed. Next start Dash's direction/montage decision helper,
 then migrate/accept its actual activation, native task/cancel and RPC orchestration.
 
+Batch62 starts only the retained Dash SelectDirectionalMontage helper. Its42
+native BP/Python pairs and three-world/two-owner helper lane PASS, with original
+class/full CDO/graphs/signatures, null montages, strict angle boundaries, named
+outputs, same-frame native-state invariance and restored Profile/configuration.
+An actual inherited-Interface discovery failure exposed a UEP prerequisite:
+accept an owned child provider after native compiler Interface conformance, and
+support explicit parent/child routers with lexical weak-object invocation
+contexts and unwrapped originals. Six private Object BP controls PASS same-name
+nested parent/child originals, lifecycle hooks, fallback, both registration and
+unregister orders, ordinary sibling exclusion and signature restoration.
+This does not change RPC/final-call interception or automatically call originals.
+The final reviewed plugin-only build compiles four UEP CPPs and links DLL/LIB in
+22.299s, -NoEngineChanges, unchanged checked Engine/official references and BuildId;
+earlier ledgers keep their actual older binary provenance. No full Engine build.
+Current-DLL actual death/respawn regression PASSes36 native death witnesses;
+ADS six and Emote nine standalone pairs, plus ADS and Emote each20-authority-trial/
+two-owner network regressions PASS. All2,038 isolated-index models,729-file
+syntax/import closure and ledger62's eight passed runs/sixteen matched scoped
+files support a local bounded batch commit, not version promotion. Retain failed asset attempts,
+the strict-log-failed first selector run and the post-release Controller-read
+network failure. Dash activation, navigation/movement decisions, task/cancel and
+server RPC body business remain subsequent batches; animation/GAS/movement/RPC
+implementation stays native. No full-version, package or publication claim.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

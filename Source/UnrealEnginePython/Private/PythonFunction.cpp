@@ -59,6 +59,7 @@ void UPythonFunction::CallPythonCallable(FFrame& Stack, RESULT_DECL)
 #endif
 
 	UPythonFunction *function = static_cast<UPythonFunction *>(Stack.CurrentNativeFunction);
+	FUEPyScopedMixinInvocation invocation_scope(Context, function->GetMixinRegistrationId());
 	PyObject* resolved_mixin_callable = nullptr;
 	UFunction* mixin_original = nullptr;
 	const EUEPyMixinDispatch mixin_dispatch = ue_py_resolve_mixin_call(

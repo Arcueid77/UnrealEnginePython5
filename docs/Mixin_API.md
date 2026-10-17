@@ -107,19 +107,24 @@ Implement the two interface functions in the Blueprint:
    instance-editable Blueprint variable, allowing two placed instances of the
    same `BP_*_C` to choose different profiles.
 
-Only the Blueprint that directly adds `UEPPythonMixinInterface` owns the class
-router. Derived Blueprints inherit that router and the interface selection hook;
-they are not registered as a second owner. Put the Interface and complete Mixin
-Set on the highest Blueprint class that should share one routed function union.
-This matches the rule that related base/derived classes cannot own simultaneous
-routers.
+An ordinary derived Blueprint inherits its parent's router and selection hook;
+inheriting the Interface alone does not create a second router. Sharing a Mixin
+Set on the highest relevant Blueprint remains the simplest arrangement.
+
+The current 0.11 development pilot also supports an explicitly configured child
+with its own `GetPythonMixinSet` override. UE 5.8.1's compiler removes duplicate
+inherited Interface descriptors and promotes their functions to overrides, so
+discovery accepts the owned provider plus native Interface implementation, not
+just a direct Interface descriptor. An inherited provider without an owned
+override remains excluded. This is editor-hosted native evidence, not a new
+packaged-build or published-version claim.
 
 UEP scans already loaded Blueprint classes after project startup imports and
 also observes package completion in Editor, Game and packaged builds, so a class
 loaded later by a map or soft reference is registered before subsequent mixed
-calls. It imports the complete Mixin Set and builds one router for the directly
+calls. It imports the complete Mixin Set and builds one router per explicitly
 declaring class. `register_declared_mixin(class)` forces registration for one
-loaded direct owner; `register_loaded_mixin_interfaces()` rescans all loaded
+loaded owner; `register_loaded_mixin_interfaces()` rescans all loaded
 classes and returns the number of newly registered routers.
 
 UE 5.8.1 Editor builds (including `UnrealEditor -game` and Editor-hosted
@@ -241,6 +246,33 @@ class ExampleProfile:
 profile class. `isinstance(self, ExampleProfile)`, cooperative Python multiple
 inheritance and zero-argument `super()` are not part of the contract.
 
+### Explicit parent and child routers (0.11 development)
+
+An explicitly configured child may own a router alongside its parent's router,
+including same-name functions. Each routed invocation, initializer and teardown
+has a game-thread, weak-object lexical router context. `call_mixin_original`
+and Python helper lookup use that context: a parent Python callback on a child
+UObject reaches the parent's preserved original, not the child's same-name body.
+A nested child -> class-qualified parent -> child return restores the child
+context. An inherited injected parent function is unwrapped before storing the
+child's original; unregistering either router does not retain a discarded one.
+
+Outside a callback, instance profile APIs address the nearest registered class.
+During a callback, read/helper APIs use its active router; mutation remains
+rejected until the invocation unwinds. Each router has its own profile cache.
+Keep the Blueprint selector's profile names valid for every participating Set;
+selecting a child profile does not implicitly select or chain a parent profile.
+Python success still replaces the selected method without an automatic original
+or parent call. Class-qualified `ue.call_function_by_class` can deliberately
+enter a parent's reflected function; it does not make every cached/final or
+native C++ call interceptable.
+
+The native Dash asset authoring probe covers owned versus inherited originals,
+same-name nesting, initialization/teardown, fallback, both registration and
+unregister orders, sibling exclusion and signature restoration. It uses private
+literal Object BPs, not gameplay callback replay. See Examples ledger62 and
+`Migration/PROGRESS.md` for the corresponding runtime/regression status.
+
 ## Calling the original explicitly
 
 When the active profile implements a function, Python fully replaces it. Call
@@ -313,19 +345,21 @@ Route the Python construction method with `.override = "MyConstructionBody"`.
 The BlueprintFallback profile calls `call_mixin_original("MyConstructionBody")`.
 The cloned BP body remains intact, so child explicit Parent construction can
 execute the retained parent construction and then resolve the helper virtually.
-One parent router serves its children; the related-class router guard is not
-relaxed. This bounded graph adapter is not a general hook for cached UFunction
+That fixture uses one parent router for its children; it does not exercise the
+separate 0.11 explicit-child extension. This bounded graph adapter is not a general hook for cached UFunction
 pointers, other explicit Parent calls, or direct C++ invocations.
 
-## 0.7 safety boundary
+## Safety boundary (0.7 baseline with identified development extensions)
 
 - Registration, selection and UObject access run on Unreal's game thread.
 - Targets are Blueprint-generated classes.
 - One router exists per target class; it may contain multiple mutually
   exclusive profiles, but profile chaining/stacking is not supported.
-- Related base/derived Blueprint classes cannot have simultaneous routers.
-- Only the Blueprint class that directly declares `UEPPythonMixinInterface`
-  owns a router; derived classes inherit it.
+- The 0.7 baseline rejected related routers. The 0.11 development extension
+  above permits explicitly configured parent/child routers with lexical context;
+  it is not cooperative Python inheritance or profile stacking.
+- A class must directly declare `UEPPythonMixinInterface` or implement it with
+  its own `GetPythonMixinSet` override; ordinary derived classes inherit routing.
 - Profile methods accept `self` plus the reflected input signature.
 - Static functions, RPCs, latent functions and delegate signatures are rejected.
 - Non-const output parameters are rejected by default. In 0.10 development,

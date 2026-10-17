@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -46,6 +46,7 @@ try{
     $relative=if($Kind -eq 'reloadmagazine'){'Content/Weapons/GA_Weapon_ReloadMagazine.uasset'}elseif($Kind -eq 'dropweapon'){'Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_DropWeapon.uasset'}elseif($Kind -eq 'heroheal'){'Content/Characters/Heroes/Abilities/GA_Hero_Heal.uasset'}elseif($Kind -eq 'autoreload'){'Content/Weapons/GA_Weapon_AutoReload.uasset'}elseif($Kind -eq 'quickslot'){'Plugins/GameFeatures/ShooterCore/Content/Game/GA_QuickbarSlots.uasset'}else{'Content/Characters/Heroes/Abilities/GA_Hero_Death.uasset'}
     if($Kind -eq 'weaponinstance'){$relative='Plugins/GameFeatures/ShooterCore/Content/Weapons/B_WeaponInstance_Base.uasset'}
     if($Kind -eq 'spawneffect'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Respawn/GA_SpawnEffect.uasset'}
+    if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'devicecolor'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_TeamColor_DeviceProperty.uasset'}
     if($Kind -eq 'widgetheld'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhileInputHeld.uasset'}
     if($Kind -eq 'widgetpressed'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhenInputPressed.uasset'}
@@ -63,6 +64,10 @@ try{
         (Join-Path $stage 'Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll'))){Add-HeroHash $path}
     if($Kind -eq 'weaponinstance'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_instance_assets.py')}
     if($Kind -eq 'devicecolor'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_device_color_assets.py')}
+    if($Kind -eq 'dashselector'){
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_mixin_inheritance_probe.py')
+    }
     if($Kind -eq 'widgetheld'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_widget_held_assets.py')}
     if($Kind -eq 'widgetpressed'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_widget_pressed_assets.py')}
     if($Kind -eq 'autorespawnhelpers'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_auto_respawn_helper_assets.py')}
@@ -106,8 +111,28 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
+    if($Kind -eq 'dashselector'){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne 2 -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
+    if($Kind -eq 'dashselector' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
+        $report.new_business_nodes -ne 0 -or $report.original_selector.nodes -ne 26 -or !$report.original_selector.native_math_retained -or
+        $report.original_selector.forward_abs_yaw_less_than -ne 45 -or $report.original_selector.backward_abs_yaw_greater_than -ne 135 -or
+        $report.actual_registered_profile_method_counts.Python -ne 1 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or
+        !$report.caller_probe.stage_only -or $report.caller_probe.gameplay_business -or $report.caller_probe.nodes -ne 3 -or
+        !$report.caller_probe.typed_ability_reference -or !$report.caller_probe.virtual_bp_function_call -or
+        ($report.caller_probe.outputs -join ',') -ne 'DirectionalMontage,BiasForwardMovement' -or
+        (Get-FileHash -LiteralPath $report.caller_probe.asset).Hash -ne $report.caller_probe.sha256)){
+        throw 'Dash selector original graph/native named-output caller proof incomplete'
+    }
+    if($Kind -eq 'dashselector'){
+        $probe=$report.inherited_declaration_probe
+        if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.parent_and_explicit_child_registered -or
+            !$probe.ordinary_inherited_sibling_rejected -or !$probe.ancestor_original_through_child_router -or
+            !$probe.owned_shared_function_verified -or !$probe.inherited_original_unwrapped -or !$probe.lexical_init_teardown_verified -or
+            ($probe.reverse_order_values -join ',') -ne '117,211,3097,3069' -or ($probe.unregister_order_values -join ',') -ne '1023,2097,2069' -or
+            $probe.child_direct_interfaces -ne 0 -or !$probe.child_owned_provider -or !$probe.restored -or @($probe.assets).Count -ne 6){throw 'Native inherited declaration/original-call control incomplete'}
+        foreach($asset in $probe.assets){if((Get-FileHash -LiteralPath $asset.path).Hash -ne $asset.sha256){throw 'Native inheritance control asset changed'}}
+    }
     if($Kind -eq 'characterinventory' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or
         @($report.implemented_methods).Count -ne 1 -or $report.implemented_methods[0] -ne 'ClearInventory')){
         throw 'Character helper-only identity/default/signature/graph proof incomplete'
