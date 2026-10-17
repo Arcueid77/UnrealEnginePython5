@@ -10,6 +10,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
       [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
+      [switch]$MeleeTrace,[string]$MeleeTraceAuthoringDirectory,
       [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
       [switch]$DashLocalDirection,[string]$DashLocalDirectionAuthoringDirectory,
       [switch]$DashActivation,[string]$DashActivationAuthoringDirectory,
@@ -22,6 +23,11 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MeleeTrace){
+    if(!$MeleeTraceAuthoringDirectory -or $Network){throw 'Melee trace currently requires its separate native standalone matrix and revision proof'}
+    $MeleeHitMontage=$true
+}
+if($MeleeTraceAuthoringDirectory -and !$MeleeActivationAuthoringDirectory){throw 'Melee trace requires complete guarded activation provenance'}
 if($MeleeActivation){
     if(!$MeleeActivationAuthoringDirectory){throw 'Melee activation requires its native task lane and revision proof'}
     $MeleeHitMontage=$true
@@ -367,6 +373,32 @@ try{
                     (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256){throw 'Melee helper-to-entry before provenance differs'}
             }
             $currentMelee=@($revision.assets);Add-JumpInput $entryPath;Add-JumpInput $entryReport
+        }
+        if($MeleeTraceAuthoringDirectory){
+            $traceRoot=[IO.Path]::GetFullPath($MeleeTraceAuthoringDirectory)
+            if(!$traceRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Melee trace proof must be workspace-owned'}
+            $tracePath=Join-Path $traceRoot 'summary.json';$traceReport=Join-Path $traceRoot 'assets.json'
+            $traceRevision=Get-Content -LiteralPath $tracePath -Raw|ConvertFrom-Json -Depth 100
+            $traceProof=Get-Content -LiteralPath $traceReport -Raw|ConvertFrom-Json -Depth 100
+            if($traceRevision.status -ne 'passed' -or $traceRevision.kind -ne 'meleetrace' -or $traceProof.status -ne 'passed' -or $traceProof.kind -ne 'meleetrace' -or
+                !$traceProof.original_full_cdo_preserved -or !$traceProof.original_business_graphs_preserved_with_dispatch -or !$traceProof.original_trace_body_retained -or
+                !$traceProof.python_trace_has_no_original_fallthrough -or !$traceProof.native_register_restore_passed -or !$traceProof.native_end_teardown_bypass -or
+                $traceProof.native_end_transport_signature.owner -ne $proof.original_class -or $traceProof.native_trace_entry -ne 'UEPMeleeAuthorityTrace' -or
+                ($traceProof.native_trace_signature.flags -band 0x40) -or @($traceProof.native_trace_signature.parameters).Count -ne 0 -or
+                $traceProof.actual_registered_profile_method_counts.Python -ne 4 -or $traceProof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
+                $traceProof.transport_nodes -ne 1 -or $traceProof.new_business_nodes -ne 0 -or @($traceProof.declared_dispatch_endpoints).Count -ne 2 -or
+                $traceProof.whole_melee_trace_damage_business_migrated -or [IO.Path]::GetFullPath($traceRevision.previous_dash_directory) -ne $entryRoot){throw 'Accepted Melee authority dispatch revision required'}
+            foreach($method in @('Slelect Hit Montage','K2_ActivateAbility','MontageHit','K2_OnEndAbility','UEPMeleeAuthorityTrace')){
+                $expected=if($method -eq 'K2_OnEndAbility'){$entryProof.native_end_transport_signature}elseif($method -eq 'UEPMeleeAuthorityTrace'){$entryProof.native_trace_signature}else{$entryProof.original_signatures.$method}
+                if(($traceProof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress) -ne ($expected|ConvertTo-Json -Depth 30 -Compress)){throw 'Melee trace changed accepted signature'}
+            }
+            foreach($old in $currentMelee){
+                $before=@($traceRevision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+                if($before.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
+                    (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256){throw 'Melee entry-to-trace before provenance differs'}
+                Add-JumpInput $before[0].stage_backup;Add-JumpInput $before[0].overlay_backup
+            }
+            $currentMelee=@($traceRevision.assets);Add-JumpInput $tracePath;Add-JumpInput $traceReport
         }
         foreach($asset in $currentMelee){
             if((Get-FileHash -LiteralPath $asset.stage).Hash -ne $asset.sha256 -or (Get-FileHash -LiteralPath $asset.overlay).Hash -ne $asset.sha256){throw 'Authored Melee asset bytes changed'}
@@ -727,6 +759,7 @@ try{
     if($DashSelector){$flag='-UEPDashSelectorResult';$marker='UEP_DASH_SELECTOR'}
     if($MeleeHitMontage){$flag='-UEPMeleeHitMontageResult';$marker='UEP_MELEE_HIT_MONTAGE'}
     if($MeleeActivation){$flag='-UEPMeleeActivationResult';$marker='UEP_MELEE_ACTIVATION'}
+    if($MeleeTrace){$flag='-UEPMeleeTraceResult';$marker='UEP_MELEE_TRACE'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -999,6 +1032,7 @@ try{
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_contract'}
+        if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}

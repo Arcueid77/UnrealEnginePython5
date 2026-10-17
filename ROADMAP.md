@@ -1657,6 +1657,25 @@ warning parity, genuine hostile/friendly/occluded trace/damage/Cue, network
 pause/travel/rejoin/loss, full Melee/version or publication claim. Continue the
 original authority trace/damage body as the next business batch.
 
+Batch69 moves authority capsule/target-ASC/team/occlusion business to Python,
+retaining native queries, GAS, root motion and owner Cue. One new authority
+dispatch node retains the original BP body only for explicit fallback; original
+class/full CDO/six accepted signatures and4/4 methods remain. Differential04
+PASSes10 actual standalone ASC requests across miss/no-ASC/friendly/occluded/
+hostile BP/Python controls: rejected branches cause zero damage/root/Cue;
+hostile causes100 actual Health damage and one native root task/observed owner
+Cue each. Native force options/formula, original empty HitResult context and
+default Cue fields are preserved. Existing const-array native-output ABI is
+adapted using reflected flags, not an Engine/C++ change. Failed attempts01–03
+and a read-only ABI diagnostic remain. Current-revision8 activation lifecycle
+trials,32 helper pairs and12 two-owner no-damage requests/authority activations
+PASS independent gates/closed logs/real exits;1,927 frozen inputs per runtime
+lane.2,375 host models and full-index closure gate the bounded local commit.
+No two-owner hostile damage, physical input, quantitative movement parity,
+networkpause/travel/rejoin/loss, C++ build/cook/package/full-Melee/version or
+publication claim. Next batch70 proves actual two-owner authority damage and
+replicated observations before moving on to remaining hero/weapon BP business.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
