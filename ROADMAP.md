@@ -1297,6 +1297,32 @@ animation changes, C++ build or publication claim. Ledger53 contains three
 accepted native runs/seventeen matched scoped sources/assets; all 1,640
 isolated-index models and 643-file all-index syntax/import closure PASS.
 
+Batch54 replaces the three Controller/InventoryManager/Quickbar pending
+decisions in `uep_lyra_characters/inventory_wait_mixin.py`. Scheduling stays
+native DelayUntilNextTick, with three stable per-Actor UUIDs and an empty
+two-node int32 resume declaration; no Python wait ticker/callback root or global
+latent cancellation. Do not promise a whole engine-frame delay: preserve the
+actual native next-tick backend. Assets01 preserves original type/full CDO/all
+graphs/twenty-three logical signatures, Python22/fallback17. Differential04
+PASSes six immediate inventory pairs, two destroyed-wait controls and six late
+readiness/single/repeated-request BP/Python pairs. Actual possession adds a
+second independent ready signal; native coalescing and the two grants match BP.
+All32 owned Experience proxies and Character-owned observers collect, root1/1.
+Failed Differential01-03 remain failed: broad observer ownership included an
+original pooled GCNL_Spawning handle; the diagnostic reference search itself
+also emitted an Engine ensure. Final tests identify the exact native Cue handle
+and owned target separately, recording one inactive/unrooted pooled observer
+per row with unchanged fields and hidden/ownerless Cue, not pretending it was
+collected or mutating the pool. Network01 PASSes24 authority/24 replica-noop
+trials, actual inventory replication, owner isolation and restored native state;
+proxies24/12/12 collect, roots1/1 each world. Strict closed logs, independent
+gates, server-last three zero exits and1,796 frozen inputs/final run PASS.
+All1,702 host/isolated-index models and653-file all-index checks pass. Ledger54
+is bounded: factory creation/ReceivePossessed is next, initialization and
+parent/sibling/full-version gates remain open. No native pending-Profile-switch
+or deferred-component replication, hardware/pixels/travel/loss/package claim;
+no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
