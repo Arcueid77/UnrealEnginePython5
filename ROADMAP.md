@@ -1142,6 +1142,33 @@ and 584-file all-index syntax/local-import closure pass. No callback replay/prop
 file-delivered gameplay state, pixels/hardware/travel/loss/package/whole-version
 claim. Team listener/health/init/input and parent/sibling business remain open.
 
+The original HealthComponent OnHealthChanged receiver adds the twelfth retained
+Character method in `uep_lyra_characters/health_changed_mixin.py`; eleven prior
+methods are explicit aliases. Native authority/PlayerState/self/AI Controller
+guards and raw Old-New, zero HitLocation/default Tag remain. Assets01 preserves
+type/full CDO/fourteen signatures/every graph and actually registers twelve
+methods on both Profiles. Differential04 has ten actual GAS primary trials,
+twenty-two native primary/prime/restore health delegates and four true AI Damage
+stimuli with matching native perception memory, including original negative
+healing strength. Network01 has fourteen authority primary trials/twenty-eight
+client primary observations, thirty native Health delegates/world and 4/0/0
+authority/client Damage stimuli. Local role2/foreign role1, native null replica
+instigators, opposing/swapped Profiles, original health/inventory/Profile/CDO,
+one scope per world and 3 / 4,3,3 closed bindings PASS. A separate unregistered
+test-owned bot producer calls native SpawnOneBot, so normal native team assignment
+and real opposing sources obey damage rules; the original bot list is unchanged,
+and owned Pawn/Controller/PlayerState/producer are destroyed. Three server-last
+zero exits, strict closed logs, independent gates and 1,684 frozen inputs/final
+run PASS. Differential01/02/03 remain failed fixture history (unreflected name
+setter, unassigned-team spawn/negative Damage restore/Controller BP destroy noop,
+then team-rejected source). Fixes have executable regression models; all 1,451
+isolated-index models and 593-file all-index syntax/import closure PASS. Ledger
+48 has exactly three accepted native runs and thirteen matched scoped inputs. Valid
+non-PlayerState/missing-Pawn edges are host-only; no health property/delegate
+replay or fixture-injected AI report, physical input/pixels/travel/loss/package/
+whole-Character/version claim. Team listener/init/input and parent/sibling
+business remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

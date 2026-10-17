@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -49,7 +49,7 @@ try{
     if($Kind -eq 'devicecolor'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_TeamColor_DeviceProperty.uasset'}
     if($Kind -eq 'widgetheld'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhileInputHeld.uasset'}
     if($Kind -eq 'widgetpressed'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhenInputPressed.uasset'}
-    if($Kind -in @('characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts')){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_Hero_ShooterMannequin.uasset'}
+    if($Kind -in @('characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth')){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_Hero_ShooterMannequin.uasset'}
     if($Kind -in @('autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation')){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Respawn/GA_AutoRespawn.uasset'}
     $marker=Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json
     $original=Join-Path (Split-Path $marker.source -Parent) $relative;$copy=Join-Path $stage $relative
@@ -72,7 +72,7 @@ try{
     }
     if($Kind -in @('autorespawnevents','autorespawnactivation')){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_auto_respawn_event_assets.py')}
     if($Kind -eq 'autorespawnactivation'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_auto_respawn_activation_assets.py')}
-    if($Kind -in @('characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts')){
+    if($Kind -in @('characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth')){
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_character_inventory_assets.py')
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_auto_respawn_helper_assets.py')
     }
@@ -81,20 +81,20 @@ try{
     if($Kind -eq 'characterloadout'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_character_loadout_probe.py')}
     if($Kind -eq 'characteroutline'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_character_outline_probe.py')}
     if($Kind -eq 'characterteam'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_character_team_probe.py')}
-    if($Kind -in @('characterstencil','characterlifecycle','characterparts')){
+    if($Kind -in @('characterstencil','characterlifecycle','characterparts','characterhealth')){
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_character_stencil_probe.py')
         Add-HeroHash (Join-Path $stage 'Content/UEPValidation/BP_CharacterTeamCallProbe.uasset')
         Add-HeroHash (Join-Path $stage 'Content/Characters/Heroes/B_Hero_Default.uasset')
         Add-HeroHash (Join-Path (Split-Path $marker.source -Parent) 'Content/Characters/Heroes/B_Hero_Default.uasset')
     }
-    if($Kind -in @('characterlifecycle','characterparts')){Add-HeroHash (Join-Path $stage 'Content/UEPValidation/BP_CharacterStencilCallProbe.uasset')}
+    if($Kind -in @('characterlifecycle','characterparts','characterhealth')){Add-HeroHash (Join-Path $stage 'Content/UEPValidation/BP_CharacterStencilCallProbe.uasset')}
     $arguments=@($project,'-run=Py',$script,'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-UTF8Output','-DisablePython',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup',
         "-UEPHeroAbilityStageRoot=$stage","-UEPHeroAbilityKind=$Kind","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     if($Kind -eq 'autorespawnactivation'){$arguments+=@("-UEPAutoRespawnDefaultProfile=$AutoRespawnDefaultProfile")}
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
-    $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts')){0}else{4}
+    $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth')){0}else{4}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne 2 -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'characterinventory' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or
@@ -154,6 +154,12 @@ try{
         @($report.actual_native_registered_profile_method_counts.PSObject.Properties).Count -ne 2 -or
         $report.actual_native_registered_profile_method_counts.Python -ne 11 -or $report.actual_native_registered_profile_method_counts.BlueprintFallback -ne 11)){
         throw 'Character component receiver actual native registration/original graph proof incomplete'
+    }
+    if($Kind -eq 'characterhealth' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or
+        @($report.implemented_methods).Count -ne 12 -or !$report.native_component_receiver_register_restore_passed -or
+        @($report.extra_signatures.PSObject.Properties).Count -ne 14 -or @($report.native_health_signatures.PSObject.Properties).Count -ne 3 -or
+        $report.actual_native_registered_profile_method_counts.Python -ne 12 -or $report.actual_native_registered_profile_method_counts.BlueprintFallback -ne 12)){
+        throw 'Character health receiver actual native registration/original graph proof incomplete'
     }
     if($Kind -eq 'widgetheld' -and (!$report.original_full_cdo_preserved -or !$report.native_children_unchanged -or $report.soft_class_path_transport_nodes -ne 4 -or $report.native_state_teardown_guard_nodes -ne 4)){
         throw 'Held-widget original CDO/children/typed soft-class transport proof incomplete'
