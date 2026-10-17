@@ -5,7 +5,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
-      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
@@ -28,6 +28,8 @@ if($CharacterStencil -and ($CharacterTeam -or $CharacterOutline -or $CharacterLo
 if($CharacterStencil){$AutoRespawnActivation=$true}
 if($CharacterLifecycle -and ($CharacterStencil -or $CharacterTeam -or $CharacterOutline -or $CharacterLoadout -or $CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character native death/Reset events require their own natural/network or standalone Reset lane and asset proof'}
 if($CharacterLifecycle){$AutoRespawnActivation=$true}
+if($CharacterParts -and ($CharacterLifecycle -or $CharacterStencil -or $CharacterTeam -or $CharacterOutline -or $CharacterLoadout -or $CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnLifecycle -or $AutoRespawnReset -or !$CharacterAuthoringDirectory)){throw 'Character parts callback requires its own native part producer/replication lane and asset proof'}
+if($CharacterParts){$AutoRespawnActivation=$true}
 if($CharacterInventory -and ($AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character inventory helper requires natural/network or standalone Reset and Character asset proof'}
 if($CharacterInventory){$AutoRespawnActivation=$true}
 if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
@@ -163,14 +165,14 @@ try{
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
-    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout -or $CharacterOutline -or $CharacterTeam -or $CharacterStencil -or $CharacterLifecycle){
+    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout -or $CharacterOutline -or $CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts){
         $characterRoot=[IO.Path]::GetFullPath($CharacterAuthoringDirectory)
         if(!$characterRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Character evidence must stay in workspace build directory'}
         $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
         $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
         $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
-        $expectedCharacterKind=if($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
-        $expectedCharacterMethods=if($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
+        $expectedCharacterKind=if($CharacterParts){'characterparts'}elseif($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
+        $expectedCharacterMethods=if($CharacterParts){11}elseif($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
         if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne $expectedCharacterKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
             @($proof.implemented_methods).Count -ne $expectedCharacterMethods -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
@@ -181,9 +183,18 @@ try{
         foreach($path in @($characterSummary,$characterReport,'F:/LyraStarterGame/Source/LyraGame/Character/LyraCharacter.cpp',
             'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
             (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
-        if($CharacterTeam -or $CharacterStencil -or $CharacterLifecycle){
+        if($CharacterParts){
+            if(!$proof.native_component_receiver_register_restore_passed -or @($proof.extra_signatures.PSObject.Properties).Count -ne 13 -or
+                $proof.actual_native_registered_profile_method_counts.Python -ne 11 -or
+                $proof.actual_native_registered_profile_method_counts.BlueprintFallback -ne 11 -or
+                @($proof.native_parts_signatures.PSObject.Properties).Count -ne 3){throw 'Character component-bound receiver actual native registration proof incomplete'}
+            foreach($file in @('F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.cpp',
+                'F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.h',
+                'F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraCharacterPartTypes.h')){Add-JumpInput $file}
+        }
+        if($CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts){
             $probe=$proof.caller_probe
-            if($CharacterStencil -or $CharacterLifecycle){
+            if($CharacterStencil -or $CharacterLifecycle -or $CharacterParts){
                 if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.typed_actor_reference -or !$probe.virtual_bp_function_call -or
                     $probe.nodes -ne 3 -or $probe.target -ne 'UpdateCustomStencilFromTeamID' -or !$proof.inherited_parent_asset_unmodified -or
                     [IO.Path]::GetFullPath($probe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterStencilCallProbe.uasset') -or
@@ -337,6 +348,7 @@ try{
     if($CharacterTeam){$flag='-UEPCharacterTeamResult';$marker='UEP_CHARACTER_TEAM'}
     if($CharacterStencil){$flag='-UEPCharacterStencilResult';$marker='UEP_CHARACTER_STENCIL'}
     if($CharacterLifecycle){$flag=if($AutoRespawnReset){'-UEPCharacterLifecycleResetResult'}else{'-UEPCharacterLifecycleResult'}}
+    if($CharacterParts){$flag='-UEPCharacterPartsResult';$marker='UEP_CHARACTER_PARTS'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -372,6 +384,7 @@ try{
             if($CharacterTeam){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterTeamResult=*'})}
             if($CharacterStencil){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterStencilResult=*'})}
             if($CharacterLifecycle){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterLifecycleResult=*'})}
+            if($CharacterParts){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterPartsResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -393,6 +406,7 @@ try{
             if($CharacterTeam){$resultFlag='-UEPCharacterTeamNetworkResult'}
             if($CharacterStencil){$resultFlag='-UEPCharacterStencilNetworkResult'}
             if($CharacterLifecycle){$resultFlag='-UEPCharacterLifecycleNetworkResult'}
+            if($CharacterParts){$resultFlag='-UEPCharacterPartsNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -445,6 +459,7 @@ try{
             if($CharacterOutline){$pass=if($peer -eq 'server'){'UEP_CHARACTER_OUTLINE_NETWORK_PASSED'}else{'UEP_CHARACTER_OUTLINE_SHUTDOWN_PASSED'}}
             if($CharacterTeam){$pass=if($peer -eq 'server'){'UEP_CHARACTER_TEAM_NETWORK_PASSED'}else{'UEP_CHARACTER_TEAM_SHUTDOWN_PASSED'}}
             if($CharacterStencil){$pass=if($peer -eq 'server'){'UEP_CHARACTER_STENCIL_NETWORK_PASSED'}else{'UEP_CHARACTER_STENCIL_SHUTDOWN_PASSED'}}
+            if($CharacterParts){$pass=if($peer -eq 'server'){'UEP_CHARACTER_PARTS_NETWORK_PASSED'}else{'UEP_CHARACTER_PARTS_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -468,6 +483,7 @@ try{
         if($CharacterTeam){$module='uep_lyra_characters.team_cosmetics_network_contract'}
         if($CharacterStencil){$module='uep_lyra_characters.stencil_network_contract'}
         if($CharacterLifecycle){$module='uep_lyra_characters.lifecycle_contract'}
+        if($CharacterParts){$module='uep_lyra_characters.parts_changed_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -496,6 +512,7 @@ try{
         if($CharacterTeam){$module='uep_lyra_characters.team_cosmetics_contract'}
         if($CharacterStencil){$module='uep_lyra_characters.stencil_contract'}
         if($CharacterLifecycle){$module='uep_lyra_characters.lifecycle_contract'}
+        if($CharacterParts){$module='uep_lyra_characters.parts_changed_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}

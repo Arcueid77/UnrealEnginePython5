@@ -1115,6 +1115,33 @@ All 1,363 isolated-index models and 575-file all-index syntax/import checks pass
 callbacks/team listener/init/input/health business and parent/sibling families,
 physical input/hardware/travel/loss/packages and whole-version gates remain open.
 
+The original PawnCosmeticsComponent OnCharacterPartsChanged bound receiver adds
+the eleventh retained Character method in
+`uep_lyra_characters/parts_changed_mixin.py`, with ten explicit aliases. Native
+FindTeamFromObject(Self,false) controls the virtual team-helper call; component
+payload remains unused, matching BP. Assets01 preserves type/full CDO/thirteen
+signatures/every graph and actually registers eleven functions on both Profiles,
+then unregisters/restores signatures. Final Differential03 has six native part
+cycles/eighteen Add/Remove/repeated-remove operations/twelve independent delegates,
+unassigned-team noop and add/remove Profile switch, genuine temporary part Actor
+lifetimes, original entry/Actor/visual/camera/Profile/CDO/inventory restore,
+one closed scope/two bindings and 44/44 device roots. Natural startup enters
+Python once. Network02 has eighteen actual authority operations/thirty-six
+client Actor observations/twenty-four independent delegates via native FastArray
+replication. Two same-type Pawns use opposing then swapped Profiles. Headless
+authority correctly spawns no render parts/broadcasts zero such callbacks;
+clients observe local role2 and foreign role1 and actual one-shot device objects
+inside the native multicast before later tick expiry. Each client has twelve
+delegates, six production properties and 36/36 roots. Native original parts,
+Actor identities/visual/Profile/CDO/inventory, observer scopes and server-last
+three zero exits restore. Strict independent gates/closed logs pass with 1,665
+inputs/final run. Ledger 47 keeps Network01 failed (fixture validity import),
+adds executable cleanup/cached-POD regression and fresh full rerun; earlier
+Differential01/02 are not final standalone proof. All 1,399 isolated-index models
+and 584-file all-index syntax/local-import closure pass. No callback replay/property-array rewrite,
+file-delivered gameplay state, pixels/hardware/travel/loss/package/whole-version
+claim. Team listener/health/init/input and parent/sibling business remain open.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
