@@ -1529,6 +1529,25 @@ network failure. Dash activation, navigation/movement decisions, task/cancel and
 server RPC body business remain subsequent batches; animation/GAS/movement/RPC
 implementation stays native. No full-version, package or publication claim.
 
+Batch63 moves only Direction/Montage stores after native reliable-server
+SendInfo ingress. A four-node typed non-RPC gateway skips those two BP stores
+after Python, then rejoins original Commit; RPC signature/flags, full CDO and
+all other business semantics preserve. Assets01 and42-pair selector regression
+PASS. Network02 PASSes eight actual RPC ingresses from two native ASC clients,
+including four Python rows that must change BOTH old native fields. Forward/
+left original/Python payloads match; owner roles/identity, foreign location/
+velocity/Health/spec/config/data/Profile, native montage/RootMotion/end tasks,
+cooldown rejection and20-frame quiet windows pass. Eight native collision-checked
+pose resets and Pawn movement intent are explicit fixtures, not raw velocity or
+input-data writes. Strict independent gates/closed logs/server-last three zero
+exits and1,868 frozen inputs pass;2,081 models and735-file closure gate the local
+commit. Initial Network01 remains initial evidence only: matching stale fields
+could mask a no-op store; the stronger native rerun is final. No new C++ build,
+whole Dash activation/task migration, quantitative movement parity, physical/
+Enhanced Input, network pause/travel/loss/package or version promotion claim.
+Next migrate local direction/navigation and activation decisions, then the
+remaining native-task orchestration/Cue/UI business in bounded comparisons.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

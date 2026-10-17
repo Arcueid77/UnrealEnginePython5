@@ -8,12 +8,18 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[switch]$CharacterObserver,[switch]$CharacterListener,[switch]$CharacterLegacy,[switch]$CharacterReady,[switch]$CharacterWait,[switch]$CharacterPossessed,[switch]$CharacterVisibility,[switch]$CharacterBeginPlay,[switch]$CharacterEquipmentHide,[switch]$CharacterRagdoll,[switch]$CharacterDeathStarted,[string]$CharacterAuthoringDirectory,
       [switch]$CharacterDeathReplication,
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
+      [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($DashRPCInput){
+    if(!$Network -or !$DashRPCInputAuthoringDirectory){throw 'Dash RPC ingress requires its authored revision and two-client native network lane'}
+    $DashSelector=$true
+}
+if($DashRPCInputAuthoringDirectory -and !$DashSelector){throw 'Dash RPC revision requires the original selector proof'}
 if($DashSelector){
     if(!$DashSelectorAuthoringDirectory -or $CharacterAuthoringDirectory -or $AutoRespawnReset -or $AutoRespawnLifecycle){throw 'Dash selector requires its own helper lane and authored proof'}
     $AutoRespawnActivation=$true
@@ -231,7 +237,17 @@ try{
             !$dashProof.inherited_declaration_probe.restored -or !$dashProof.inherited_declaration_probe.ordinary_inherited_sibling_rejected -or
             !$dashProof.inherited_declaration_probe.owned_shared_function_verified -or !$dashProof.inherited_declaration_probe.inherited_original_unwrapped -or
             !$dashProof.inherited_declaration_probe.lexical_init_teardown_verified){throw 'Dash declaration/original inheritance proof incomplete'}
-        foreach($asset in $dashAuthor.assets){
+        $currentDashAssets=@($dashAuthor.assets)
+        if($DashRPCInputAuthoringDirectory){
+            $revisionRoot=[IO.Path]::GetFullPath($DashRPCInputAuthoringDirectory)
+            if(!$revisionRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Dash revision must be workspace-owned'}
+            . (Join-Path $PSScriptRoot 'UEPDashAssetProvenance.ps1')
+            $revision=Get-UEPDashRPCInputRevision $dashRoot $revisionRoot
+            $currentDashAssets=@($revision.assets)
+            foreach($file in $revision.evidence){Add-JumpInput $file}
+            Add-JumpInput (Join-Path $PSScriptRoot 'UEPDashAssetProvenance.ps1')
+        }
+        foreach($asset in $currentDashAssets){
             if((Get-FileHash -LiteralPath $asset.stage).Hash -ne $asset.sha256 -or (Get-FileHash -LiteralPath $asset.overlay).Hash -ne $asset.sha256){throw 'Dash authored asset changed'}
             Add-JumpInput $asset.stage;Add-JumpInput $asset.overlay
         }
@@ -676,6 +692,7 @@ try{
             if($CharacterDeathStarted){$resultFlag='-UEPCharacterDeathStartedNetworkResult'}
             if($CharacterDeathReplication){$resultFlag='-UEPCharacterDeathReplicationNetworkResult'}
             if($DashSelector){$resultFlag='-UEPDashSelectorNetworkResult'}
+            if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -744,6 +761,7 @@ try{
             if($CharacterDeathStarted){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_STARTED_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_STARTED_SHUTDOWN_PASSED'}}
             if($CharacterDeathReplication){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_REPLICATION_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_REPLICATION_SHUTDOWN_PASSED'}}
             if($DashSelector){$pass=if($peer -eq 'server'){'UEP_DASH_SELECTOR_NETWORK_PASSED'}else{'UEP_DASH_SELECTOR_SHUTDOWN_PASSED'}}
+            if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -783,6 +801,7 @@ try{
         if($CharacterDeathStarted){$module='uep_lyra_characters.death_started_network_contract'}
         if($CharacterDeathReplication){$module='uep_lyra_characters.death_replication_contract'}
         if($DashSelector){$module='uep_lyra_abilities.dash_selector_contract'}
+        if($DashRPCInput){$module='uep_lyra_abilities.dash_rpc_input_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
