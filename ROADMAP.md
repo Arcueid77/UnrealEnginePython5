@@ -1242,6 +1242,31 @@ changes, C++ build/cook/package or publication claim. Ledger51 lists three
 accepted native runs and nineteen matched scoped sources/assets; all 1,577
 isolated-index models and 622-file all-index syntax/import closure PASS.
 
+Legacy OnRep_PlayerInfo adds the twentieth Character route in
+`uep_lyra_characters/legacy_player_info_mixin.py`. Preserve its exact literal
+OnTeamOrCosmeticsChanged(0, null), not an invented current-team query. Nineteen
+raw Python aliases/fourteen fallback aliases preserve descriptors. Assets01
+PASSes Python20/BlueprintFallback15, twenty-two original logical signatures,
+type/full CDO/every graph and literal defaults, with no new business nodes.
+The current class has no property named PlayerInfo; this is a legacy helper
+contract, not real replicated notification delivery. Differential01 PASSes
+six comparisons/eight manual typed second-BP calls, actual zero/null native
+outline/software results, six device properties, unchanged native teams/live
+observers and original restoration/owned bare Actor-startup observer GC.
+Network01 PASSes thirty-six typed calls across three actual worlds, opposing/
+swapped Profiles, role3/local2/foreign1 and six local properties/client, zero
+foreign/server output. Roots22/22 standalone and 0/0+30/30+30/30 network, zero
+owned proxy retention, frozen cleanup/server-last three zero exits, strict
+closed logs/independent gates and 1,757 frozen inputs/final run PASS. All 1,606
+host models PASS; Host01's incorrect unassigned noop fixture remains failed.
+Reports explicitly disclose manual helper replay and no actual RepNotify or
+team-change replication certification. Next migrate only ExperienceReady's
+generated inventory-readiness continuation; keep BeginPlay/possession/visibility
+init-state, parent/sibling/full-version gates open. No C++ build/cook/package,
+Engine/official Lyra/animation changes or publication claim. Ledger52 has three
+accepted native runs and fifteen matched scoped sources/assets; all 1,606
+isolated-index models and 632-file all-index syntax/import closure PASS.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
