@@ -12,6 +12,10 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
       [switch]$MeleeTrace,[string]$MeleeTraceAuthoringDirectory,
       [string]$MeleeNetworkFixtureAuthoringDirectory,
+      [ValidateSet('Python','BlueprintFallback')][string]$MeleeCharacterStartupProfile,
+      [switch]$MeleeCharacterOriginalBeginPlay,
+      [switch]$MeleeWarmupJoin,
+      [ValidateSet('first-half','second-half','refresh-python','clone-python','inventory','possession','team','possession_factory','experience','experience_entry','experience_resume')][string]$MeleeCharacterOriginalSubset,
       [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
       [switch]$DashLocalDirection,[string]$DashLocalDirectionAuthoringDirectory,
       [switch]$DashActivation,[string]$DashActivationAuthoringDirectory,
@@ -29,6 +33,10 @@ if($MeleeTrace){
     $MeleeHitMontage=$true
 }
 if($MeleeNetworkFixtureAuthoringDirectory -and (!$MeleeTrace -or !$Network)){throw 'Replicated Melee floor proof belongs only to the native trace Network lane'}
+if($MeleeCharacterStartupProfile -and (!$MeleeTrace -or !$Network)){throw 'Character startup profile is an explicit Melee replica diagnosis Network variant'}
+if($MeleeCharacterOriginalBeginPlay -and $MeleeCharacterStartupProfile -ne 'Python'){throw 'Original BeginPlay isolation requires matched Python startup variant'}
+if($MeleeWarmupJoin -and $MeleeCharacterStartupProfile -ne 'Python'){throw 'Controlled warmup join requires explicit Python Melee Network diagnosis'}
+if($MeleeCharacterOriginalSubset -and ($MeleeCharacterStartupProfile -ne 'Python' -or $MeleeCharacterOriginalBeginPlay)){throw 'Method subset isolation requires matched Python startup and no other treatment'}
 if($MeleeTraceAuthoringDirectory -and !$MeleeActivationAuthoringDirectory){throw 'Melee trace requires complete guarded activation provenance'}
 if($MeleeActivation){
     if(!$MeleeActivationAuthoringDirectory){throw 'Melee activation requires its native task lane and revision proof'}
@@ -784,6 +792,10 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    if($MeleeCharacterStartupProfile){$arguments+=@("-UEPReplicaCharacterStartupProfile=$MeleeCharacterStartupProfile",'-LogCmds=LogLyra Verbose')}
+    if($MeleeWarmupJoin){$arguments+=@('-UEPReplicaWarmupJoin')}
+    if($MeleeCharacterOriginalBeginPlay){$arguments+=@('-UEPReplicaCharacterOriginalBeginPlay')}
+    if($MeleeCharacterOriginalSubset){$arguments+=@("-UEPReplicaCharacterOriginalSubset=$MeleeCharacterOriginalSubset")}
     if($AutoRespawnListeners){$arguments+=@('-UEPAutoRespawnListeners')}
     if($AutoRespawnEvents){$arguments+=@('-UEPAutoRespawnEvents')}
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
