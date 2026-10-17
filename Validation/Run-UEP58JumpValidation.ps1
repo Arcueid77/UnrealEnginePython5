@@ -9,6 +9,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterDeathReplication,
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
+      [switch]$GrenadeWidget,[string]$GrenadeAuthoringDirectory,
       [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
       [switch]$MeleeTrace,[string]$MeleeTraceAuthoringDirectory,
       [string]$MeleeNetworkFixtureAuthoringDirectory,
@@ -28,6 +29,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeWidget){
+    if($Network -or !$GrenadeAuthoringDirectory -or $MeleeTrace -or $MeleeHitMontage -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Grenade UI native grant/avatar/removal is a separate standalone lane with current asset proof'}
+    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading')
+    if(@($PSBoundParameters.Keys|Where-Object {$_ -notin $grenadeAllowed}).Count){throw 'Do not combine Grenade UI with another native fixture'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeAuthoringDirectory -and !$GrenadeWidget){throw 'Grenade asset proof requires its dedicated fixture flag'}
 if($MeleeTrace){
     if(!$MeleeTraceAuthoringDirectory -or ($Network -and !$MeleeNetworkFixtureAuthoringDirectory)){throw 'Melee trace requires its revision proof and a replicated native floor for Network'}
     $MeleeHitMontage=$true
@@ -347,6 +355,25 @@ try{
         foreach($item in $private){$path=if($item.PSObject.Properties['asset']){$item.asset}else{$item.path};if((Get-FileHash -LiteralPath $path).Hash -ne $item.sha256){throw 'Dash private probe changed'};Add-JumpInput $path}
         foreach($entry in $dashProof.reference_hashes.PSObject.Properties){if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Official Dash changed'};Add-JumpInput $entry.Name}
         Add-JumpInput $dashSummary;Add-JumpInput $dashReport
+    }
+    if($GrenadeWidget){
+        $grenadeRoot=[IO.Path]::GetFullPath($GrenadeAuthoringDirectory)
+        if(!$grenadeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Grenade UI proof must be workspace-owned'}
+        $grenadeSummary=Join-Path $grenadeRoot 'summary.json';$grenadeReport=Join-Path $grenadeRoot 'assets.json'
+        $author=Get-Content -LiteralPath $grenadeSummary -Raw|ConvertFrom-Json -Depth 80
+        $proof=Get-Content -LiteralPath $grenadeReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $author.kind -ne 'grenadewidget' -or $proof.status -ne 'passed' -or $proof.kind -ne 'grenadewidget' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or
+            $proof.new_business_nodes -ne 0 -or $proof.native_end_adapter_nodes -ne 0 -or $proof.whole_grenade_activation_projectile_damage_migrated -or
+            $proof.actual_registered_profile_method_counts.Python -ne 2 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
+            @($author.assets).Count -ne 2){throw 'Accepted retained Grenade UI native event proof required'}
+        if($proof.original_class -ne '/ShooterCore/Input/Abilities/GA_Grenade.GA_Grenade_C' -or
+            ($proof.implemented_methods -join ',') -ne 'K2_OnPawnAvatarSet,K2_OnAbilityRemoved'){throw 'Wrong Grenade UI native target/events'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade UI asset changed'}
+            Add-JumpInput $path
+        }}
+        Add-JumpInput $grenadeSummary;Add-JumpInput $grenadeReport
     }
     if($MeleeHitMontage){
         $meleeRoot=[IO.Path]::GetFullPath($MeleeAuthoringDirectory)
@@ -783,6 +810,7 @@ try{
     if($MeleeHitMontage){$flag='-UEPMeleeHitMontageResult';$marker='UEP_MELEE_HIT_MONTAGE'}
     if($MeleeActivation){$flag='-UEPMeleeActivationResult';$marker='UEP_MELEE_ACTIVATION'}
     if($MeleeTrace){$flag='-UEPMeleeTraceResult';$marker='UEP_MELEE_TRACE'}
+    if($GrenadeWidget){$flag='-UEPGrenadeWidgetResult';$marker='UEP_GRENADE_WIDGET'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1064,6 +1092,7 @@ try{
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_contract'}
         if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_contract'}
+        if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}

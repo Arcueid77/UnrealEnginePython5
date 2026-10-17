@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -48,6 +48,7 @@ try{
     if($Kind -eq 'spawneffect'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Respawn/GA_SpawnEffect.uasset'}
     if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'meleehitmontage'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset'}
+    if($Kind -eq 'grenadewidget'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset'}
     if($Kind -eq 'devicecolor'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_TeamColor_DeviceProperty.uasset'}
     if($Kind -eq 'widgetheld'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhileInputHeld.uasset'}
     if($Kind -eq 'widgetpressed'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GAB_ShowWidget_WhenInputPressed.uasset'}
@@ -64,6 +65,10 @@ try{
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
         (Join-Path $stage 'Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll'))){Add-HeroHash $path}
     if($Kind -eq 'weaponinstance'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_instance_assets.py')}
+    if($Kind -eq 'grenadewidget'){
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_widget_assets.py')
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
+    }
     if($Kind -eq 'meleehitmontage'){
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_melee_hit_montage_assets.py')
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
@@ -116,9 +121,17 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
-    if($Kind -in @('dashselector','meleehitmontage')){$expectedEndNodes=0}
+    if($Kind -in @('dashselector','meleehitmontage','grenadewidget')){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne 2 -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
+    if($Kind -eq 'grenadewidget' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
+        $report.new_business_nodes -ne 0 -or $report.whole_grenade_activation_projectile_damage_migrated -or
+        ($report.implemented_methods -join ',') -ne 'K2_OnPawnAvatarSet,K2_OnAbilityRemoved' -or
+        $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
+        $report.original_ui_policy.context -ne 'GetOwningActorFromActorInfo' -or $report.original_ui_policy.priority -ne -1 -or
+        $report.original_ui_policy.tag -ne 'HUD.Slot.ExtraEquipment' -or !$report.original_ui_policy.removal_unconditional)){
+        throw 'Grenade UI original graph/default/native event registration proof incomplete'
+    }
     if($Kind -eq 'meleehitmontage' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
         $report.new_business_nodes -ne 0 -or $report.whole_melee_activation_trace_damage_migrated -or $report.original_selector.nodes -ne 24 -or
         $report.original_selector.min -ne -.5 -or $report.original_selector.max -ne .5 -or !$report.original_selector.inclusive_min -or !$report.original_selector.inclusive_max -or
