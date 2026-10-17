@@ -1617,6 +1617,24 @@ weak-owner warning remains unresolved. No Engine/C++ build/cook/package,
 native Commit-failure, quantitative movement/physical input, network pause/
 travel/rejoin, full Dash/version or publication acceptance is implied.
 
+Batch67 begins Melee with the original public `Slelect Hit Montage` helper,
+preserving its authored spelling, reflected spaced inputs/named montage output,
+raw hit normal, native Actor basis/Dot/InRange and four original animation
+assets. Inclusive right-dot[-0.5,0.5] and strict sign>0 are retained. Native
+MakeVector avoids the legacy wrapper constructor's float narrowing at adjacent
+double boundaries. Assets01 preserves class/full CDO/three signatures/all
+graphs and24-node helper, registers/restores one method per Profile and adds
+only a3-node stage-only typed external BP caller. Differential01 PASSes32 native
+pairs using an owned identity Actor and actual player Pawn, no helper gameplay
+state mutation, restored Profile/specs/root/control-Actor and quiet checks.
+Network01 PASSes32 pairs in each of3 real native worlds/two owners, roles3/2/2,
+foreign authority Health/spec invariance, cleanup-before-release and three
+server-last zero exits. Both independent gates/strict closed logs pass; native
+freezes are1,901/1,903 inputs.2,284 host models/772-file closure gate a bounded
+local commit. Melee activation, trace/team/occlusion/damage/tasks/Cue and actual
+null-Actor VM behavior are not accepted from this helper. No C++ build/cook/
+package/full-version or publication claim; continue the remaining Melee body.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
