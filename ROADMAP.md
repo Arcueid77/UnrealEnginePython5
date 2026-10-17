@@ -1323,6 +1323,31 @@ parent/sibling/full-version gates remain open. No native pending-Profile-switch
 or deferred-component replication, hardware/pixels/travel/loss/package claim;
 no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
 
+Batch55 routes ReceivePossessed through
+`uep_lyra_characters/possessed_mixin.py`: Actor authority -> native Experience
+factory(Self) -> existing exact named delegate transport -> activation.
+NewController remains an unused business input (its actual identity is recorded),
+with no added parent event, duplicate original execution or Python callback root.
+Assets03 PASSes Python23/fallback18 and original type/full CDO/all graphs/
+twenty-three signatures; actual ActorMacros:Switch Has Authority semantics and
+source asset are frozen. Assets01/02 fail guessed macro-name/library guards and
+remain failed. Differential01 fails overcounting the original AI Controller BP's
+independent Experience bootstrap; classify exact native identities separately,
+capture paths while live, close constructor failures and require all tasks to
+collect. Differential02 PASSes24 actual owned Pawn possessions/Character tasks,
+12 separate original Controller-BP bootstrap tasks, all32 typed Experience
+requests and the complete prior wait/inventory regression. The natural main
+player executes exactly one Python factory chain. Network01 PASSes24 authority/
+24 owner replica-noop trials, each server player's one natural Python factory
+and zero invented client possession callbacks, inventory identity/replication/
+undo, proxy cleanup24/12/12 and roots1/1 per world. Strict closed logs, independent
+gates, server-last three zero exits and1,817 frozen inputs/final run PASS.
+All1,741 host/isolated-index models and662-file all-index checks pass. Ledger55
+is bounded; InitState's delayed visibility is next, then BeginPlay orchestration
+and parent/sibling coverage. No full Character/version, deferred-component
+replication, pending Profile-switch, hardware/pixels/travel/loss/package claim;
+no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
