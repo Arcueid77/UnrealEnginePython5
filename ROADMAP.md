@@ -1373,6 +1373,30 @@ whole-version gates. No network repeat/destroy/Profile-switch visibility,
 physical pixels, hardware/travel/loss/package/full-version claim; no Engine /
 official Lyra/animation changes or C++ build/cook/package/publication.
 
+Batch57 migrates ReceiveBeginPlay orchestration in
+`uep_lyra_characters/begin_play_mixin.py`: exact original parent -> ListenForTeam
+-> hide -> PawnExt GameplayReady registration (call-immediately true). An empty
+two-node static parent-call transport preserves the original ancestor call;
+no existing Actor's BeginPlay is replayed. Assets01 PASSes Python26/fallback21,
+original type/full CDO/all graphs/twenty-four signatures. Differential01 PASSes
+the entire preceding wait/possession/visibility regression plus two new fresh
+Actor pending/ready BP/Python pairs. A synchronous disposable test-only ordinary
+CDO Profile override selects each fresh baseline; finally restores immediately,
+checks again after native GC and never saves that default. Pending Actors stay
+hidden without premature InitState delivery; ready native Actors show with
+equal native inventory and balanced owned resources. Network01 has no CDO
+fixture: both authority and owning-client Pawns naturally enter exactly one
+ordered Python BeginPlay, one InitState delayed show,24 authority/24 replica-noop
+inventory trials and exact original restoration; proxies24/12/12 collect and
+roots1/1 each world. Strict closed logs, independent gates, server-last three
+zero exits and1,856 frozen inputs/final run PASS. All1,812 host/isolated-index
+models and683-file index closure pass; ledger57 is bounded. Next audit inherited
+Hero-default equipment/death business; Character_Default's parent-only
+construction and empty BeginPlay are structural forwarding, not invented
+business. Animation/ABPs and native physics stay. No whole ancestor/sibling /
+version, broader network lifecycle, hardware/pixels/travel/loss/package claim;
+no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
