@@ -1397,6 +1397,34 @@ business. Animation/ABPs and native physics stay. No whole ancestor/sibling /
 version, broader network lifecycle, hardware/pixels/travel/loss/package claim;
 no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
 
+Batch58 migrates the inherited HideEquippedWeapons decision loop in
+`uep_lyra_characters/equipment_hide_mixin.py`, retaining native equipment
+instances/spawned Actors and SetActorHiddenInGame. Original missing-manager
+no-op, no additional authority check, original parent bytes/root type/full CDO/
+graphs/twenty-five signatures and Python27/fallback22 PASS Assets01. A three-node
+second-BP caller remains stage-only. Differential01-04 are preserved failures:
+inactive observer collection/global proxy differences exposed constructor-only
+AI isolation before the Controller BP's asynchronous ExperienceReady bootstrap.
+Shared owned-bot readiness now observes exact native Cue identities while live
+and reapplies native AI quarantine; the complete fixture also isolates bots
+every tick without Health/immunity writes. Differential05 PASSes all prior
+regressions and six new BP/Python pairs: equipped/already-hidden/repeat/empty/
+missing-manager/real lethal GAS. Original random native death Delay is awaited
+(BP0.567/Python0.542 game seconds), not replayed; real weapon Actors hide.
+Three original bot identities/100 Health and every row's complete original
+active proxy set remain exact; no Cue-lifecycle exemption is needed in the
+accepted run. Native owned resources and caller roots1/1 balance. Network01
+PASSes eight local actual weapon-Actor hide/undo calls (server4/A2/B02), exact
+visibility/inventory/Profile undo, natural startup/visibility and24 authority/
+24 replica-noop inventory regressions. Factory proxies24/12/12 collect and roots
+1/1 per world release. Strict closed logs, independent semantic gates, normal
+server-last exits and1,873 frozen inputs/final run PASS. All1,865 host/isolated
+models and694-file index closure precede ledger58/local commit. Hidden-flag
+replication, network death ingress, pixels, Ragdoll/death orchestration, siblings
+and whole-version acceptance remain separate. Next migrate Ragdoll's project
+call ordering/impulse choice, not native physics or animation. No Engine /
+official Lyra/animation changes, C++ build/cook/package or publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
