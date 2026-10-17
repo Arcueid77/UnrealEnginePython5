@@ -1218,6 +1218,30 @@ travel/loss/package/full Character/version acceptance. Next migrate only the
 ListenForTeam factory/bind/activation decisions with exact native delegate
 transport, no retained Python callback or invented repeated-call cancellation.
 
+ListenForTeam now adds the nineteenth retained route in
+`uep_lyra_characters/team_listener_mixin.py`, aliasing eighteen accepted methods.
+One four-node exact native named multicast transport owns only binding; factory/
+bind/activate decisions are Python, no closure/proxy root/deduplication/added
+cancellation. Assets01/02 remain failed authoring evidence: assigning a borrowed
+MemberReference view onto itself loses the member owner. A separate struct value
+fixes the typed connection without bypassing schema or modifying C++.
+Assets03 preserves original type/full CDO/all graphs/twenty-one logical signatures
+and actually registers Python19/BlueprintFallback14. Differential01 PASSes six
+comparisons/eight real native creations and callbacks, assigned/unassigned and
+repeated calls, six native device properties and zero owned observers after GC.
+Natural BeginPlay enters Python creation on both fixture Actors. Network01 PASSes
+both Pawn identities' natural Python creation in all three actual worlds,
+thirty-six test callbacks, six local properties/client with zero foreign/server
+output and zero owned observers after GC. Exact original state/live proxy sets,
+roots22/22 standalone and 0/0+30/30+30/30 network, frozen cleanup/server-last three
+zero exits, strict closed logs, independent gates and 1,742 frozen inputs/final
+run PASS. All 1,577 host models PASS. Real team-change replication, post-Cancel
+display updates and remaining initialization/possession/legacy OnRep/parent/
+sibling/version acceptance are still open; no Engine/official Lyra/animation
+changes, C++ build/cook/package or publication claim. Ledger51 lists three
+accepted native runs and nineteen matched scoped sources/assets; all 1,577
+isolated-index models and 622-file all-index syntax/import closure PASS.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
