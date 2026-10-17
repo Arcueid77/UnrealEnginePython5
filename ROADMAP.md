@@ -1482,6 +1482,29 @@ Next batch61 verifies actual authority/owner/foreign death and native respawn;
 no callback replay, animation/physics implementation change, C++ build, package,
 whole-version acceptance or publication is implied.
 
+Batch61 PASSes actual native death ingress rather than the preceding local-body
+regression. `death_replication_network_validation.py` composes native lethal GAS /
+death OnRep / original respawn with read-only Health signal and post-delay
+body/weapon witnesses. Network04 records12 authority,12 owning and12 foreign
+dying-replica observations, native roles3/2/1, both owner turns and BP/Python
+Profiles, matched native PlayerState identities and unchanged foreign own-owner
+inventory/lifecycle. Native montage, random Delay, Ragdoll/hide order/state,
+empty/rebuilt inventory and quiet invalid old Actors PASS; the shortest actual
+post-destroy quiet window is2.7321385 game seconds. Death scopes12/12/0 in each
+process and prior inventory scopes balance. The test explicitly uses13 native
+collision-checked relevance teleports before trial baselines/damage; no relevance
+property/CDO writes. Read reflected World.AISystem.PerceptionSystem: server has1,
+clients0; their original native unregister therefore retains configured Sight.
+Independent gate/strict closed logs/server-last three zero exits and1,921 frozen
+inputs PASS. All1,992 host/isolated-index models and719-file closure precede
+ledger61/local commit. Retain Network01(worldless/unsupported get_world query),
+02(A Renderer RDG async-task access violation/exit3),03(foreign replica missing
+before damage). Network04 uses unchanged render settings, not an engine fix;
+the earlier renderer crash remains an open stability observation for broader
+acceptance. No new assets/compile, pose replication, standalone re-execution or
+version promotion is claimed. Next start Dash's direction/montage decision helper,
+then migrate/accept its actual activation, native task/cancel and RPC orchestration.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

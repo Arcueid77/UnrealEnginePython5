@@ -24,4 +24,6 @@ $source=$ast.Extent.Text
 if(!$source.Contains('$watch.Elapsed.TotalSeconds -gt 520') -or
    !$source.Contains('$summary.processes[$peer].exit_code -ne 0')){throw 'Native timeout or real process exit gate changed'}
 if(!$source.Contains('Assert-UEPFocusedLog') -or !$source.Contains('$summary.external_gate')){throw 'Independent report/log gates missing'}
-Write-Host 'Native driver safety checks PASS: 5 (no runtime acceptance claim)'
+if(!$source.Contains('if($CharacterDeathReplication -and (!$Network -or !$CharacterDeathStarted))')){throw 'Native replicated death requires its current profile and network lane'}
+if(!$source.Contains("if(`$CharacterDeathReplication){`$module='uep_lyra_characters.death_replication_contract'}")){throw 'Replicated death independent semantic gate missing'}
+Write-Host 'Native driver safety checks PASS: 7 (no runtime acceptance claim)'

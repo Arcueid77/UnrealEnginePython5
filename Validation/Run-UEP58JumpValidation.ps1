@@ -6,12 +6,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
       [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[switch]$CharacterObserver,[switch]$CharacterListener,[switch]$CharacterLegacy,[switch]$CharacterReady,[switch]$CharacterWait,[switch]$CharacterPossessed,[switch]$CharacterVisibility,[switch]$CharacterBeginPlay,[switch]$CharacterEquipmentHide,[switch]$CharacterRagdoll,[switch]$CharacterDeathStarted,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterDeathReplication,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CharacterDeathReplication -and (!$Network -or !$CharacterDeathStarted)){throw 'Real replicated Character death requires Network, CharacterDeathStarted and its existing asset proof'}
 if($CharacterDeathStarted){
     if($CharacterRagdoll -or $CharacterEquipmentHide -or $CharacterBeginPlay -or $CharacterVisibility -or $CharacterPossessed -or $CharacterWait -or $CharacterReady -or $CharacterLegacy -or $CharacterListener -or $CharacterObserver){throw 'Choose one Character death-started/Ragdoll lane'}
     $CharacterRagdoll=$true
@@ -643,6 +645,7 @@ try{
             if($CharacterEquipmentHide){$resultFlag='-UEPCharacterEquipmentHideNetworkResult'}
             if($CharacterRagdoll){$resultFlag='-UEPCharacterRagdollNetworkResult'}
             if($CharacterDeathStarted){$resultFlag='-UEPCharacterDeathStartedNetworkResult'}
+            if($CharacterDeathReplication){$resultFlag='-UEPCharacterDeathReplicationNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -709,6 +712,7 @@ try{
             if($CharacterEquipmentHide){$pass=if($peer -eq 'server'){'UEP_CHARACTER_EQUIPMENT_HIDE_NETWORK_PASSED'}else{'UEP_CHARACTER_EQUIPMENT_HIDE_SHUTDOWN_PASSED'}}
             if($CharacterRagdoll){$pass=if($peer -eq 'server'){'UEP_CHARACTER_RAGDOLL_NETWORK_PASSED'}else{'UEP_CHARACTER_RAGDOLL_SHUTDOWN_PASSED'}}
             if($CharacterDeathStarted){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_STARTED_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_STARTED_SHUTDOWN_PASSED'}}
+            if($CharacterDeathReplication){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_REPLICATION_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_REPLICATION_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -746,6 +750,7 @@ try{
         if($CharacterEquipmentHide){$module='uep_lyra_characters.equipment_hide_network_contract'}
         if($CharacterRagdoll){$module='uep_lyra_characters.ragdoll_network_contract'}
         if($CharacterDeathStarted){$module='uep_lyra_characters.death_started_network_contract'}
+        if($CharacterDeathReplication){$module='uep_lyra_characters.death_replication_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
