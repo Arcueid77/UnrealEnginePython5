@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory,
-    [ValidateSet('dashrpcinput','dashlocaldirection')][string]$Kind='dashrpcinput')
+    [ValidateSet('dashrpcinput','dashlocaldirection','dashactivation')][string]$Kind='dashrpcinput')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -17,7 +17,7 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $previousRoot=[IO.Path]::GetFullPath($PreviousDashDirectory)
 if(!$previousRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Previous Dash proof must be workspace-owned'}
 $previous=Get-Content -LiteralPath (Join-Path $previousRoot 'summary.json') -Raw|ConvertFrom-Json -Depth 90
-$previousKind=if($Kind -eq 'dashlocaldirection'){'dashrpcinput'}else{'dashselector'}
+$previousKind=switch($Kind){'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
 if($previous.status -ne 'passed' -or $previous.kind -ne $previousKind -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted preceding Dash authoring required'}
 $relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset','Content/UEPMixins/DA_DashSelectorMixin.uasset')
 foreach($name in $relative){
@@ -60,7 +60,8 @@ try{
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
         Add-DashHash $file.FullName;Add-DashHash $target
     }
-    $script=Join-Path $repo $(if($Kind -eq 'dashlocaldirection'){'Demos/UEPLyraIntegration/Tools/generate_dash_local_direction_assets.py'}else{'Demos/UEPLyraIntegration/Tools/generate_dash_rpc_input_assets.py'})
+    $generator=switch($Kind){'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
+    $script=Join-Path $repo "Demos/UEPLyraIntegration/Tools/$generator"
     foreach($path in @($PSCommandPath,$script,(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py'),
@@ -71,7 +72,7 @@ try{
         "-UEPDashRPCStageRoot=$stage","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Dash native RPC receiver two-store authoring' 240
     $proof=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 90
-    $methods=if($Kind -eq 'dashlocaldirection'){3}else{2}
+    $methods=switch($Kind){'dashactivation'{4} 'dashlocaldirection'{3} default{2}}
     if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.native_server_rpc_flags_preserved -or
         !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_commit_tasks_animation_movement_retained -or
         $proof.whole_dash_activation_migrated -or $proof.new_business_nodes -ne 0 -or !$proof.native_register_restore_passed -or
@@ -81,8 +82,12 @@ try{
     if($Kind -eq 'dashlocaldirection' -and ($proof.local_direction_transport_nodes -ne 5 -or !$proof.unused_positive_output_retained -or !$proof.native_direction_property_read)){
         throw 'Local direction original graph/five-node/current-property dispatch proof incomplete'
     }
+    if($Kind -eq 'dashactivation' -and ($proof.native_task_entry_nodes -ne 1 -or !$proof.actual_activation_event_overridden -or
+        $proof.native_task_entry -ne 'UEPDashStartNativeTasks' -or @($proof.task_entry_signature.parameters).Count -ne 0 -or ($proof.task_entry_signature.flags -band 0x40))){
+        throw 'Actual activation override/one native non-RPC task entry proof incomplete'
+    }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
-    $marker=if($Kind -eq 'dashlocaldirection'){'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'}else{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}
+    $marker=switch($Kind){'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
     Assert-UEPFocusedLog $log $marker
     if($log -notmatch ('(?s)'+$marker+'.*Goodbye Python.*Log file closed')){throw 'Dash authoring exit incomplete'}
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Dash authoring frozen input changed'}}

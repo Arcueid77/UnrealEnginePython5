@@ -1568,6 +1568,28 @@ full Dash/version acceptance. Next move local activation, zero/cancel/Commit/
 crouch decisions, then native-task/Cue/UI orchestration. Native GAS, RPC,
 animation, navigation and movement implementation remain native.
 
+Batch65 overrides the actual retained-class K2_ActivateAbility event, with no
+automatic original fallthrough. Python owns IsLocallyControlled, local
+preparation, native near-zero/cancel, Commit/cancel, crouch/UnCrouch and
+K2_HasAuthority/unchanged reliable SendInfo order. Remote authority waits for
+the original RPC. One non-Net event enters the untouched native task/Cue/UI/
+Delay merge; class/full CDO/five signatures/all existing graphs and four-method
+Profile registration/restoration preserve. Standalone02 PASSes12 native ASC
+activations including actual crouch, control inputs/output parity, selected
+event once, tasks/end/cooldown/quiet and exact both-actor restoration. Native
+Controller suppresses tiny angle changes; the fixture restores exactly using
+public yaw+1/original calls only when needed, without widening its gate.
+Standalone01 remains failed restoration evidence, not relabeled acceptance.
+Network01 PASSes8 owner/8 remote-authority actual event dispatches and8 original
+reliable RPCs across2 owners, no remote local work, foreign invariants, native
+task cleanup, independent gates/closed logs and three server-last zero exits;
+final runs freeze1,888 inputs. A native GameplayTag property-map invalid-owner
+warning repeats an earlier ADSRegression01 warning; cause/stability remains
+open, with no warning-free/Engine-fix claim.2,168 models/751-file closure gate
+the local commit. Native Commit-failure branch, remaining task/Cue/UI/Delay
+business, physical input, quantitative movement and whole-version acceptance
+remain open. No C++ build/cook/package/push/tag/release.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

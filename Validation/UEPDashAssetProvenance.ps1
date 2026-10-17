@@ -32,7 +32,7 @@ function Get-UEPDashRPCInputRevision {
 }
 
 function Get-UEPDashLocalDirectionRevision {
-    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory)
+    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory,[switch]$Historical)
     $rpc=Get-UEPDashRPCInputRevision $BaseDirectory $RPCDirectory -Historical
     $rpcSummary=Get-Content -LiteralPath (Join-Path $RPCDirectory 'summary.json') -Raw|ConvertFrom-Json -Depth 90
     $path=Join-Path $LocalDirectory 'summary.json';$reportPath=Join-Path $LocalDirectory 'assets.json'
@@ -53,8 +53,41 @@ function Get-UEPDashLocalDirectionRevision {
         $before=@($revision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
         $current=@($revision.assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
         if($before.Count -ne 1 -or $current.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
-            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256 -or (Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
-            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256){throw 'RPC-to-local provenance/current bytes differ'}
+            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256){throw 'RPC-to-local provenance differs'}
+        if(!$Historical -and ((Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
+            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256)){throw 'Current local direction asset bytes differ'}
     }
     return @{assets=@($revision.assets);evidence=@($rpc.evidence)+@($path,$reportPath);proof=$proof}
+}
+
+function Get-UEPDashActivationRevision {
+    param([string]$BaseDirectory,[string]$RPCDirectory,[string]$LocalDirectory,[string]$ActivationDirectory)
+    $local=Get-UEPDashLocalDirectionRevision $BaseDirectory $RPCDirectory $LocalDirectory -Historical
+    $path=Join-Path $ActivationDirectory 'summary.json';$reportPath=Join-Path $ActivationDirectory 'assets.json'
+    $revision=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json -Depth 90
+    $proof=Get-Content -LiteralPath $reportPath -Raw|ConvertFrom-Json -Depth 90
+    if($revision.status -ne 'passed' -or $revision.kind -ne 'dashactivation' -or $revision.runtime_acceptance -or @($revision.assets).Count -ne 2 -or
+        $proof.status -ne 'passed' -or $proof.kind -ne 'dashactivation' -or !$proof.original_full_cdo_preserved -or
+        !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_server_rpc_flags_preserved -or !$proof.native_register_restore_passed -or
+        !$proof.actual_activation_event_overridden -or $proof.native_task_entry_nodes -ne 1 -or $proof.new_business_nodes -ne 0 -or
+        $proof.whole_dash_activation_migrated -or $proof.native_task_entry -ne 'UEPDashStartNativeTasks' -or
+        @($proof.task_entry_signature.parameters).Count -ne 0 -or ($proof.task_entry_signature.flags -band 0x40) -or
+        $proof.actual_registered_profile_method_counts.Python -ne 4 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
+        [IO.Path]::GetFullPath($revision.previous_dash_directory) -ne [IO.Path]::GetFullPath($LocalDirectory)){throw 'Accepted actual activation revision required'}
+    foreach($method in @('SelectDirectionalMontage','K2_ActivateAbility','SendInfo','UEPDashStoreRemoteInput')){
+        if(($proof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress) -ne ($local.proof.original_signatures.$method|ConvertTo-Json -Depth 30 -Compress)){
+            throw 'Activation revision changed original signature/Net flags'
+        }
+    }
+    if(($proof.original_signatures.UEPDashPrepareLocalDirection|ConvertTo-Json -Depth 30 -Compress) -ne ($local.proof.gate_signature|ConvertTo-Json -Depth 30 -Compress)){
+        throw 'Activation revision changed accepted local preparation gateway'
+    }
+    foreach($old in $local.assets){
+        $before=@($revision.previous_assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+        $current=@($revision.assets|Where-Object {$_.stage -eq $old.stage -and $_.overlay -eq $old.overlay})
+        if($before.Count -ne 1 -or $current.Count -ne 1 -or (Get-FileHash -LiteralPath $before[0].stage_backup).Hash -ne $old.sha256 -or
+            (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash -ne $old.sha256 -or (Get-FileHash -LiteralPath $current[0].stage).Hash -ne $current[0].sha256 -or
+            (Get-FileHash -LiteralPath $current[0].overlay).Hash -ne $current[0].sha256){throw 'Local-to-activation provenance/current bytes differ'}
+    }
+    return @{assets=@($revision.assets);evidence=@($local.evidence)+@($path,$reportPath);proof=$proof}
 }
