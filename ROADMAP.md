@@ -1194,6 +1194,30 @@ earlier prototype proof only. No direct input-receiver calls, mapping changes,
 physical keyboard/hardware/pixels/travel/loss/package/whole-version claim.
 Team listener/init/possession readiness and parent/sibling business remain open.
 
+The generated ObserveTeamColors result receiver adds the eighteenth Character
+route in `uep_lyra_characters/team_observer_mixin.py`; the seventeen accepted
+aliases preserve callable input descriptors. Assets01 preserves original type/
+full CDO/every graph/twenty-one logical signatures, Python18/BlueprintFallback13.
+Final Differential03 PASSes six BP/Python comparisons/eight actual native observer
+activations, assigned/unassigned initial results and repeated factory calls,
+six actual device properties, exact restoration and zero owned observers after
+deferred engine GC. Differential01's same-tick collection gate remains failed;
+Differential02 investigated deferred GC, not final stricter acceptance. Native
+BP-frame retention was not observed. Network01 PASSes twelve native callbacks
+per world/thirty-six total, actual DedicatedServer/Client/Client, role3/local2/
+foreign1, opposite/swapped Profiles and six actual device properties per client,
+zero on server/foreign Actors. Original proxies remain, owned proxies all collect,
+roots balance 22/22 standalone and 0/0+30/30+30/30 network, cleanup freezes before
+release and server-last three zero exits PASS. Strict closed logs, independent
+gates and 1,728 frozen inputs/final run PASS. Ledger50 has three accepted runs
+and fourteen matched scoped inputs; all 1,546 isolated-index models and 612-file
+all-index syntax/import closure PASS. This
+is initial observer activation, not real replicated team changes, listener
+factory migration, all future display callbacks after Cancel, hardware/pixels/
+travel/loss/package/full Character/version acceptance. Next migrate only the
+ListenForTeam factory/bind/activation decisions with exact native delegate
+transport, no retained Python callback or invented repeated-call cancellation.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

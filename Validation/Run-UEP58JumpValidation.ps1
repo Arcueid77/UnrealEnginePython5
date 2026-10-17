@@ -5,7 +5,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [Parameter(Mandatory=$true)][string]$AssetAuthoringDirectory,[switch]$WidgetLifecycle,[switch]$Network,[switch]$Quickslot,[switch]$Death,[switch]$ThreadedLoading,[switch]$Cosmetics,[switch]$AutoReload,[switch]$HeroHeal,[switch]$ADS,[switch]$DropWeapon,[switch]$ReloadMagazine,
       [switch]$WeaponInstance,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetHeld,[switch]$WidgetPressed,[switch]$AutoRespawnHelpers,[switch]$AutoRespawnListeners,[switch]$AutoRespawnEvents,[switch]$AutoRespawnActivation,[switch]$AutoRespawnLifecycle,[switch]$EquipmentGC,[switch]$EquipmentDeath,[switch]$EquipmentIntegration,[switch]$EquipmentBlueprintFallback,[string]$EquipmentAuthoringDirectory,
       [string]$AbilityWidgetFamilyRevisionDirectory,[switch]$AutoRespawnReset,[string]$ResetProbeAssetDirectory,
-      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[string]$CharacterAuthoringDirectory,
+      [switch]$CharacterInventory,[switch]$CharacterAudio,[switch]$CharacterQuickbar,[switch]$CharacterLoadout,[switch]$CharacterLoadoutNatural,[switch]$CharacterOutline,[switch]$CharacterTeam,[switch]$CharacterStencil,[switch]$CharacterLifecycle,[switch]$CharacterParts,[switch]$CharacterHealth,[switch]$CharacterInput,[switch]$CharacterObserver,[string]$CharacterAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
@@ -34,6 +34,8 @@ if($CharacterHealth -and ($CharacterParts -or $CharacterLifecycle -or $Character
 if($CharacterHealth){$AutoRespawnActivation=$true}
 if($CharacterInput -and ($CharacterHealth -or $CharacterParts -or $CharacterLifecycle -or $CharacterStencil -or $CharacterTeam -or $CharacterOutline -or $CharacterLoadout -or $CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnLifecycle -or $AutoRespawnReset -or !$CharacterAuthoringDirectory)){throw 'Character EnhancedInput requires its own native input/owner RPC lane and asset proof'}
 if($CharacterInput){$AutoRespawnActivation=$true}
+if($CharacterObserver -and ($CharacterInput -or $CharacterHealth -or $CharacterParts -or $CharacterLifecycle -or $CharacterStencil -or $CharacterTeam -or $CharacterOutline -or $CharacterLoadout -or $CharacterQuickbar -or $CharacterAudio -or $CharacterInventory -or $AutoRespawnLifecycle -or $AutoRespawnReset -or !$CharacterAuthoringDirectory)){throw 'Character team observer requires its own real native factory/cancellation lane and asset proof'}
+if($CharacterObserver){$AutoRespawnActivation=$true}
 if($CharacterInventory -and ($AutoRespawnLifecycle -or ($Network -and $AutoRespawnReset) -or !$CharacterAuthoringDirectory)){throw 'Character inventory helper requires natural/network or standalone Reset and Character asset proof'}
 if($CharacterInventory){$AutoRespawnActivation=$true}
 if($AutoRespawnLifecycle -and $Network){throw 'Test-owned native Clear/Give lifecycle is a separate standalone lane'}
@@ -169,14 +171,14 @@ try{
         Add-JumpInput $entry.Name
     }
     Add-JumpInput $assetReport
-    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout -or $CharacterOutline -or $CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput){
+    if($CharacterInventory -or $CharacterAudio -or $CharacterQuickbar -or $CharacterLoadout -or $CharacterOutline -or $CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput -or $CharacterObserver){
         $characterRoot=[IO.Path]::GetFullPath($CharacterAuthoringDirectory)
         if(!$characterRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Character evidence must stay in workspace build directory'}
         $characterSummary=Join-Path $characterRoot 'summary.json';$characterReport=Join-Path $characterRoot 'assets.json'
         $proof=Get-Content -LiteralPath $characterReport -Raw|ConvertFrom-Json -Depth 90
         $other=Get-Content -LiteralPath $characterSummary -Raw|ConvertFrom-Json -Depth 90
-        $expectedCharacterKind=if($CharacterInput){'characterinput'}elseif($CharacterHealth){'characterhealth'}elseif($CharacterParts){'characterparts'}elseif($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
-        $expectedCharacterMethods=if($CharacterInput){17}elseif($CharacterHealth){12}elseif($CharacterParts){11}elseif($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
+        $expectedCharacterKind=if($CharacterObserver){'characterobserver'}elseif($CharacterInput){'characterinput'}elseif($CharacterHealth){'characterhealth'}elseif($CharacterParts){'characterparts'}elseif($CharacterLifecycle){'characterlifecycle'}elseif($CharacterStencil){'characterstencil'}elseif($CharacterTeam){'characterteam'}elseif($CharacterOutline){'characteroutline'}elseif($CharacterLoadout){'characterloadout'}elseif($CharacterQuickbar){'characterquickbar'}elseif($CharacterAudio){'characteraudio'}else{'characterinventory'}
+        $expectedCharacterMethods=if($CharacterObserver){18}elseif($CharacterInput){17}elseif($CharacterHealth){12}elseif($CharacterParts){11}elseif($CharacterLifecycle){10}elseif($CharacterStencil){8}elseif($CharacterTeam){7}elseif($CharacterOutline){6}elseif($CharacterLoadout){5}elseif($CharacterQuickbar){4}elseif($CharacterAudio){3}else{1}
         if($other.status -ne 'passed' -or $proof.status -ne 'passed' -or $proof.kind -ne $expectedCharacterKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or @($other.assets).Count -ne 2 -or
             @($proof.implemented_methods).Count -ne $expectedCharacterMethods -or $proof.implemented_methods[0] -ne 'ClearInventory'){throw 'Character helper authoring proof incomplete'}
@@ -187,16 +189,16 @@ try{
         foreach($path in @($characterSummary,$characterReport,'F:/LyraStarterGame/Source/LyraGame/Character/LyraCharacter.cpp',
             'F:/LyraStarterGame/Source/LyraGame/Equipment/LyraQuickBarComponent.cpp','F:/LyraStarterGame/Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp',
             (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h'))){Add-JumpInput $path}
-        if($CharacterParts -or $CharacterHealth -or $CharacterInput){
-            if(!$proof.native_component_receiver_register_restore_passed -or @($proof.extra_signatures.PSObject.Properties).Count -ne ($expectedCharacterMethods+2) -or
+        if($CharacterParts -or $CharacterHealth -or $CharacterInput -or $CharacterObserver){
+            if(!$proof.native_component_receiver_register_restore_passed -or @($proof.extra_signatures.PSObject.Properties).Count -ne ($expectedCharacterMethods+$(if($CharacterObserver){3}else{2})) -or
                 $proof.actual_native_registered_profile_method_counts.Python -ne $expectedCharacterMethods -or
-                $proof.actual_native_registered_profile_method_counts.BlueprintFallback -ne $(if($CharacterInput){12}else{$expectedCharacterMethods}) -or
+                $proof.actual_native_registered_profile_method_counts.BlueprintFallback -ne $(if($CharacterObserver){13}elseif($CharacterInput){12}else{$expectedCharacterMethods}) -or
                 @($proof.native_parts_signatures.PSObject.Properties).Count -ne 3){throw 'Character component-bound receiver actual native registration proof incomplete'}
             foreach($file in @('F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.cpp',
                 'F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.h',
                 'F:/LyraStarterGame/Source/LyraGame/Cosmetics/LyraCharacterPartTypes.h')){Add-JumpInput $file}
         }
-        if($CharacterHealth -or $CharacterInput){
+        if($CharacterHealth -or $CharacterInput -or $CharacterObserver){
             if(@($proof.native_health_signatures.PSObject.Properties).Count -ne 3){throw 'Character health native perception signature proof incomplete'}
             foreach($file in @('F:/LyraStarterGame/Source/LyraGame/Character/LyraHealthComponent.cpp',
                 'F:/LyraStarterGame/Source/LyraGame/Character/LyraHealthComponent.h',
@@ -204,7 +206,7 @@ try{
                 (Join-Path $EngineRoot 'Engine/Source/Runtime/AIModule/Private/Perception/AISense_Damage.cpp'),
                 (Join-Path $EngineRoot 'Engine/Source/Runtime/AIModule/Private/Perception/AIPerceptionComponent.cpp'))){Add-JumpInput $file}
         }
-        if($CharacterInput){
+        if($CharacterInput -or $CharacterObserver){
             if(!$proof.original_enhanced_input_binding_semantics_preserved -or !$proof.compiler_receiver_names_resolved_dynamically -or !$proof.automatic_native_original_input_fallback -or @($proof.enhanced_input_bindings).Count -ne 5 -or
                 @($proof.native_input_signatures.PSObject.Properties).Count -ne 2){throw 'Character original native input binding table proof incomplete'}
             foreach($binding in $proof.enhanced_input_bindings){
@@ -214,9 +216,20 @@ try{
             foreach($relative in @('Engine/Plugins/EnhancedInput/Source/EnhancedInput/Private/EnhancedInputSubsystemInterface.cpp',
                 'Engine/Plugins/EnhancedInput/Source/EnhancedInput/Private/EnhancedInputActionDelegateBinding.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
         }
-        if($CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput){
+        if($CharacterObserver){
+            $probe=$proof.team_listener_probe
+            if(!$proof.original_listener_factory_orchestration_remains_bp -or @($proof.native_team_observer_signatures.PSObject.Properties).Count -ne 3 -or
+                !$probe.stage_only -or $probe.gameplay_business -or !$probe.typed_actor_reference -or !$probe.virtual_bp_function_call -or $probe.nodes -ne 3 -or
+                $probe.target -ne 'ListenForTeam' -or [IO.Path]::GetFullPath($probe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterTeamListenProbe.uasset') -or
+                (Get-FileHash -LiteralPath $probe.asset).Hash -ne $probe.sha256){throw 'Character original native observer factory/typed BP caller proof incomplete'}
+            Add-JumpInput $probe.asset
+            foreach($path in @('F:/LyraStarterGame/Source/LyraGame/Teams/AsyncAction_ObserveTeamColors.cpp',
+                'F:/LyraStarterGame/Source/LyraGame/Teams/AsyncAction_ObserveTeamColors.h',
+                (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Private/Engine/CancellableAsyncAction.cpp'))){Add-JumpInput $path}
+        }
+        if($CharacterTeam -or $CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput -or $CharacterObserver){
             $probe=$proof.caller_probe
-            if($CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput){
+            if($CharacterStencil -or $CharacterLifecycle -or $CharacterParts -or $CharacterHealth -or $CharacterInput -or $CharacterObserver){
                 if(!$probe.stage_only -or $probe.gameplay_business -or !$probe.typed_actor_reference -or !$probe.virtual_bp_function_call -or
                     $probe.nodes -ne 3 -or $probe.target -ne 'UpdateCustomStencilFromTeamID' -or !$proof.inherited_parent_asset_unmodified -or
                     [IO.Path]::GetFullPath($probe.asset) -ne (Join-Path $stage 'Content/UEPValidation/BP_CharacterStencilCallProbe.uasset') -or
@@ -373,6 +386,7 @@ try{
     if($CharacterParts){$flag='-UEPCharacterPartsResult';$marker='UEP_CHARACTER_PARTS'}
     if($CharacterHealth){$flag='-UEPCharacterHealthResult';$marker='UEP_CHARACTER_HEALTH'}
     if($CharacterInput){$flag='-UEPCharacterInputResult';$marker='UEP_CHARACTER_INPUT'}
+    if($CharacterObserver){$flag='-UEPCharacterObserverResult';$marker='UEP_CHARACTER_OBSERVER'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -411,6 +425,7 @@ try{
             if($CharacterParts){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterPartsResult=*'})}
             if($CharacterHealth){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterHealthResult=*'})}
             if($CharacterInput){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterInputResult=*'})}
+            if($CharacterObserver){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterObserverResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -435,6 +450,7 @@ try{
             if($CharacterParts){$resultFlag='-UEPCharacterPartsNetworkResult'}
             if($CharacterHealth){$resultFlag='-UEPCharacterHealthNetworkResult'}
             if($CharacterInput){$resultFlag='-UEPCharacterInputNetworkResult'}
+            if($CharacterObserver){$resultFlag='-UEPCharacterObserverNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -490,6 +506,7 @@ try{
             if($CharacterParts){$pass=if($peer -eq 'server'){'UEP_CHARACTER_PARTS_NETWORK_PASSED'}else{'UEP_CHARACTER_PARTS_SHUTDOWN_PASSED'}}
             if($CharacterHealth){$pass=if($peer -eq 'server'){'UEP_CHARACTER_HEALTH_NETWORK_PASSED'}else{'UEP_CHARACTER_HEALTH_SHUTDOWN_PASSED'}}
             if($CharacterInput){$pass=if($peer -eq 'server'){'UEP_CHARACTER_INPUT_NETWORK_PASSED'}else{'UEP_CHARACTER_INPUT_SHUTDOWN_PASSED'}}
+            if($CharacterObserver){$pass=if($peer -eq 'server'){'UEP_CHARACTER_OBSERVER_NETWORK_PASSED'}else{'UEP_CHARACTER_OBSERVER_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -516,6 +533,7 @@ try{
         if($CharacterParts){$module='uep_lyra_characters.parts_changed_network_contract'}
         if($CharacterHealth){$module='uep_lyra_characters.health_changed_network_contract'}
         if($CharacterInput){$module='uep_lyra_characters.enhanced_input_network_contract'}
+        if($CharacterObserver){$module='uep_lyra_characters.team_observer_network_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -547,6 +565,7 @@ try{
         if($CharacterParts){$module='uep_lyra_characters.parts_changed_contract'}
         if($CharacterHealth){$module='uep_lyra_characters.health_changed_contract'}
         if($CharacterInput){$module='uep_lyra_characters.enhanced_input_contract'}
+        if($CharacterObserver){$module='uep_lyra_characters.team_observer_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
