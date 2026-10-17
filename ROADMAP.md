@@ -1548,6 +1548,26 @@ Enhanced Input, network pause/travel/loss/package or version promotion claim.
 Next migrate local direction/navigation and activation decisions, then the
 remaining native-task orchestration/Cue/UI business in bounded comparisons.
 
+Batch64 moves the local direction preparation to Python, using native Actor
+facing/raw input, camera forward*(1,1,1.2) or the original AI navigation
+projection/flatten/Normal. Five transport nodes keep all original graphs,
+class/full CDO/four signatures and unused Positive output; a live Direction
+getter avoids a skipped impure setter's cached output. Assets01 and42-pair
+selector regression PASS. Standalone01 PASSes10 native ASC requests across
+original/Python no-input, forward, left, pitched camera and an actually granted
+idle bot: zero directions cancel as before, nonzero directions retain native
+montage/RootMotion/end/cooldown/20-tick cleanup. Native pitch20 yields scaled
+Z0.4104241883. Both actors' Profile/spec/config/control rotation restore;
+collision-checked pose resets are declared fixtures. Nonzero/failed AI
+projection is model-covered, not claimed as a native off-nav AI run. Final
+Network02 PASSes8 two-owner reliable RPCs/local preparations, no remote-authority
+local preparation, foreign invariants, native tasks, strict gates/closed logs
+and server-last3 zero exits; final runs freeze1,878 inputs.2,132 models and
+743-file closure gate the bounded local commit. No C++ build/cook/package or
+full Dash/version acceptance. Next move local activation, zero/cancel/Commit/
+crouch decisions, then native-task/Cue/UI orchestration. Native GAS, RPC,
+animation, navigation and movement implementation remain native.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game

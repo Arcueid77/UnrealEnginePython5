@@ -1,7 +1,8 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
-    [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory)
+    [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory,
+    [ValidateSet('dashrpcinput','dashlocaldirection')][string]$Kind='dashrpcinput')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -16,7 +17,8 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $previousRoot=[IO.Path]::GetFullPath($PreviousDashDirectory)
 if(!$previousRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Previous Dash proof must be workspace-owned'}
 $previous=Get-Content -LiteralPath (Join-Path $previousRoot 'summary.json') -Raw|ConvertFrom-Json -Depth 90
-if($previous.status -ne 'passed' -or $previous.kind -ne 'dashselector' -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted original selector authoring required'}
+$previousKind=if($Kind -eq 'dashlocaldirection'){'dashrpcinput'}else{'dashselector'}
+if($previous.status -ne 'passed' -or $previous.kind -ne $previousKind -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted preceding Dash authoring required'}
 $relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset','Content/UEPMixins/DA_DashSelectorMixin.uasset')
 foreach($name in $relative){
     $from=Join-Path $stage $name;$other=Join-Path $overlay $name
@@ -24,7 +26,7 @@ foreach($name in $relative){
     if($row.Count -ne 1 -or (Get-FileHash -LiteralPath $from).Hash -ne $row[0].sha256 -or (Get-FileHash -LiteralPath $other).Hash -ne $row[0].sha256){throw 'Accepted Dash input paths/bytes differ'}
 }
 New-Item -ItemType Directory -Path "$output/PreviousAssets"|Out-Null
-$summary=[ordered]@{schema_version=1;status='failed';kind='dashrpcinput';runtime_acceptance=$false;full_acceptance=$false
+$summary=[ordered]@{schema_version=1;status='failed';kind=$Kind;runtime_acceptance=$false;full_acceptance=$false
     cpp_compile_executed=$false;cook_package_executed=$false;previous_dash_directory=$previousRoot
     previous_assets=@();assets=@();hashes=@();process=$null;error=$null}
 function Add-DashHash([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
@@ -58,7 +60,7 @@ try{
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
         Add-DashHash $file.FullName;Add-DashHash $target
     }
-    $script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_rpc_input_assets.py'
+    $script=Join-Path $repo $(if($Kind -eq 'dashlocaldirection'){'Demos/UEPLyraIntegration/Tools/generate_dash_local_direction_assets.py'}else{'Demos/UEPLyraIntegration/Tools/generate_dash_rpc_input_assets.py'})
     foreach($path in @($PSCommandPath,$script,(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py'),
@@ -69,14 +71,20 @@ try{
         "-UEPDashRPCStageRoot=$stage","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Dash native RPC receiver two-store authoring' 240
     $proof=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 90
-    if($proof.status -ne 'passed' -or $proof.kind -ne 'dashrpcinput' -or !$proof.original_full_cdo_preserved -or !$proof.native_server_rpc_flags_preserved -or
-        !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.python_replaces_two_remote_stores -or !$proof.native_commit_tasks_animation_movement_retained -or
-        $proof.whole_dash_activation_migrated -or $proof.transport_nodes -ne 4 -or $proof.new_business_nodes -ne 0 -or !$proof.native_register_restore_passed -or
-        $proof.actual_registered_profile_method_counts.Python -ne 2 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
+    $methods=if($Kind -eq 'dashlocaldirection'){3}else{2}
+    if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.native_server_rpc_flags_preserved -or
+        !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_commit_tasks_animation_movement_retained -or
+        $proof.whole_dash_activation_migrated -or $proof.new_business_nodes -ne 0 -or !$proof.native_register_restore_passed -or
+        $proof.actual_registered_profile_method_counts.Python -ne $methods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $methods -or
         ($proof.assets -join ',') -ne ($relative -join ',')){throw 'Dash RPC receiver authoring proof incomplete'}
+    if($Kind -eq 'dashrpcinput' -and (!$proof.python_replaces_two_remote_stores -or $proof.transport_nodes -ne 4)){throw 'RPC two-store dispatch proof incomplete'}
+    if($Kind -eq 'dashlocaldirection' -and ($proof.local_direction_transport_nodes -ne 5 -or !$proof.unused_positive_output_retained -or !$proof.native_direction_property_read)){
+        throw 'Local direction original graph/five-node/current-property dispatch proof incomplete'
+    }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
-    Assert-UEPFocusedLog $log 'UEP_DASH_RPC_INPUT_ASSETS_PASSED'
-    if($log -notmatch '(?s)UEP_DASH_RPC_INPUT_ASSETS_PASSED.*Goodbye Python.*Log file closed'){throw 'Dash authoring exit incomplete'}
+    $marker=if($Kind -eq 'dashlocaldirection'){'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'}else{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}
+    Assert-UEPFocusedLog $log $marker
+    if($log -notmatch ('(?s)'+$marker+'.*Goodbye Python.*Log file closed')){throw 'Dash authoring exit incomplete'}
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Dash authoring frozen input changed'}}
     foreach($name in $relative){
         $from=Join-Path $stage $name;$other=Join-Path $overlay $name

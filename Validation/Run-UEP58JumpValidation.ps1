@@ -9,12 +9,19 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterDeathReplication,
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$DashRPCInput,[string]$DashRPCInputAuthoringDirectory,
+      [switch]$DashLocalDirection,[string]$DashLocalDirectionAuthoringDirectory,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
       [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($DashLocalDirection){
+    if(!$DashLocalDirectionAuthoringDirectory -or !$DashRPCInputAuthoringDirectory){throw 'Local direction requires the complete authored Dash revision chain'}
+    $DashSelector=$true
+    if($Network){$DashRPCInput=$true}
+}
+if($DashLocalDirectionAuthoringDirectory -and (!$DashSelector -or !$DashRPCInputAuthoringDirectory)){throw 'Local direction revision requires selector/RPC provenance'}
 if($DashRPCInput){
     if(!$Network -or !$DashRPCInputAuthoringDirectory){throw 'Dash RPC ingress requires its authored revision and two-client native network lane'}
     $DashSelector=$true
@@ -242,7 +249,11 @@ try{
             $revisionRoot=[IO.Path]::GetFullPath($DashRPCInputAuthoringDirectory)
             if(!$revisionRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Dash revision must be workspace-owned'}
             . (Join-Path $PSScriptRoot 'UEPDashAssetProvenance.ps1')
-            $revision=Get-UEPDashRPCInputRevision $dashRoot $revisionRoot
+            if($DashLocalDirectionAuthoringDirectory){
+                $localRoot=[IO.Path]::GetFullPath($DashLocalDirectionAuthoringDirectory)
+                if(!$localRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Local direction proof must be workspace-owned'}
+                $revision=Get-UEPDashLocalDirectionRevision $dashRoot $revisionRoot $localRoot
+            }else{$revision=Get-UEPDashRPCInputRevision $dashRoot $revisionRoot}
             $currentDashAssets=@($revision.assets)
             foreach($file in $revision.evidence){Add-JumpInput $file}
             Add-JumpInput (Join-Path $PSScriptRoot 'UEPDashAssetProvenance.ps1')
@@ -605,6 +616,7 @@ try{
     if($CharacterRagdoll){$flag='-UEPCharacterRagdollResult';$marker='UEP_CHARACTER_RAGDOLL'}
     if($CharacterDeathStarted){$flag='-UEPCharacterDeathStartedResult';$marker='UEP_CHARACTER_DEATH_STARTED'}
     if($DashSelector){$flag='-UEPDashSelectorResult';$marker='UEP_DASH_SELECTOR'}
+    if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     $arguments=@($project,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360',
         '-NoLoadingScreen','-ExecCmds=t.MaxFPS 60','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
@@ -655,6 +667,7 @@ try{
             if($CharacterRagdoll){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterRagdollResult=*'})}
             if($CharacterDeathStarted){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPCharacterDeathStartedResult=*'})}
             if($DashSelector){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashSelectorResult=*'})}
+            if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($peer -eq 'server'){
                 $peerArguments=@($peerArguments|Where-Object {$_ -ne '-RenderOffscreen'})+@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1')
             }else{
@@ -693,6 +706,7 @@ try{
             if($CharacterDeathReplication){$resultFlag='-UEPCharacterDeathReplicationNetworkResult'}
             if($DashSelector){$resultFlag='-UEPDashSelectorNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
+            if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             $peerArguments+=@("-UEPJumpPeer=$peer","-UEPJumpRun=$run","$resultFlag=$output/$peer.json","-abslog=$output/$peer.log")
             $exe=Join-Path $EngineRoot $(if($peer -eq 'server'){'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{'Engine/Binaries/Win64/UnrealEditor.exe'})
             $handles[$peer]=Start-UEPValidationProcess $exe $peerArguments $stage (Join-Path $output $peer) "Native Jump $peer"
@@ -762,6 +776,7 @@ try{
             if($CharacterDeathReplication){$pass=if($peer -eq 'server'){'UEP_CHARACTER_DEATH_REPLICATION_NETWORK_PASSED'}else{'UEP_CHARACTER_DEATH_REPLICATION_SHUTDOWN_PASSED'}}
             if($DashSelector){$pass=if($peer -eq 'server'){'UEP_DASH_SELECTOR_NETWORK_PASSED'}else{'UEP_DASH_SELECTOR_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
+            if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
@@ -802,6 +817,7 @@ try{
         if($CharacterDeathReplication){$module='uep_lyra_characters.death_replication_contract'}
         if($DashSelector){$module='uep_lyra_abilities.dash_selector_contract'}
         if($DashRPCInput){$module='uep_lyra_abilities.dash_rpc_input_contract'}
+        if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         $gateArgs=@('--directory',$output)
     }else{
         $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage (Join-Path $output 'jump') 'Native input Jump BP/Python differential' 300
@@ -845,6 +861,7 @@ try{
         if($CharacterRagdoll){$module='uep_lyra_characters.ragdoll_contract'}
         if($CharacterDeathStarted){$module='uep_lyra_characters.death_started_contract'}
         if($DashSelector){$module='uep_lyra_abilities.dash_selector_contract'}
+        if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
