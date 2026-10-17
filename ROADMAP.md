@@ -1348,6 +1348,31 @@ and parent/sibling coverage. No full Character/version, deferred-component
 replication, pending Profile-switch, hardware/pixels/travel/loss/package claim;
 no Engine/official Lyra/animation changes or C++ build/cook/package/publication.
 
+Batch56 moves ShowPawnAgainNextFrame's native InitState callback/delayed-show
+business to `uep_lyra_characters/visibility_mixin.py`. GameplayReady registration
+still starts in original BeginPlay; scheduling remains native DelayUntilNextTick
+with named int32 resumption, no Python wait ticker/root. An Actor-local latent
+site allocator guarantees disjoint stable Python inventory/visibility keys.
+Assets01 PASSes Python25/fallback20, original type/full CDO/all graphs/twenty-four
+signatures, an empty two-node continuation declaration and four-node exact
+native InitState registration transport. Differential01 PASSes actual native
+callback payload identity, six late-readiness visibility pairs and four pairs
+of single/repeated/immediate-destroy/both-direction pending Profile-switch
+trials, without manually replaying the callback. Original and Python hidden
+flags agree before/after native ticks; pending destruction remains quiet and
+prior possession/inventory/resource/pool gates stay strict. Natural startup
+records received/delay while hidden at6438, native resume/show at6439; preserve
+the actual backend, not a universal whole-frame-delay promise. Network01 PASSes
+one natural callback/delay/resume/show on both authority and both owning-client
+Pawns,24 authority/24 replica-noop inventory trials, exact original state and
+proxies24/12/12 collected, roots1/1 each world. Strict closed logs, independent
+gates, server-last three zero exits and1,838 frozen inputs/final run PASS.
+All1,788 host/isolated-index models and673-file all-index checks pass; ledger56
+is bounded. ReceiveBeginPlay orchestration is next, then ancestor/sibling and
+whole-version gates. No network repeat/destroy/Profile-switch visibility,
+physical pixels, hardware/travel/loss/package/full-version claim; no Engine /
+official Lyra/animation changes or C++ build/cook/package/publication.
+
 Migrate character/input BP decisions, hero abilities, fire/reload, weapon
 instances and grenades. Animation assets/ABPs, movement prediction, physics,
 GAS execution and the native RPC/replication machinery remain. Python game
