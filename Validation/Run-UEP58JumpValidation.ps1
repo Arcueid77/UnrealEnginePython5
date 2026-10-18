@@ -12,6 +12,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeWidget,[switch]$GrenadeActivation,[switch]$GrenadeActivationNetwork,[string]$GrenadeAuthoringDirectory,
       [switch]$GrenadeVFX,[string]$GrenadeVFXAuthoringDirectory,
       [switch]$GrenadeCleanup,[string]$GrenadeCleanupAuthoringDirectory,
+      [switch]$GrenadeActions,[string]$GrenadeActionsAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -34,14 +35,20 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeActions){
+    $actionAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeActions','GrenadeActionsAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeActionsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $actionAllowed}).Count){throw 'Grenade actions require separate native ordinary-entry lane and current Actor proof'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeActionsAuthoringDirectory -and !$GrenadeActions -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade action revision requires its dedicated fixture or current family regression'}
 if($GrenadeCleanup){
-    $cleanupAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeCleanup','GrenadeCleanupAuthoringDirectory','ThreadedLoading')
+    $cleanupAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeCleanup','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeCleanupAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cleanupAllowed}).Count){throw 'Grenade cleanup requires a separate original native timer Actor lane and current revision'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeCleanupAuthoringDirectory -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade cleanup revision requires its dedicated fixture or VFX regression'}
 if($GrenadeVFX){
-    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','GrenadeCleanupAuthoringDirectory','ThreadedLoading')
+    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeVFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $vfxAllowed}).Count){throw 'Grenade VFX requires its separate standalone Actor lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -400,15 +407,44 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
+    if($GrenadeActions){
+        $actionRoot=[IO.Path]::GetFullPath($GrenadeActionsAuthoringDirectory)
+        if(!$actionRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Actor action revision required'}
+        $actionSummary=Join-Path $actionRoot 'summary.json';$actionReport=Join-Path $actionRoot 'assets.json'
+        $author=Get-Content -LiteralPath $actionSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $actionReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadeactions' -or $proof.kind -ne 'grenadeactions' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or !$proof.native_server_rpc_flags_preserved -or
+            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 4 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
+            $proof.original_action_policy.speed_divisor -ne 2. -or !$proof.original_action_policy.forward_not_normalized -or !$proof.original_action_policy.invalid_trail_stops_after_conserved_write -or
+            $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted retained Actor teleport/destroy proof required'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade action asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $actionSummary;Add-JumpInput $actionReport
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Plugins/FX/Niagara/Source/Niagara/Private/NiagaraComponent.cpp')
+    }
     if($GrenadeCleanup){
         $cleanupRoot=[IO.Path]::GetFullPath($GrenadeCleanupAuthoringDirectory)
         if(!$cleanupRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned cleanup revision proof required'}
         $cleanupSummary=Join-Path $cleanupRoot 'summary.json';$cleanupReport=Join-Path $cleanupRoot 'assets.json'
         $author=Get-Content -LiteralPath $cleanupSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $cleanupReport -Raw|ConvertFrom-Json -Depth 80
-        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadecleanup' -or $proof.kind -ne 'grenadecleanup' -or
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadecleanup' -or $proof.kind -ne 'grenadecleanup' -or $proof.original_cleanup_policy.native_timer_seconds -ne .16){throw 'Original native cleanup provenance required'}
+        Add-JumpInput $cleanupSummary;Add-JumpInput $cleanupReport
+        $cleanupKind='grenadecleanup';$cleanupMethods=2
+        if($GrenadeActionsAuthoringDirectory){
+            $currentRoot=[IO.Path]::GetFullPath($GrenadeActionsAuthoringDirectory)
+            if(!$currentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned current Actor action revision required'}
+            $currentSummary=Join-Path $currentRoot 'summary.json';$currentReport=Join-Path $currentRoot 'assets.json'
+            $author=Get-Content -LiteralPath $currentSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $currentReport -Raw|ConvertFrom-Json -Depth 80
+            $baseHash=(Get-FileHash -LiteralPath $cleanupSummary).Hash
+            if($author.previous_dash_directory -ne $cleanupRoot -or !@($author.hashes|Where-Object {$_.path -eq $cleanupSummary -and $_.sha256 -eq $baseHash}).Count){throw 'Cleanup regression requires matching current action revision chain'}
+            Add-JumpInput $currentSummary;Add-JumpInput $currentReport
+            $cleanupKind='grenadeactions';$cleanupMethods=4
+        }
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne $cleanupKind -or $proof.kind -ne $cleanupKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or !$proof.native_server_rpc_flags_preserved -or
-            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 2 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
-            $proof.original_cleanup_policy.native_timer_seconds -ne .16 -or $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted original native cleanup timer/profile proof required'}
+            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne $cleanupMethods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $cleanupMethods -or
+            $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted original native cleanup timer/profile proof required'}
         foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade cleanup asset changed'};Add-JumpInput $path
         }}
@@ -433,6 +469,17 @@ try{
             if(!@($author.hashes|Where-Object {$_.path -eq $vfxSummary -and $_.sha256 -eq $baseHash}).Count){throw 'Original VFX proof not frozen by current Actor revision'}
             Add-JumpInput $revisionSummary;Add-JumpInput $revisionReport
             $vfxKind='grenadecleanup';$vfxMethods=2;$vfxWhole=$proof.actor_fuse_detonate_damage_business_migrated
+        }
+        if($GrenadeActionsAuthoringDirectory){
+            if(!$GrenadeCleanupAuthoringDirectory){throw 'VFX action regression requires the intermediate cleanup revision'}
+            $currentRoot=[IO.Path]::GetFullPath($GrenadeActionsAuthoringDirectory)
+            if(!$currentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned VFX current action revision required'}
+            $currentSummary=Join-Path $currentRoot 'summary.json';$currentReport=Join-Path $currentRoot 'assets.json'
+            $author=Get-Content -LiteralPath $currentSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $currentReport -Raw|ConvertFrom-Json -Depth 80
+            $baseHash=(Get-FileHash -LiteralPath $revisionSummary).Hash
+            if($author.previous_dash_directory -ne $revisionRoot -or !@($author.hashes|Where-Object {$_.path -eq $revisionSummary -and $_.sha256 -eq $baseHash}).Count){throw 'VFX regression requires matching current action revision chain'}
+            Add-JumpInput $currentSummary;Add-JumpInput $currentReport
+            $vfxKind='grenadeactions';$vfxMethods=4;$vfxWhole=$proof.actor_fuse_detonate_damage_business_migrated
         }
         if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne $vfxKind -or $proof.kind -ne $vfxKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
@@ -910,6 +957,7 @@ try{
     if($GrenadeActivation){$flag='-UEPGrenadeActivationResult';$marker='UEP_GRENADE_ACTIVATION'}
     if($GrenadeVFX){$flag='-UEPGrenadeVFXResult';$marker='UEP_GRENADE_VFX'}
     if($GrenadeCleanup){$flag='-UEPGrenadeCleanupResult';$marker='UEP_GRENADE_CLEANUP'}
+    if($GrenadeActions){$flag='-UEPGrenadeActionsResult';$marker='UEP_GRENADE_ACTIONS'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1207,6 +1255,7 @@ try{
         if($GrenadeActivation){$module='uep_lyra_abilities.grenade_activation_contract'}
         if($GrenadeVFX){$module='uep_lyra_weapons.grenade_vfx_contract'}
         if($GrenadeCleanup){$module='uep_lyra_weapons.grenade_cleanup_contract'}
+        if($GrenadeActions){$module='uep_lyra_weapons.grenade_actions_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}

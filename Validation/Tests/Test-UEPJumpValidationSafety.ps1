@@ -42,4 +42,8 @@ if(!$source.Contains("'Grenade cleanup requires a separate original native timer
    !$source.Contains("if(`$GrenadeCleanup){`$flag='-UEPGrenadeCleanupResult'")){throw 'Grenade native timer fixture requires explicit separate entry'}
 if(!$source.Contains("if(`$GrenadeCleanup){`$module='uep_lyra_weapons.grenade_cleanup_contract'}") -or
    !$source.Contains("'VFX regression requires matching retained Actor revision provenance'")){throw 'Cleanup native semantic gate/current VFX provenance missing'}
-Write-Host 'Native driver safety checks PASS: 15 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade actions require separate native ordinary-entry lane and current Actor proof'") -or
+   !$source.Contains("if(`$GrenadeActions){`$flag='-UEPGrenadeActionsResult'")){throw 'Actor action fixture must use explicit isolated native entry'}
+if(!$source.Contains("if(`$GrenadeActions){`$module='uep_lyra_weapons.grenade_actions_contract'}") -or
+   !$source.Contains("'Cleanup regression requires matching current action revision chain'")){throw 'Actor action independent gate/current family provenance missing'}
+Write-Host 'Native driver safety checks PASS: 17 (no runtime acceptance claim)'
