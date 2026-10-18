@@ -16,6 +16,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeBegin,[string]$GrenadeBeginAuthoringDirectory,
       [switch]$GrenadeHeadless,
       [switch]$GrenadeHit,[string]$GrenadeHitAuthoringDirectory,
+      [switch]$GrenadeDetonate,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -38,6 +39,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeDetonate){
+    $detonateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeDetonate','GrenadeDetonateAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeDetonateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $detonateAllowed}).Count){throw 'Grenade explosion requires its isolated native RPC/fuse/GAS lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeDetonateAuthoringDirectory -and !$GrenadeDetonate){throw 'Explosion revision requires its explicit differential lane'}
 if($GrenadeHit){
     $hitAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeHit','GrenadeHitAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeHitAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $hitAllowed}).Count){throw 'Grenade Hit requires separate actual blocking-contact lane and current proof'}
@@ -454,6 +461,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($GrenadeDetonate){
+        $root=[IO.Path]::GetFullPath($GrenadeDetonateAuthoringDirectory)
+        if(!$root.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned explosion revision proof required'}
+        $authorPath=Join-Path $root 'summary.json';$proofPath=Join-Path $root 'assets.json'
+        $author=Get-Content -LiteralPath $authorPath -Raw|ConvertFrom-Json -Depth 80
+        $proof=Get-Content -LiteralPath $proofPath -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadedetonate' -or $proof.kind -ne 'grenadedetonate' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_server_rpc_flags_preserved -or
+            !$proof.native_register_restore_passed -or !$proof.native_do_once_retained -or !$proof.native_weak_delegate_retained -or
+            !$proof.python_body_has_no_original_fallthrough -or $proof.transport_nodes -ne 3 -or $proof.new_business_nodes -ne 0 -or
+            $proof.actual_registered_profile_method_counts.Python -ne 7 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 7 -or
+            !$proof.actor_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted native explosion transport/retained-body proof required'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade explosion asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $authorPath;Add-JumpInput $proofPath
     }
     if($GrenadeHit){
         $hitRoot=[IO.Path]::GetFullPath($GrenadeHitAuthoringDirectory)
@@ -1040,6 +1064,7 @@ try{
     if($GrenadeActions){$flag='-UEPGrenadeActionsResult';$marker='UEP_GRENADE_ACTIONS'}
     if($GrenadeBegin){$flag='-UEPGrenadeBeginResult';$marker='UEP_GRENADE_BEGIN'}
     if($GrenadeHit){$flag='-UEPGrenadeHitResult';$marker='UEP_GRENADE_HIT'}
+    if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1343,6 +1368,7 @@ try{
         if($GrenadeActions){$module='uep_lyra_weapons.grenade_actions_contract'}
         if($GrenadeBegin){$module='uep_lyra_weapons.grenade_begin_contract'}
         if($GrenadeHit){$module='uep_lyra_weapons.grenade_hit_contract'}
+        if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
