@@ -14,6 +14,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeCleanup,[string]$GrenadeCleanupAuthoringDirectory,
       [switch]$GrenadeActions,[string]$GrenadeActionsAuthoringDirectory,
       [switch]$GrenadeBegin,[string]$GrenadeBeginAuthoringDirectory,
+      [switch]$GrenadeHeadless,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -36,8 +37,9 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeHeadless -and (!$GrenadeBegin -or $Network)){throw 'Headless Grenade requires its dedicated native server-only BeginPlay lane'}
 if($GrenadeBegin){
-    $beginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeBegin','GrenadeBeginAuthoringDirectory','ThreadedLoading')
+    $beginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeBegin','GrenadeBeginAuthoringDirectory','GrenadeHeadless','ThreadedLoading')
     if(!$GrenadeBeginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $beginAllowed}).Count){throw 'Grenade BeginPlay requires separate native Actor-owned timer lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -1009,6 +1011,9 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    # Dedicated-server/NullRHI disables rendering; preserve the single common
+    # argument initialization and add only this explicit server-only variant.
+    if($GrenadeHeadless){$arguments+=@('-server','-NullRHI','-port=7794','-multihome=127.0.0.1','-UEPGrenadeHeadless')}
     if($PawnWireIdentity){$arguments+=@('-UEPRequireNetworkIdentity')}
     if($LazyPawnLifecycle){$arguments+=@('-UEPLazyPawnLifecycle','-LogCmds=LogLyra Verbose')}
     if($JoinResetStress){$arguments+=@('-UEPJoinResetStress')}
@@ -1300,6 +1305,7 @@ try{
         if($GrenadeActions){$module='uep_lyra_weapons.grenade_actions_contract'}
         if($GrenadeBegin){$module='uep_lyra_weapons.grenade_begin_contract'}
         $gateArgs=@('--report',"$output/jump.json")
+        if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
