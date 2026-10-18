@@ -34,4 +34,8 @@ if(!$source.Contains("if(`$GrenadeActivationNetwork)") -or
    !$source.Contains("'Network Grenade activation must explicitly request its predicted two-owner fixture'")){throw 'Grenade predicted activation must be an explicit separate lane'}
 if(!$source.Contains("if(`$GrenadeActivationNetwork){`$module='uep_lyra_abilities.grenade_activation_network_contract'}") -or
    !$source.Contains("'-UEPGrenadeActivationNetworkResult'")){throw 'Grenade predicted activation result/independent gate missing'}
-Write-Host 'Native driver safety checks PASS: 11 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade VFX requires its separate standalone Actor lane and current proof'") -or
+   !$source.Contains("if(`$GrenadeVFX){`$flag='-UEPGrenadeVFXResult'")){throw 'Grenade Actor VFX fixture must have its explicit standalone entry'}
+if(!$source.Contains("if(`$GrenadeVFX){`$module='uep_lyra_weapons.grenade_vfx_contract'}") -or
+   !$source.Contains("'Accepted retained Grenade Actor VFX proof required'")){throw 'Grenade VFX asset/native independent gates missing'}
+Write-Host 'Native driver safety checks PASS: 13 (no runtime acceptance claim)'

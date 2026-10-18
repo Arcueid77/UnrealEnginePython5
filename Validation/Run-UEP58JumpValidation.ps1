@@ -10,6 +10,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
       [switch]$GrenadeWidget,[switch]$GrenadeActivation,[switch]$GrenadeActivationNetwork,[string]$GrenadeAuthoringDirectory,
+      [switch]$GrenadeVFX,[string]$GrenadeVFXAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -32,6 +33,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeVFX){
+    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeVFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $vfxAllowed}).Count){throw 'Grenade VFX requires its separate standalone Actor lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeVFXAuthoringDirectory -and !$GrenadeVFX){throw 'Grenade VFX proof requires its dedicated fixture'}
 if($GrenadeActivationNetwork){
     if(!$Network -or !$PawnWireIdentity){throw 'Grenade predicted activation requires the real two-owner Network lane and native wire identity'}
     $GrenadeActivation=$true
@@ -385,6 +392,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($GrenadeVFX){
+        $vfxRoot=[IO.Path]::GetFullPath($GrenadeVFXAuthoringDirectory)
+        if(!$vfxRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned VFX authoring proof required'}
+        $vfxSummary=Join-Path $vfxRoot 'summary.json';$vfxReport=Join-Path $vfxRoot 'assets.json'
+        $author=Get-Content -LiteralPath $vfxSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $vfxReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadevfx' -or $proof.kind -ne 'grenadevfx' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
+            $proof.actual_registered_profile_method_counts.Python -ne 1 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or
+            $proof.original_class -ne '/ShooterCore/Weapon/Grenade/B_Grenade.B_Grenade_C' -or $proof.original_vfx_policy.red_team_id -ne 1 -or
+            $proof.actor_collision_fuse_explosion_damage_migrated -or @($author.assets).Count -ne 2){throw 'Accepted retained Grenade Actor VFX proof required'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade VFX asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $vfxSummary;Add-JumpInput $vfxReport
+        foreach($header in @('Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraParameterStore.h','Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraComponent.h',
+            'Engine/Plugins/FX/Niagara/Source/Niagara/Private/NiagaraFunctionLibrary.cpp','Engine/Plugins/FX/Niagara/Source/Niagara/Private/NiagaraComponent.cpp')){Add-JumpInput (Join-Path $EngineRoot $header)}
     }
     if($GrenadeWidget -or $GrenadeActivation){
         $grenadeRoot=[IO.Path]::GetFullPath($GrenadeAuthoringDirectory)
@@ -848,6 +872,7 @@ try{
     if($MeleeTrace){$flag='-UEPMeleeTraceResult';$marker='UEP_MELEE_TRACE'}
     if($GrenadeWidget){$flag='-UEPGrenadeWidgetResult';$marker='UEP_GRENADE_WIDGET'}
     if($GrenadeActivation){$flag='-UEPGrenadeActivationResult';$marker='UEP_GRENADE_ACTIVATION'}
+    if($GrenadeVFX){$flag='-UEPGrenadeVFXResult';$marker='UEP_GRENADE_VFX'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1143,6 +1168,7 @@ try{
         if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_contract'}
         if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_contract'}
         if($GrenadeActivation){$module='uep_lyra_abilities.grenade_activation_contract'}
+        if($GrenadeVFX){$module='uep_lyra_weapons.grenade_vfx_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
