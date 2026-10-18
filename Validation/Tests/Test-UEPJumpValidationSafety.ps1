@@ -30,4 +30,8 @@ if(!$source.Contains("'Grenade activation requires a separate standalone lane an
    !$source.Contains("if(`$GrenadeActivation){`$flag='-UEPGrenadeActivationResult'")){throw 'Grenade activation must use a separate explicit standalone entry'}
 if(!$source.Contains("if(`$GrenadeActivation){`$module='uep_lyra_abilities.grenade_activation_contract'}") -or
    !$source.Contains("'Grenade native parameter default import failed'")){throw 'Grenade activation independent semantic/default import gates missing'}
-Write-Host 'Native driver safety checks PASS: 9 (no runtime acceptance claim)'
+if(!$source.Contains("if(`$GrenadeActivationNetwork)") -or
+   !$source.Contains("'Network Grenade activation must explicitly request its predicted two-owner fixture'")){throw 'Grenade predicted activation must be an explicit separate lane'}
+if(!$source.Contains("if(`$GrenadeActivationNetwork){`$module='uep_lyra_abilities.grenade_activation_network_contract'}") -or
+   !$source.Contains("'-UEPGrenadeActivationNetworkResult'")){throw 'Grenade predicted activation result/independent gate missing'}
+Write-Host 'Native driver safety checks PASS: 11 (no runtime acceptance claim)'

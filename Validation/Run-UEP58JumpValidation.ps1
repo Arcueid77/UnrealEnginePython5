@@ -9,7 +9,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterDeathReplication,
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
-      [switch]$GrenadeWidget,[switch]$GrenadeActivation,[string]$GrenadeAuthoringDirectory,
+      [switch]$GrenadeWidget,[switch]$GrenadeActivation,[switch]$GrenadeActivationNetwork,[string]$GrenadeAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -32,9 +32,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeActivationNetwork){
+    if(!$Network -or !$PawnWireIdentity){throw 'Grenade predicted activation requires the real two-owner Network lane and native wire identity'}
+    $GrenadeActivation=$true
+}
 if($GrenadeActivation){
-    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeActivation','GrenadeAuthoringDirectory','ThreadedLoading')
+    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeActivation','GrenadeActivationNetwork','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','PawnWireIdentity','IdentityBuildDirectory')
     if(!$GrenadeAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $grenadeAllowed}).Count){throw 'Grenade activation requires a separate standalone lane and current revision proof'}
+    if([bool]$Network -ne [bool]$GrenadeActivationNetwork){throw 'Network Grenade activation must explicitly request its predicted two-owner fixture'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeWidget){
@@ -44,7 +49,7 @@ if($GrenadeWidget){
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget -and !$GrenadeActivation){throw 'Grenade asset proof requires its dedicated fixture flag'}
-if($PawnWireIdentity -and (!$GrenadeWidget -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
+if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
 if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
 if($LazyPawnLifecycle -and (!$PawnWireIdentity -or $MeleeCharacterStartupProfile)){throw 'Lazy lifecycle requires native wire proof and no preloaded Character treatment'}
 if($JoinResetStress -and !$LazyPawnLifecycle){throw 'Native join Reset stress requires lazy lifecycle plus wire proof'}
@@ -908,6 +913,7 @@ try{
             if($MeleeActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeActivationResult=*'})}
             if($MeleeTrace){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeTraceResult=*'})}
             if($GrenadeWidget){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeWidgetResult=*'})}
+            if($GrenadeActivationNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeActivationResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
             if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
@@ -952,6 +958,7 @@ try{
             if($MeleeActivation){$resultFlag='-UEPMeleeActivationNetworkResult'}
             if($MeleeTrace){$resultFlag='-UEPMeleeTraceNetworkResult'}
             if($GrenadeWidget){$resultFlag='-UEPGrenadeWidgetNetworkResult'}
+            if($GrenadeActivationNetwork){$resultFlag='-UEPGrenadeActivationNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -1029,12 +1036,14 @@ try{
             if($MeleeActivation){$pass=if($peer -eq 'server'){'UEP_MELEE_ACTIVATION_NETWORK_PASSED'}else{'UEP_MELEE_ACTIVATION_SHUTDOWN_PASSED'}}
             if($MeleeTrace){$pass=if($peer -eq 'server'){'UEP_MELEE_TRACE_NETWORK_PASSED'}else{'UEP_MELEE_TRACE_SHUTDOWN_PASSED'}}
             if($GrenadeWidget){$pass=if($peer -eq 'server'){'UEP_GRENADE_WIDGET_NETWORK_PASSED'}else{'UEP_GRENADE_WIDGET_NETWORK_SHUTDOWN_PASSED'}}
+            if($GrenadeActivationNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_ACTIVATION_NETWORK_PASSED'}else{'UEP_GRENADE_ACTIVATION_NETWORK_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
             if($DashTasks){$pass=if($peer -eq 'server'){'UEP_DASH_TASKS_NETWORK_PASSED'}else{'UEP_DASH_TASKS_SHUTDOWN_PASSED'}}
             if($DashTasksNetworkLifecycle){$pass=if($peer -eq 'server'){'UEP_DASH_TASKS_NETWORK_LIFECYCLE_NETWORK_PASSED'}else{'UEP_DASH_TASKS_NETWORK_LIFECYCLE_SHUTDOWN_PASSED'}}
             Assert-UEPFocusedLog $log $pass -RequirePythonExit
+            if($GrenadeActivationNetwork -and $log -match '(?im)ImportText.*Missing opening parenthesis'){throw 'Grenade network native parameter default import failed'}
             if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
             if($log -notmatch ('(?s)Goodbye Python.*'+$pass+'.*Log file closed')){throw 'Native Jump network shutdown ordering failed'}
         }
@@ -1079,6 +1088,7 @@ try{
         if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_network_contract'}
         if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_network_contract'}
         if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_network_contract'}
+        if($GrenadeActivationNetwork){$module='uep_lyra_abilities.grenade_activation_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
