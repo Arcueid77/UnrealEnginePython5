@@ -13,6 +13,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeVFX,[string]$GrenadeVFXAuthoringDirectory,
       [switch]$GrenadeCleanup,[string]$GrenadeCleanupAuthoringDirectory,
       [switch]$GrenadeActions,[string]$GrenadeActionsAuthoringDirectory,
+      [switch]$GrenadeBegin,[string]$GrenadeBeginAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -35,20 +36,26 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeBegin){
+    $beginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeBegin','GrenadeBeginAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeBeginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $beginAllowed}).Count){throw 'Grenade BeginPlay requires separate native Actor-owned timer lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeBeginAuthoringDirectory -and !$GrenadeBegin -and !$GrenadeActions -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade BeginPlay revision requires its explicit fixture or current family regression'}
 if($GrenadeActions){
-    $actionAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeActions','GrenadeActionsAuthoringDirectory','ThreadedLoading')
+    $actionAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeActions','GrenadeActionsAuthoringDirectory','GrenadeBeginAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeActionsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $actionAllowed}).Count){throw 'Grenade actions require separate native ordinary-entry lane and current Actor proof'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeActionsAuthoringDirectory -and !$GrenadeActions -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade action revision requires its dedicated fixture or current family regression'}
 if($GrenadeCleanup){
-    $cleanupAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeCleanup','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','ThreadedLoading')
+    $cleanupAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeCleanup','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','GrenadeBeginAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeCleanupAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cleanupAllowed}).Count){throw 'Grenade cleanup requires a separate original native timer Actor lane and current revision'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeCleanupAuthoringDirectory -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade cleanup revision requires its dedicated fixture or VFX regression'}
 if($GrenadeVFX){
-    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','ThreadedLoading')
+    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','GrenadeCleanupAuthoringDirectory','GrenadeActionsAuthoringDirectory','GrenadeBeginAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeVFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $vfxAllowed}).Count){throw 'Grenade VFX requires its separate standalone Actor lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -239,6 +246,23 @@ $summary=[ordered]@{schema_version=1;status='failed';bounded_runtime_acceptance=
     hashes=@();process=$null;external_gate=$null;error=$null;threaded_loading_requested=[bool]$ThreadedLoading}
 $handles=@{};$summary.processes=@{}
 function Add-JumpInput([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
+function Get-JumpCurrentActorAssets($FallbackAuthor){
+    if(!$GrenadeBeginAuthoringDirectory -or $GrenadeBegin){return @($FallbackAuthor.assets)}
+    if(!$GrenadeActionsAuthoringDirectory){throw 'Current BeginPlay family regression requires preceding action proof'}
+    $currentRoot=[IO.Path]::GetFullPath($GrenadeBeginAuthoringDirectory);$parentRoot=[IO.Path]::GetFullPath($GrenadeActionsAuthoringDirectory)
+    if(!$currentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$parentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned current BeginPlay family required'}
+    $currentSummary=Join-Path $currentRoot 'summary.json';$currentReport=Join-Path $currentRoot 'assets.json';$parentSummary=Join-Path $parentRoot 'summary.json'
+    $author=Get-Content -LiteralPath $currentSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $currentReport -Raw|ConvertFrom-Json -Depth 80
+    $parentHash=(Get-FileHash -LiteralPath $parentSummary).Hash
+    if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadebegin' -or $proof.kind -ne 'grenadebegin' -or
+        $author.previous_dash_directory -ne $parentRoot -or !@($author.hashes|Where-Object {$_.path -eq $parentSummary -and $_.sha256 -eq $parentHash}).Count -or
+        !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_server_rpc_flags_preserved -or !$proof.native_register_restore_passed -or
+        $proof.actual_registered_profile_method_counts.Python -ne 5 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or
+        $proof.original_begin_policy.native_function_name_api -ne 'K2_SetTimer' -or $proof.original_begin_policy.new_native_adapters -ne 0 -or
+        $proof.actor_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Current BeginPlay family native revision chain proof incomplete'}
+    Add-JumpInput $currentSummary;Add-JumpInput $currentReport
+    return @($author.assets)
+}
 function Write-UEPJumpExitToken {
     param([string]$Path,[hashtable]$Token,[string]$OutputRoot)
     $target=[IO.Path]::GetFullPath($Path);$parent=[IO.Path]::GetFullPath($OutputRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
@@ -407,6 +431,23 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
+    if($GrenadeBegin){
+        $beginRoot=[IO.Path]::GetFullPath($GrenadeBeginAuthoringDirectory)
+        if(!$beginRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned BeginPlay revision required'}
+        $beginSummary=Join-Path $beginRoot 'summary.json';$beginReport=Join-Path $beginRoot 'assets.json'
+        $author=Get-Content -LiteralPath $beginSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $beginReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadebegin' -or $proof.kind -ne 'grenadebegin' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or !$proof.native_server_rpc_flags_preserved -or
+            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 5 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or
+            $proof.original_begin_policy.native_function_name_api -ne 'K2_SetTimer' -or !$proof.original_begin_policy.native_timer_actor_owner -or
+            $proof.original_begin_policy.new_native_adapters -ne 0 -or $proof.actor_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted original Actor BeginPlay/native timer proof required'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade BeginPlay asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $beginSummary;Add-JumpInput $beginReport
+        foreach($relative in @('Engine/Source/Runtime/Engine/Private/KismetSystemLibrary.cpp','Engine/Source/Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h',
+            'Engine/Source/Runtime/Engine/Public/Materials/MaterialInterface.h','Engine/Source/Runtime/Engine/Private/TimerManager.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
+    }
     if($GrenadeActions){
         $actionRoot=[IO.Path]::GetFullPath($GrenadeActionsAuthoringDirectory)
         if(!$actionRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Actor action revision required'}
@@ -417,7 +458,7 @@ try{
             $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 4 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
             $proof.original_action_policy.speed_divisor -ne 2. -or !$proof.original_action_policy.forward_not_normalized -or !$proof.original_action_policy.invalid_trail_stops_after_conserved_write -or
             $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted retained Actor teleport/destroy proof required'}
-        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+        foreach($asset in @(Get-JumpCurrentActorAssets $author)){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade action asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $actionSummary;Add-JumpInput $actionReport
@@ -445,7 +486,7 @@ try{
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or !$proof.native_server_rpc_flags_preserved -or
             $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne $cleanupMethods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $cleanupMethods -or
             $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted original native cleanup timer/profile proof required'}
-        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+        foreach($asset in @(Get-JumpCurrentActorAssets $author)){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade cleanup asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $cleanupSummary;Add-JumpInput $cleanupReport
@@ -486,7 +527,7 @@ try{
             $proof.actual_registered_profile_method_counts.Python -ne $vfxMethods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $vfxMethods -or
             $proof.original_class -ne '/ShooterCore/Weapon/Grenade/B_Grenade.B_Grenade_C' -or $proof.original_vfx_policy.red_team_id -ne 1 -or
             $vfxWhole -or @($author.assets).Count -ne 2){throw 'Accepted retained Grenade Actor VFX proof required'}
-        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+        foreach($asset in @(Get-JumpCurrentActorAssets $author)){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade VFX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $vfxSummary;Add-JumpInput $vfxReport
@@ -958,6 +999,7 @@ try{
     if($GrenadeVFX){$flag='-UEPGrenadeVFXResult';$marker='UEP_GRENADE_VFX'}
     if($GrenadeCleanup){$flag='-UEPGrenadeCleanupResult';$marker='UEP_GRENADE_CLEANUP'}
     if($GrenadeActions){$flag='-UEPGrenadeActionsResult';$marker='UEP_GRENADE_ACTIONS'}
+    if($GrenadeBegin){$flag='-UEPGrenadeBeginResult';$marker='UEP_GRENADE_BEGIN'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1256,6 +1298,7 @@ try{
         if($GrenadeVFX){$module='uep_lyra_weapons.grenade_vfx_contract'}
         if($GrenadeCleanup){$module='uep_lyra_weapons.grenade_cleanup_contract'}
         if($GrenadeActions){$module='uep_lyra_weapons.grenade_actions_contract'}
+        if($GrenadeBegin){$module='uep_lyra_weapons.grenade_begin_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}

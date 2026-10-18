@@ -46,4 +46,8 @@ if(!$source.Contains("'Grenade actions require separate native ordinary-entry la
    !$source.Contains("if(`$GrenadeActions){`$flag='-UEPGrenadeActionsResult'")){throw 'Actor action fixture must use explicit isolated native entry'}
 if(!$source.Contains("if(`$GrenadeActions){`$module='uep_lyra_weapons.grenade_actions_contract'}") -or
    !$source.Contains("'Cleanup regression requires matching current action revision chain'")){throw 'Actor action independent gate/current family provenance missing'}
-Write-Host 'Native driver safety checks PASS: 17 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade BeginPlay requires separate native Actor-owned timer lane and current proof'") -or
+   !$source.Contains("if(`$GrenadeBegin){`$flag='-UEPGrenadeBeginResult'")){throw 'BeginPlay needs isolated actual Actor timer lane'}
+if(!$source.Contains("if(`$GrenadeBegin){`$module='uep_lyra_weapons.grenade_begin_contract'}") -or
+   !$source.Contains("'Current BeginPlay family native revision chain proof incomplete'")){throw 'BeginPlay independent gate/current family proof missing'}
+Write-Host 'Native driver safety checks PASS: 19 (no runtime acceptance claim)'
