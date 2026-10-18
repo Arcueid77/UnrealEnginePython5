@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory,
-    [ValidateSet('dashrpcinput','dashlocaldirection','dashactivation','dashtasks','meleeactivation','meleetrace','grenadeactivation')][string]$Kind='dashrpcinput')
+    [ValidateSet('dashrpcinput','dashlocaldirection','dashactivation','dashtasks','meleeactivation','meleetrace','grenadeactivation','grenadecleanup')][string]$Kind='dashrpcinput')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -17,11 +17,12 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $previousRoot=[IO.Path]::GetFullPath($PreviousDashDirectory)
 if(!$previousRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Previous Dash proof must be workspace-owned'}
 $previous=Get-Content -LiteralPath (Join-Path $previousRoot 'summary.json') -Raw|ConvertFrom-Json -Depth 90
-$previousKind=switch($Kind){'grenadeactivation'{'grenadewidget'} 'meleetrace'{'meleeactivation'} 'meleeactivation'{'meleehitmontage'} 'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
+$previousKind=switch($Kind){'grenadecleanup'{'grenadevfx'} 'grenadeactivation'{'grenadewidget'} 'meleetrace'{'meleeactivation'} 'meleeactivation'{'meleehitmontage'} 'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
 if($previous.status -ne 'passed' -or $previous.kind -ne $previousKind -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted preceding Dash authoring required'}
 $relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset','Content/UEPMixins/DA_DashSelectorMixin.uasset')
 if($Kind -in @('meleeactivation','meleetrace')){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset','Content/UEPMixins/DA_MeleeHitMontageMixin.uasset')}
 if($Kind -eq 'grenadeactivation'){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset','Content/UEPMixins/DA_GrenadeWidgetMixin.uasset')}
+if($Kind -eq 'grenadecleanup'){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Weapon/Grenade/B_Grenade.uasset','Content/UEPMixins/DA_GrenadeVFXMixin.uasset')}
 foreach($name in $relative){
     $from=Join-Path $stage $name;$other=Join-Path $overlay $name
     $row=@($previous.assets|Where-Object {$_.stage -eq $from -and $_.overlay -eq $other})
@@ -62,7 +63,7 @@ try{
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
         Add-DashHash $file.FullName;Add-DashHash $target
     }
-    $generator=switch($Kind){'grenadeactivation'{'generate_grenade_activation_assets.py'} 'meleetrace'{'generate_melee_trace_assets.py'} 'meleeactivation'{'generate_melee_activation_assets.py'} 'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
+    $generator=switch($Kind){'grenadecleanup'{'generate_grenade_cleanup_assets.py'} 'grenadeactivation'{'generate_grenade_activation_assets.py'} 'meleetrace'{'generate_melee_trace_assets.py'} 'meleeactivation'{'generate_melee_activation_assets.py'} 'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
     $script=Join-Path $repo "Demos/UEPLyraIntegration/Tools/$generator"
     foreach($path in @($PSCommandPath,$script,(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
@@ -70,6 +71,7 @@ try{
         (Join-Path $stage 'Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll'))){Add-DashHash $path}
     if($Kind -in @('meleeactivation','meleetrace')){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_melee_hit_montage_assets.py')}
     if($Kind -eq 'grenadeactivation'){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_widget_assets.py')}
+    if($Kind -eq 'grenadecleanup'){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_vfx_assets.py')}
     $mutating=$true
     $arguments=@($project,'-run=Py',$script,'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-AsyncLoadingThread',
@@ -84,6 +86,13 @@ try{
             $proof.actual_registered_profile_method_counts.Python -ne 3 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or
             ($proof.assets -join ',') -ne ($relative -join ',') -or $proof.original_activation_policy.montage_completion_connections -ne 0 -or
             $proof.original_activation_policy.montage_stop_when_ability_ends -or !$proof.original_activation_policy.end_immediately_after_message){throw 'Grenade activation original graph/order/register proof incomplete'}
+    }elseif($Kind -eq 'grenadecleanup'){
+        if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or
+            !$proof.native_server_rpc_flags_preserved -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
+            $proof.actual_registered_profile_method_counts.Python -ne 2 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
+            ($proof.assets -join ',') -ne ($relative -join ',') -or $proof.original_cleanup_policy.native_timer_seconds -ne .16 -or
+            $proof.original_cleanup_policy.native_timer_looping -or !$proof.original_cleanup_policy.cast_failed_rejoins_mesh_cleanup -or
+            $proof.actor_fuse_detonate_damage_business_migrated){throw 'Grenade cleanup retained timer/helper/RPC proof incomplete'}
     }elseif($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.native_server_rpc_flags_preserved -or
         !$proof.original_business_graphs_preserved_with_dispatch -or !$proof.native_commit_tasks_animation_movement_retained -or
         $proof.whole_dash_activation_migrated -or $proof.new_business_nodes -ne 0 -or !$proof.native_register_restore_passed -or
@@ -116,7 +125,7 @@ try{
         throw 'Task/Delay dispatch, original latent node and no double remote body proof incomplete'
     }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
-    $marker=switch($Kind){'grenadeactivation'{'UEP_GRENADE_ACTIVATION_ASSETS_PASSED'} 'meleetrace'{'UEP_MELEE_TRACE_ASSETS_PASSED'} 'meleeactivation'{'UEP_MELEE_ACTIVATION_ASSETS_PASSED'} 'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
+    $marker=switch($Kind){'grenadecleanup'{'UEP_GRENADE_CLEANUP_ASSETS_PASSED'} 'grenadeactivation'{'UEP_GRENADE_ACTIVATION_ASSETS_PASSED'} 'meleetrace'{'UEP_MELEE_TRACE_ASSETS_PASSED'} 'meleeactivation'{'UEP_MELEE_ACTIVATION_ASSETS_PASSED'} 'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
     Assert-UEPFocusedLog $log $marker
     if($log -notmatch ('(?s)'+$marker+'.*Goodbye Python.*Log file closed')){throw 'Dash authoring exit incomplete'}
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Dash authoring frozen input changed'}}

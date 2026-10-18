@@ -38,4 +38,8 @@ if(!$source.Contains("'Grenade VFX requires its separate standalone Actor lane a
    !$source.Contains("if(`$GrenadeVFX){`$flag='-UEPGrenadeVFXResult'")){throw 'Grenade Actor VFX fixture must have its explicit standalone entry'}
 if(!$source.Contains("if(`$GrenadeVFX){`$module='uep_lyra_weapons.grenade_vfx_contract'}") -or
    !$source.Contains("'Accepted retained Grenade Actor VFX proof required'")){throw 'Grenade VFX asset/native independent gates missing'}
-Write-Host 'Native driver safety checks PASS: 13 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade cleanup requires a separate original native timer Actor lane and current revision'") -or
+   !$source.Contains("if(`$GrenadeCleanup){`$flag='-UEPGrenadeCleanupResult'")){throw 'Grenade native timer fixture requires explicit separate entry'}
+if(!$source.Contains("if(`$GrenadeCleanup){`$module='uep_lyra_weapons.grenade_cleanup_contract'}") -or
+   !$source.Contains("'VFX regression requires matching retained Actor revision provenance'")){throw 'Cleanup native semantic gate/current VFX provenance missing'}
+Write-Host 'Native driver safety checks PASS: 15 (no runtime acceptance claim)'

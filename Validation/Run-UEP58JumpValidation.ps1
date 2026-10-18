@@ -11,6 +11,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
       [switch]$GrenadeWidget,[switch]$GrenadeActivation,[switch]$GrenadeActivationNetwork,[string]$GrenadeAuthoringDirectory,
       [switch]$GrenadeVFX,[string]$GrenadeVFXAuthoringDirectory,
+      [switch]$GrenadeCleanup,[string]$GrenadeCleanupAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -33,8 +34,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeCleanup){
+    $cleanupAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeCleanup','GrenadeCleanupAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeCleanupAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cleanupAllowed}).Count){throw 'Grenade cleanup requires a separate original native timer Actor lane and current revision'}
+    $AutoRespawnActivation=$true
+}
+if($GrenadeCleanupAuthoringDirectory -and !$GrenadeCleanup -and !$GrenadeVFX){throw 'Grenade cleanup revision requires its dedicated fixture or VFX regression'}
 if($GrenadeVFX){
-    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','ThreadedLoading')
+    $vfxAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeVFX','GrenadeVFXAuthoringDirectory','GrenadeCleanupAuthoringDirectory','ThreadedLoading')
     if(!$GrenadeVFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $vfxAllowed}).Count){throw 'Grenade VFX requires its separate standalone Actor lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -393,16 +400,45 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
+    if($GrenadeCleanup){
+        $cleanupRoot=[IO.Path]::GetFullPath($GrenadeCleanupAuthoringDirectory)
+        if(!$cleanupRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned cleanup revision proof required'}
+        $cleanupSummary=Join-Path $cleanupRoot 'summary.json';$cleanupReport=Join-Path $cleanupRoot 'assets.json'
+        $author=Get-Content -LiteralPath $cleanupSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $cleanupReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadecleanup' -or $proof.kind -ne 'grenadecleanup' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or !$proof.native_server_rpc_flags_preserved -or
+            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 2 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or
+            $proof.original_cleanup_policy.native_timer_seconds -ne .16 -or $proof.actor_fuse_detonate_damage_business_migrated -or @($author.assets).Count -ne 2){throw 'Accepted original native cleanup timer/profile proof required'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade cleanup asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $cleanupSummary;Add-JumpInput $cleanupReport
+        foreach($header in @('Engine/Source/Runtime/Engine/Classes/Components/PrimitiveComponent.h','Engine/Source/Runtime/Engine/Classes/GameFramework/ProjectileMovementComponent.h')){Add-JumpInput (Join-Path $EngineRoot $header)}
+    }
     if($GrenadeVFX){
         $vfxRoot=[IO.Path]::GetFullPath($GrenadeVFXAuthoringDirectory)
         if(!$vfxRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned VFX authoring proof required'}
         $vfxSummary=Join-Path $vfxRoot 'summary.json';$vfxReport=Join-Path $vfxRoot 'assets.json'
         $author=Get-Content -LiteralPath $vfxSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $vfxReport -Raw|ConvertFrom-Json -Depth 80
-        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadevfx' -or $proof.kind -ne 'grenadevfx' -or
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadevfx' -or $proof.kind -ne 'grenadevfx'){throw 'Original retained VFX authoring provenance required'}
+        Add-JumpInput $vfxSummary;Add-JumpInput $vfxReport
+        $vfxKind='grenadevfx';$vfxMethods=1;$vfxWhole=$proof.actor_collision_fuse_explosion_damage_migrated
+        if($GrenadeCleanupAuthoringDirectory){
+            $revisionRoot=[IO.Path]::GetFullPath($GrenadeCleanupAuthoringDirectory)
+            if(!$revisionRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned current Actor revision required'}
+            $revisionSummary=Join-Path $revisionRoot 'summary.json';$revisionReport=Join-Path $revisionRoot 'assets.json'
+            $author=Get-Content -LiteralPath $revisionSummary -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $revisionReport -Raw|ConvertFrom-Json -Depth 80
+            if($author.previous_dash_directory -ne $vfxRoot -or !$proof.native_server_rpc_flags_preserved -or $proof.original_cleanup_policy.native_timer_seconds -ne .16){throw 'VFX regression requires matching retained Actor revision provenance'}
+            $baseHash=(Get-FileHash -LiteralPath $vfxSummary).Hash
+            if(!@($author.hashes|Where-Object {$_.path -eq $vfxSummary -and $_.sha256 -eq $baseHash}).Count){throw 'Original VFX proof not frozen by current Actor revision'}
+            Add-JumpInput $revisionSummary;Add-JumpInput $revisionReport
+            $vfxKind='grenadecleanup';$vfxMethods=2;$vfxWhole=$proof.actor_fuse_detonate_damage_business_migrated
+        }
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne $vfxKind -or $proof.kind -ne $vfxKind -or
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
-            $proof.actual_registered_profile_method_counts.Python -ne 1 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or
+            $proof.actual_registered_profile_method_counts.Python -ne $vfxMethods -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne $vfxMethods -or
             $proof.original_class -ne '/ShooterCore/Weapon/Grenade/B_Grenade.B_Grenade_C' -or $proof.original_vfx_policy.red_team_id -ne 1 -or
-            $proof.actor_collision_fuse_explosion_damage_migrated -or @($author.assets).Count -ne 2){throw 'Accepted retained Grenade Actor VFX proof required'}
+            $vfxWhole -or @($author.assets).Count -ne 2){throw 'Accepted retained Grenade Actor VFX proof required'}
         foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Grenade VFX asset changed'};Add-JumpInput $path
         }}
@@ -873,6 +909,7 @@ try{
     if($GrenadeWidget){$flag='-UEPGrenadeWidgetResult';$marker='UEP_GRENADE_WIDGET'}
     if($GrenadeActivation){$flag='-UEPGrenadeActivationResult';$marker='UEP_GRENADE_ACTIVATION'}
     if($GrenadeVFX){$flag='-UEPGrenadeVFXResult';$marker='UEP_GRENADE_VFX'}
+    if($GrenadeCleanup){$flag='-UEPGrenadeCleanupResult';$marker='UEP_GRENADE_CLEANUP'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1169,6 +1206,7 @@ try{
         if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_contract'}
         if($GrenadeActivation){$module='uep_lyra_abilities.grenade_activation_contract'}
         if($GrenadeVFX){$module='uep_lyra_weapons.grenade_vfx_contract'}
+        if($GrenadeCleanup){$module='uep_lyra_weapons.grenade_cleanup_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
