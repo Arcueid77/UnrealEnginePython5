@@ -6,6 +6,8 @@ param(
     [Parameter(Mandatory=$true)][string]$Target,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [string[]]$Modules=@(),
+    [switch]$RefreshRules,
+    [switch]$RegenerateActionGraph,
     [switch]$UsePrecompiledEngine
 )
 Set-StrictMode -Version Latest
@@ -49,9 +51,11 @@ try {
     $dotnet=Join-Path $EngineRoot 'Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe'
     $ubt=Join-Path $EngineRoot 'Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll'
     $arguments=@($ubt,$Target,'Win64','Development',"-Project=$project",'-NoEngineChanges','-IgnoreJunk',
-        '-SkipPreBuildTargets','-SkipRulesCompile','-WaitMutex','-NoHotReload','-NoUBA','-MaxParallelActions=2','-UTF8Output',
+        '-SkipPreBuildTargets','-WaitMutex','-NoHotReload','-NoUBA','-MaxParallelActions=2','-UTF8Output',
         "-WriteOutdatedActions=$output\actions.json","-Log=$output\plan.log")
     if($Modules.Count){$arguments+=('-Module='+($Modules -join '+'))}
+    if(!$RefreshRules){$arguments+='-SkipRulesCompile'}
+    if($RegenerateActionGraph){$arguments+='-NoUBTMakefiles'}
     if($UsePrecompiledEngine){$arguments+='-UsePrecompiled'}
     # Do not fake a recursive -Session: UE5.8's UBA executor requires the real
     # parent trace and rejects an artificial session even for plan export.

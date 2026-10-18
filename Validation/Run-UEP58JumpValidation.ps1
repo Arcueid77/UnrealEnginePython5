@@ -10,6 +10,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$DashSelector,[string]$DashSelectorAuthoringDirectory,
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
       [switch]$GrenadeWidget,[string]$GrenadeAuthoringDirectory,
+      [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
       [switch]$MeleeTrace,[string]$MeleeTraceAuthoringDirectory,
       [string]$MeleeNetworkFixtureAuthoringDirectory,
@@ -31,11 +32,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if($GrenadeWidget){
     if(!$GrenadeAuthoringDirectory -or $MeleeTrace -or $MeleeHitMontage -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Grenade UI native grant/avatar/removal requires its separate lane and current asset proof'}
-    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','MeleeCharacterStartupProfile')
+    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','MeleeCharacterStartupProfile','PawnWireIdentity','IdentityBuildDirectory')
     if(@($PSBoundParameters.Keys|Where-Object {$_ -notin $grenadeAllowed}).Count){throw 'Do not combine Grenade UI with another native fixture'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget){throw 'Grenade asset proof requires its dedicated fixture flag'}
+if($PawnWireIdentity -and (!$GrenadeWidget -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
+if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
 if($MeleeTrace){
     if(!$MeleeTraceAuthoringDirectory -or ($Network -and !$MeleeNetworkFixtureAuthoringDirectory)){throw 'Melee trace requires its revision proof and a replicated native floor for Network'}
     $MeleeHitMontage=$true
@@ -355,6 +358,19 @@ try{
         foreach($item in $private){$path=if($item.PSObject.Properties['asset']){$item.asset}else{$item.path};if((Get-FileHash -LiteralPath $path).Hash -ne $item.sha256){throw 'Dash private probe changed'};Add-JumpInput $path}
         foreach($entry in $dashProof.reference_hashes.PSObject.Properties){if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Official Dash changed'};Add-JumpInput $entry.Name}
         Add-JumpInput $dashSummary;Add-JumpInput $dashReport
+    }
+    if($PawnWireIdentity){
+        $identityRoot=[IO.Path]::GetFullPath($IdentityBuildDirectory)
+        if(!$identityRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned identity build proof required'}
+        $identityBuildPath=Join-Path $identityRoot 'summary.json';$identityBuild=Get-Content -LiteralPath $identityBuildPath -Raw|ConvertFrom-Json -Depth 80
+        $identityDll=Join-Path $stage 'Plugins/UEPLyraBridge/Binaries/Win64/UnrealEditor-UEPNetworkIdentity.dll'
+        if($identityBuild.status -ne 'built_requires_native_acceptance' -or !$identityBuild.checked_engine_and_existing_binaries_unchanged -or
+            $identityBuild.engine_full_compile_executed -or $identityBuild.lyra_cpp_compile_executed -or $identityBuild.identity_dll.path -ne $identityDll -or
+            (Get-FileHash -LiteralPath $identityDll).Hash -ne $identityBuild.identity_dll.sha256){throw 'Current reviewed read-only identity DLL required'}
+        foreach($row in $identityBuild.source_hashes){foreach($path in @($row.path,$row.stage)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
     if($GrenadeWidget){
         $grenadeRoot=[IO.Path]::GetFullPath($GrenadeAuthoringDirectory)
@@ -820,6 +836,7 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    if($PawnWireIdentity){$arguments+=@('-UEPRequireNetworkIdentity')}
     if($MeleeCharacterStartupProfile){$arguments+=@("-UEPReplicaCharacterStartupProfile=$MeleeCharacterStartupProfile",'-LogCmds=LogLyra Verbose')}
     if($MeleeWarmupJoin){$arguments+=@('-UEPReplicaWarmupJoin')}
     if($MeleeCharacterOriginalBeginPlay){$arguments+=@('-UEPReplicaCharacterOriginalBeginPlay')}
