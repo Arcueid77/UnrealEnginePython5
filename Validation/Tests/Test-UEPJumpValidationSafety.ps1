@@ -26,4 +26,8 @@ if(!$source.Contains('$watch.Elapsed.TotalSeconds -gt 520') -or
 if(!$source.Contains('Assert-UEPFocusedLog') -or !$source.Contains('$summary.external_gate')){throw 'Independent report/log gates missing'}
 if(!$source.Contains('if($CharacterDeathReplication -and (!$Network -or !$CharacterDeathStarted))')){throw 'Native replicated death requires its current profile and network lane'}
 if(!$source.Contains("if(`$CharacterDeathReplication){`$module='uep_lyra_characters.death_replication_contract'}")){throw 'Replicated death independent semantic gate missing'}
-Write-Host 'Native driver safety checks PASS: 7 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade activation requires a separate standalone lane and current revision proof'") -or
+   !$source.Contains("if(`$GrenadeActivation){`$flag='-UEPGrenadeActivationResult'")){throw 'Grenade activation must use a separate explicit standalone entry'}
+if(!$source.Contains("if(`$GrenadeActivation){`$module='uep_lyra_abilities.grenade_activation_contract'}") -or
+   !$source.Contains("'Grenade native parameter default import failed'")){throw 'Grenade activation independent semantic/default import gates missing'}
+Write-Host 'Native driver safety checks PASS: 9 (no runtime acceptance claim)'
