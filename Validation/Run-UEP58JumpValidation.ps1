@@ -30,8 +30,8 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if($GrenadeWidget){
-    if($Network -or !$GrenadeAuthoringDirectory -or $MeleeTrace -or $MeleeHitMontage -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Grenade UI native grant/avatar/removal is a separate standalone lane with current asset proof'}
-    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading')
+    if(!$GrenadeAuthoringDirectory -or $MeleeTrace -or $MeleeHitMontage -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Grenade UI native grant/avatar/removal requires its separate lane and current asset proof'}
+    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','MeleeCharacterStartupProfile')
     if(@($PSBoundParameters.Keys|Where-Object {$_ -notin $grenadeAllowed}).Count){throw 'Do not combine Grenade UI with another native fixture'}
     $AutoRespawnActivation=$true
 }
@@ -41,7 +41,7 @@ if($MeleeTrace){
     $MeleeHitMontage=$true
 }
 if($MeleeNetworkFixtureAuthoringDirectory -and (!$MeleeTrace -or !$Network)){throw 'Replicated Melee floor proof belongs only to the native trace Network lane'}
-if($MeleeCharacterStartupProfile -and (!$MeleeTrace -or !$Network)){throw 'Character startup profile is an explicit Melee replica diagnosis Network variant'}
+if($MeleeCharacterStartupProfile -and ((!$MeleeTrace -and !$GrenadeWidget) -or !$Network)){throw 'Character startup profile is an explicit replica diagnosis Network variant'}
 if($MeleeCharacterOriginalBeginPlay -and $MeleeCharacterStartupProfile -ne 'Python'){throw 'Original BeginPlay isolation requires matched Python startup variant'}
 if($MeleeWarmupJoin -and $MeleeCharacterStartupProfile -ne 'Python'){throw 'Controlled warmup join requires explicit Python Melee Network diagnosis'}
 if($MeleeCharacterOriginalSubset -and ($MeleeCharacterStartupProfile -ne 'Python' -or $MeleeCharacterOriginalBeginPlay)){throw 'Method subset isolation requires matched Python startup and no other treatment'}
@@ -872,6 +872,7 @@ try{
             if($MeleeHitMontage){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeHitMontageResult=*'})}
             if($MeleeActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeActivationResult=*'})}
             if($MeleeTrace){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeTraceResult=*'})}
+            if($GrenadeWidget){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeWidgetResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
             if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
@@ -915,6 +916,7 @@ try{
             if($MeleeHitMontage){$resultFlag='-UEPMeleeHitMontageNetworkResult'}
             if($MeleeActivation){$resultFlag='-UEPMeleeActivationNetworkResult'}
             if($MeleeTrace){$resultFlag='-UEPMeleeTraceNetworkResult'}
+            if($GrenadeWidget){$resultFlag='-UEPGrenadeWidgetNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -991,6 +993,7 @@ try{
             if($MeleeHitMontage){$pass=if($peer -eq 'server'){'UEP_MELEE_HIT_MONTAGE_NETWORK_PASSED'}else{'UEP_MELEE_HIT_MONTAGE_SHUTDOWN_PASSED'}}
             if($MeleeActivation){$pass=if($peer -eq 'server'){'UEP_MELEE_ACTIVATION_NETWORK_PASSED'}else{'UEP_MELEE_ACTIVATION_SHUTDOWN_PASSED'}}
             if($MeleeTrace){$pass=if($peer -eq 'server'){'UEP_MELEE_TRACE_NETWORK_PASSED'}else{'UEP_MELEE_TRACE_SHUTDOWN_PASSED'}}
+            if($GrenadeWidget){$pass=if($peer -eq 'server'){'UEP_GRENADE_WIDGET_NETWORK_PASSED'}else{'UEP_GRENADE_WIDGET_NETWORK_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -1040,6 +1043,7 @@ try{
         if($DashLocalDirection){$module='uep_lyra_abilities.dash_local_direction_contract'}
         if($MeleeActivation){$module='uep_lyra_abilities.melee_activation_network_contract'}
         if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_network_contract'}
+        if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
