@@ -17,6 +17,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeHeadless,
       [switch]$GrenadeHit,[string]$GrenadeHitAuthoringDirectory,
       [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
+      [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -39,12 +40,17 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeFlightNetwork){
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$GrenadeFlightAbilityAuthoringDirectory){throw 'Natural Grenade flight requires actual predicted network and current ability/identity proof'}
+    $GrenadeDetonateNetwork=$true
+}
+if($GrenadeFlightAbilityAuthoringDirectory -and !$GrenadeFlightNetwork){throw 'Natural Grenade ability proof requires its explicit flight lane'}
 if($GrenadeDetonateNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory){throw 'Network explosion requires two native clients and current read-only wire identity proof'}
     $GrenadeDetonate=$true
 }
 if($GrenadeDetonate){
-    $detonateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeDetonate','GrenadeDetonateAuthoringDirectory','ThreadedLoading','GrenadeDetonateNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort')
+    $detonateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeDetonate','GrenadeDetonateAuthoringDirectory','ThreadedLoading','GrenadeDetonateNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort','GrenadeFlightNetwork','GrenadeFlightAbilityAuthoringDirectory')
     if(!$GrenadeDetonateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $detonateAllowed}).Count){throw 'Grenade explosion requires its isolated native RPC/fuse/GAS lane and current proof'}
     if([bool]$Network -ne [bool]$GrenadeDetonateNetwork){throw 'Network explosion must explicitly select its actual replicated Actor lane'}
     $AutoRespawnActivation=$true
@@ -466,6 +472,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($GrenadeFlightNetwork){
+        $flightRoot=[IO.Path]::GetFullPath($GrenadeFlightAbilityAuthoringDirectory)
+        if(!$flightRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned natural Grenade ability revision required'}
+        $flightSummary=Join-Path $flightRoot 'summary.json';$flightReport=Join-Path $flightRoot 'assets.json'
+        $author=Get-Content -LiteralPath $flightSummary -Raw|ConvertFrom-Json -Depth 80
+        $proof=Get-Content -LiteralPath $flightReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'grenadeactivation' -or $proof.kind -ne 'grenadeactivation' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or
+            !$proof.actual_activation_event_overridden -or !$proof.activation_aim_business_migrated -or $proof.projectile_actor_business_migrated -or
+            $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 3 -or
+            $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or @($author.assets).Count -ne 2){throw 'Current native Grenade activation proof required for flight integration'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Natural flight ability asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $flightSummary;Add-JumpInput $flightReport
+        foreach($relative in @('Engine/Source/Runtime/Engine/Private/DataReplication.cpp','Engine/Source/Runtime/Engine/Private/DataChannel.cpp','Engine/Source/Runtime/Engine/Private/NetDriver.cpp','Engine/Source/Runtime/Core/Public/Misc/NetworkGuid.h')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($GrenadeDetonate){
         $root=[IO.Path]::GetFullPath($GrenadeDetonateAuthoringDirectory)
@@ -1079,6 +1102,7 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
     # Dedicated-server/NullRHI disables rendering; preserve the single common
     # argument initialization and add only this explicit server-only variant.
     if($GrenadeHeadless){$arguments+=@('-server','-NullRHI','-port=7794','-multihome=127.0.0.1','-UEPGrenadeHeadless')}
@@ -1186,6 +1210,7 @@ try{
             if($GrenadeWidget){$resultFlag='-UEPGrenadeWidgetNetworkResult'}
             if($GrenadeActivationNetwork){$resultFlag='-UEPGrenadeActivationNetworkResult'}
             if($GrenadeDetonateNetwork){$resultFlag='-UEPGrenadeDetonateNetworkResult'}
+            if($GrenadeFlightNetwork){$resultFlag='-UEPGrenadeFlightNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -1265,6 +1290,7 @@ try{
             if($GrenadeWidget){$pass=if($peer -eq 'server'){'UEP_GRENADE_WIDGET_NETWORK_PASSED'}else{'UEP_GRENADE_WIDGET_NETWORK_SHUTDOWN_PASSED'}}
             if($GrenadeActivationNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_ACTIVATION_NETWORK_PASSED'}else{'UEP_GRENADE_ACTIVATION_NETWORK_SHUTDOWN_PASSED'}}
             if($GrenadeDetonateNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_DETONATE_NETWORK_PASSED'}else{'UEP_GRENADE_DETONATE_NETWORK_SHUTDOWN_PASSED'}}
+            if($GrenadeFlightNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_FLIGHT_NETWORK_PASSED'}else{'UEP_GRENADE_FLIGHT_NETWORK_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -1318,6 +1344,7 @@ try{
         if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_network_contract'}
         if($GrenadeActivationNetwork){$module='uep_lyra_abilities.grenade_activation_network_contract'}
         if($GrenadeDetonateNetwork){$module='uep_lyra_weapons.grenade_detonate_network_contract'}
+        if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
