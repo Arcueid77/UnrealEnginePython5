@@ -54,4 +54,8 @@ if(!$source.Contains("'Headless Grenade requires its dedicated native server-onl
    !$source.Contains("'-server','-NullRHI','-port=7794','-multihome=127.0.0.1','-UEPGrenadeHeadless'")){throw 'Headless Actor lane must be explicit existing native server/no-render/local bind'}
 if(!$source.Contains("if(`$GrenadeHeadless){`$gateArgs+=@('--headless')}") -or
    !$source.Contains("`$beginAllowed=@(") -or !$source.Contains("'GrenadeHeadless'")){throw 'Headless native mode semantic gate missing'}
-Write-Host 'Native driver safety checks PASS: 21 (no runtime acceptance claim)'
+if(!$source.Contains("'Grenade Hit requires separate actual blocking-contact lane and current proof'") -or
+   !$source.Contains("if(`$GrenadeHit){`$flag='-UEPGrenadeHitResult'")){throw 'Hit fixture must have its explicit actual-contact lane'}
+if(!$source.Contains("if(`$GrenadeHit){`$module='uep_lyra_weapons.grenade_hit_contract'}") -or
+   !$source.Contains("'Current Hit family native revision chain proof incomplete'")){throw 'Hit native independent gate/current family proof missing'}
+Write-Host 'Native driver safety checks PASS: 23 (no runtime acceptance claim)'
