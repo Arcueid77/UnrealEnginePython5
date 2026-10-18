@@ -11,6 +11,8 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MeleeHitMontage,[string]$MeleeAuthoringDirectory,
       [switch]$GrenadeWidget,[string]$GrenadeAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
+      [switch]$LazyPawnLifecycle,
+      [switch]$JoinResetStress,
       [switch]$MeleeActivation,[string]$MeleeActivationAuthoringDirectory,
       [switch]$MeleeTrace,[string]$MeleeTraceAuthoringDirectory,
       [string]$MeleeNetworkFixtureAuthoringDirectory,
@@ -32,13 +34,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if($GrenadeWidget){
     if(!$GrenadeAuthoringDirectory -or $MeleeTrace -or $MeleeHitMontage -or $DashSelector -or $CharacterAuthoringDirectory){throw 'Grenade UI native grant/avatar/removal requires its separate lane and current asset proof'}
-    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','MeleeCharacterStartupProfile','PawnWireIdentity','IdentityBuildDirectory')
+    $grenadeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeWidget','GrenadeAuthoringDirectory','ThreadedLoading','Network','ServerPort','MeleeCharacterStartupProfile','PawnWireIdentity','IdentityBuildDirectory','LazyPawnLifecycle','JoinResetStress')
     if(@($PSBoundParameters.Keys|Where-Object {$_ -notin $grenadeAllowed}).Count){throw 'Do not combine Grenade UI with another native fixture'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget){throw 'Grenade asset proof requires its dedicated fixture flag'}
 if($PawnWireIdentity -and (!$GrenadeWidget -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
 if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
+if($LazyPawnLifecycle -and (!$PawnWireIdentity -or $MeleeCharacterStartupProfile)){throw 'Lazy lifecycle requires native wire proof and no preloaded Character treatment'}
+if($JoinResetStress -and !$LazyPawnLifecycle){throw 'Native join Reset stress requires lazy lifecycle plus wire proof'}
 if($MeleeTrace){
     if(!$MeleeTraceAuthoringDirectory -or ($Network -and !$MeleeNetworkFixtureAuthoringDirectory)){throw 'Melee trace requires its revision proof and a replicated native floor for Network'}
     $MeleeHitMontage=$true
@@ -837,6 +841,8 @@ try{
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
     if($PawnWireIdentity){$arguments+=@('-UEPRequireNetworkIdentity')}
+    if($LazyPawnLifecycle){$arguments+=@('-UEPLazyPawnLifecycle','-LogCmds=LogLyra Verbose')}
+    if($JoinResetStress){$arguments+=@('-UEPJoinResetStress')}
     if($MeleeCharacterStartupProfile){$arguments+=@("-UEPReplicaCharacterStartupProfile=$MeleeCharacterStartupProfile",'-LogCmds=LogLyra Verbose')}
     if($MeleeWarmupJoin){$arguments+=@('-UEPReplicaWarmupJoin')}
     if($MeleeCharacterOriginalBeginPlay){$arguments+=@('-UEPReplicaCharacterOriginalBeginPlay')}
