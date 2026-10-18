@@ -16,7 +16,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeBegin,[string]$GrenadeBeginAuthoringDirectory,
       [switch]$GrenadeHeadless,
       [switch]$GrenadeHit,[string]$GrenadeHitAuthoringDirectory,
-      [switch]$GrenadeDetonate,[string]$GrenadeDetonateAuthoringDirectory,
+      [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -39,9 +39,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GrenadeDetonateNetwork){
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory){throw 'Network explosion requires two native clients and current read-only wire identity proof'}
+    $GrenadeDetonate=$true
+}
 if($GrenadeDetonate){
-    $detonateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeDetonate','GrenadeDetonateAuthoringDirectory','ThreadedLoading')
+    $detonateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GrenadeDetonate','GrenadeDetonateAuthoringDirectory','ThreadedLoading','GrenadeDetonateNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort')
     if(!$GrenadeDetonateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $detonateAllowed}).Count){throw 'Grenade explosion requires its isolated native RPC/fuse/GAS lane and current proof'}
+    if([bool]$Network -ne [bool]$GrenadeDetonateNetwork){throw 'Network explosion must explicitly select its actual replicated Actor lane'}
     $AutoRespawnActivation=$true
 }
 if($GrenadeDetonateAuthoringDirectory -and !$GrenadeDetonate){throw 'Explosion revision requires its explicit differential lane'}
@@ -93,7 +98,7 @@ if($GrenadeWidget){
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget -and !$GrenadeActivation){throw 'Grenade asset proof requires its dedicated fixture flag'}
-if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
+if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork -and !$GrenadeDetonateNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
 if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
 if($LazyPawnLifecycle -and (!$PawnWireIdentity -or $MeleeCharacterStartupProfile)){throw 'Lazy lifecycle requires native wire proof and no preloaded Character treatment'}
 if($JoinResetStress -and !$LazyPawnLifecycle){throw 'Native join Reset stress requires lazy lifecycle plus wire proof'}
@@ -1134,6 +1139,7 @@ try{
             if($MeleeTrace){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPMeleeTraceResult=*'})}
             if($GrenadeWidget){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeWidgetResult=*'})}
             if($GrenadeActivationNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeActivationResult=*'})}
+            if($GrenadeDetonateNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeDetonateResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
             if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
@@ -1179,6 +1185,7 @@ try{
             if($MeleeTrace){$resultFlag='-UEPMeleeTraceNetworkResult'}
             if($GrenadeWidget){$resultFlag='-UEPGrenadeWidgetNetworkResult'}
             if($GrenadeActivationNetwork){$resultFlag='-UEPGrenadeActivationNetworkResult'}
+            if($GrenadeDetonateNetwork){$resultFlag='-UEPGrenadeDetonateNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -1257,6 +1264,7 @@ try{
             if($MeleeTrace){$pass=if($peer -eq 'server'){'UEP_MELEE_TRACE_NETWORK_PASSED'}else{'UEP_MELEE_TRACE_SHUTDOWN_PASSED'}}
             if($GrenadeWidget){$pass=if($peer -eq 'server'){'UEP_GRENADE_WIDGET_NETWORK_PASSED'}else{'UEP_GRENADE_WIDGET_NETWORK_SHUTDOWN_PASSED'}}
             if($GrenadeActivationNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_ACTIVATION_NETWORK_PASSED'}else{'UEP_GRENADE_ACTIVATION_NETWORK_SHUTDOWN_PASSED'}}
+            if($GrenadeDetonateNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_DETONATE_NETWORK_PASSED'}else{'UEP_GRENADE_DETONATE_NETWORK_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -1309,6 +1317,7 @@ try{
         if($MeleeTrace){$module='uep_lyra_abilities.melee_trace_network_contract'}
         if($GrenadeWidget){$module='uep_lyra_abilities.grenade_widget_network_contract'}
         if($GrenadeActivationNetwork){$module='uep_lyra_abilities.grenade_activation_network_contract'}
+        if($GrenadeDetonateNetwork){$module='uep_lyra_weapons.grenade_detonate_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
