@@ -40,6 +40,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WindSystem,[string]$WindSystemAuthoringDirectory,
       [switch]$GeneralAudio,[string]$GeneralAudioAuthoringDirectory,
       [switch]$Footstep,[string]$FootstepAuthoringDirectory,
+      [switch]$CueWidgets,[string]$CueWidgetAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -67,6 +68,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CueWidgets){
+    $cueWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CueWidgets','CueWidgetAuthoringDirectory','ThreadedLoading')
+    if(!$CueWidgetAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cueWidgetAllowed}).Count){throw 'Cue widgets require their standalone native UI/manager lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($CueWidgetAuthoringDirectory -and !$CueWidgets){throw 'Cue widget proof requires its explicit native fixture'}
 if($Footstep){
     $footstepAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','Footstep','FootstepAuthoringDirectory','ThreadedLoading')
     if(!$FootstepAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $footstepAllowed}).Count){throw 'Footstep requires its standalone native Niagara/latent lane and current proof'}
@@ -883,6 +890,29 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($CueWidgets){
+        $cueRoot=[IO.Path]::GetFullPath($CueWidgetAuthoringDirectory)
+        if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Cue widget revision required'}
+        $cueSummaryPath=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json'
+        $cueAuthor=Get-Content -LiteralPath $cueSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $cueProof=Get-Content -LiteralPath $cueProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($cueAuthor.status -ne 'passed' -or $cueProof.status -ne 'passed' -or $cueAuthor.kind -ne 'cuewidgets' -or $cueProof.kind -ne 'cuewidgets' -or
+            !$cueProof.original_full_cdo_preserved -or !$cueProof.original_business_graphs_preserved_with_dispatch -or !$cueProof.original_native_parent_start_call_preserved -or
+            !$cueProof.child_defaults_event_signatures_and_asset_bytes_preserved -or !$cueProof.base_owned_gates -or !$cueProof.production_abstract_base_preserved -or $cueProof.original_graph_nodes -ne 40 -or
+            $cueProof.transport_nodes -ne 8 -or $cueProof.new_business_nodes -ne 0 -or $cueProof.actual_registered_profile_method_counts.Python -ne 2 -or
+            $cueProof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or @($cueAuthor.assets).Count -ne 2){throw 'Current Cue widget base/native parent/child proof incomplete'}
+        foreach($asset in $cueAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Cue widget asset changed'};Add-JumpInput $path
+        }}
+        foreach($entry in $cueProof.child_reference_hashes.PSObject.Properties){
+            $path=Join-Path $stage $entry.Name
+            if((Get-FileHash -LiteralPath $path).Hash -ne $entry.Value){throw 'Original Cue child asset changed'};Add-JumpInput $path
+        }
+        if((Get-FileHash -LiteralPath $cueProof.caller_probe.asset).Hash -ne $cueProof.caller_probe.sha256){throw 'Cue manager BP caller changed'}
+        if((Get-FileHash -LiteralPath $cueProof.fixture_probe.asset).Hash -ne $cueProof.fixture_probe.sha256 -or !$cueProof.fixture_probe.stage_only){throw 'Cue concrete diagnostic child changed'}
+        Add-JumpInput $cueProof.fixture_probe.asset
+        Add-JumpInput $cueProof.caller_probe.asset;Add-JumpInput $cueSummaryPath;Add-JumpInput $cueProofPath
+    }
     if($Footstep){
         $footRoot=[IO.Path]::GetFullPath($FootstepAuthoringDirectory)
         if(!$footRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned footstep revision required'}
@@ -1597,6 +1627,7 @@ try{
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($Footstep){$flag='-UEPFootstepResult';$marker='UEP_FOOTSTEP'}
+    if($CueWidgets){$flag='-UEPCueWidgetResult';$marker='UEP_CUE_WIDGET'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -1963,6 +1994,7 @@ try{
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($Footstep){$module='uep_lyra_weapons.footstep_contract'}
+        if($CueWidgets){$module='uep_lyra_hud.cue_widget_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
