@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('footstep','generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -49,6 +49,7 @@ try{
     if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'meleehitmontage'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset'}
     if($Kind -eq 'grenadewidget'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset'}
+    if($Kind -eq 'footstep'){$relative='Content/Effects/Blueprints/B_FootStep.uasset'}
     if($Kind -eq 'generalaudio'){$relative='Content/Audio/Blueprints/GeneralAudioFunctions.uasset'}
     if($Kind -eq 'windsystem'){$relative='Content/Audio/Blueprints/B_WindSystem.uasset'}
     if($Kind -eq 'musiccontrols'){$relative='Content/Audio/Blueprints/B_MusicManagerComponent_Base.uasset'}
@@ -80,6 +81,10 @@ try{
     if($Kind -eq 'weaponinstance'){Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_instance_assets.py')}
     if($Kind -eq 'grenadewidget'){
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_widget_assets.py')
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
+    }
+    if($Kind -eq 'footstep'){
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_footstep_assets.py')
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
     }
     if($Kind -eq 'weaponfirefx'){
@@ -190,7 +195,7 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
-    if($Kind -in @('generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
+    if($Kind -in @('footstep','generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne $(if($Kind -eq 'weaponfirecues'){4}elseif($Kind -in @('weaponaudiomath','generalaudio')){3}else{2}) -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'grenadewidget' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
@@ -201,10 +206,11 @@ try{
         $report.original_ui_policy.tag -ne 'HUD.Slot.ExtraEquipment' -or !$report.original_ui_policy.removal_unconditional)){
         throw 'Grenade UI original graph/default/native event registration proof incomplete'
     }
-    if($Kind -in @('weaponfirefx','weapondecals') -and (!$report.original_full_cdo_preserved -or !$report.original_business_graphs_preserved_with_dispatch -or
+    if($Kind -in @('footstep','weaponfirefx','weapondecals') -and (!$report.original_full_cdo_preserved -or !$report.original_business_graphs_preserved_with_dispatch -or
         !$report.native_register_restore_passed -or !$report.original_retriggerable_delay_node_reused -or !$report.native_delay_uuid_preserved -or
         !$report.cleanup_tests_validity_not_active -or $report.native_delay_seconds -ne 3 -or $report.transport_nodes -ne 3 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2)){throw 'Weapon fire FX original latent/dispatch proof incomplete'}
+    if($Kind -eq 'footstep' -and (!$report.interface_signature_preserved -or $report.original_graph_nodes -ne 93)){throw 'Footstep original interface/graph proof incomplete'}
     if($Kind -eq 'generalaudio' -and (!$report.original_full_cdo_preserved -or !$report.original_static_signature_flags_preserved -or !$report.original_business_graph_preserved_with_dispatch -or
         $report.static_functions_registered_as_mixins -or $report.original_graph_nodes -ne 8 -or $report.transport_nodes -ne 5 -or
         $report.actual_registered_profile_method_counts.Python -ne 1 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 1)){throw 'GeneralAudio static ABI/original body/typed Object proof incomplete'}

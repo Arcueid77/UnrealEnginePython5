@@ -39,6 +39,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MusicFamily,[string]$MusicFamilyAuthoringDirectory,
       [switch]$WindSystem,[string]$WindSystemAuthoringDirectory,
       [switch]$GeneralAudio,[string]$GeneralAudioAuthoringDirectory,
+      [switch]$Footstep,[string]$FootstepAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -66,6 +67,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($Footstep){
+    $footstepAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','Footstep','FootstepAuthoringDirectory','ThreadedLoading')
+    if(!$FootstepAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $footstepAllowed}).Count){throw 'Footstep requires its standalone native Niagara/latent lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($FootstepAuthoringDirectory -and !$Footstep){throw 'Footstep proof requires its explicit native fixture'}
 if($GeneralAudio){
     $generalAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GeneralAudio','GeneralAudioAuthoringDirectory','ThreadedLoading')
     if(!$GeneralAudioAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $generalAllowed}).Count){throw 'GeneralAudio requires standalone static/BP/native music receiver and current proof'}
@@ -876,6 +883,24 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($Footstep){
+        $footRoot=[IO.Path]::GetFullPath($FootstepAuthoringDirectory)
+        if(!$footRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned footstep revision required'}
+        $footSummaryPath=Join-Path $footRoot 'summary.json';$footProofPath=Join-Path $footRoot 'assets.json'
+        $footAuthor=Get-Content -LiteralPath $footSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $footProof=Get-Content -LiteralPath $footProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($footAuthor.status -ne 'passed' -or $footProof.status -ne 'passed' -or $footAuthor.kind -ne 'footstep' -or $footProof.kind -ne 'footstep' -or
+            !$footProof.original_full_cdo_preserved -or !$footProof.interface_signature_preserved -or !$footProof.original_business_graphs_preserved_with_dispatch -or
+            !$footProof.native_register_restore_passed -or !$footProof.original_retriggerable_delay_node_reused -or !$footProof.native_delay_uuid_preserved -or
+            !$footProof.cleanup_tests_validity_not_active -or $footProof.native_delay_seconds -ne 3 -or $footProof.original_graph_nodes -ne 93 -or
+            $footProof.transport_nodes -ne 3 -or $footProof.new_business_nodes -ne 0 -or
+            $footProof.actual_registered_profile_method_counts.Python -ne 2 -or $footProof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or @($footAuthor.assets).Count -ne 2){throw 'Current footstep interface/Niagara/latent proof incomplete'}
+        foreach($asset in $footAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Footstep asset changed'};Add-JumpInput $path
+        }}
+        if((Get-FileHash -LiteralPath $footProof.caller_probe.asset).Hash -ne $footProof.caller_probe.sha256){throw 'Footstep typed caller changed'}
+        Add-JumpInput $footProof.caller_probe.asset;Add-JumpInput $footSummaryPath;Add-JumpInput $footProofPath
+    }
     if($WeaponFireFX -or (($WeaponActorFire -or $WeaponAbilityFire) -and $WeaponFireFXAuthoringDirectory)){
         $fxRoot=[IO.Path]::GetFullPath($WeaponFireFXAuthoringDirectory)
         if(!$fxRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon fire FX revision required'}
@@ -1571,6 +1596,7 @@ try{
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
+    if($Footstep){$flag='-UEPFootstepResult';$marker='UEP_FOOTSTEP'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -1936,6 +1962,7 @@ try{
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
+        if($Footstep){$module='uep_lyra_weapons.footstep_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
