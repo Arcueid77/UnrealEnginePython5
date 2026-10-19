@@ -19,6 +19,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
+      [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -41,8 +42,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponActorFire){
+    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponActorFireAuthoringDirectory -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon Fire proof requires its explicit fixture or helper-family regression'}
 if($WeaponActorHelpers){
-    $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','ThreadedLoading')
+    $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','WeaponActorFireAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponHelperAllowed}).Count){throw 'Weapon Actor helpers require their isolated native child-instance lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -480,6 +487,21 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
+    if($WeaponActorFire -or ($WeaponActorHelpers -and $WeaponActorFireAuthoringDirectory)){
+        $fireRoot=[IO.Path]::GetFullPath($WeaponActorFireAuthoringDirectory)
+        if(!$fireRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon Fire revision required'}
+        $fireSummaryPath=Join-Path $fireRoot 'summary.json';$fireProofPath=Join-Path $fireRoot 'assets.json'
+        $fireAuthor=Get-Content -LiteralPath $fireSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $fireProof=Get-Content -LiteralPath $fireProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($fireAuthor.status -ne 'passed' -or $fireProof.status -ne 'passed' -or $fireAuthor.kind -ne 'weaponactorfire' -or $fireProof.kind -ne 'weaponactorfire' -or
+            !$fireProof.original_full_cdo_preserved -or !$fireProof.original_graphs_unmodified -or !$fireProof.native_register_restore_passed -or !$fireProof.native_original_fx_actors_retained -or !$fireProof.parent_saved_bytes_unchanged -or
+            $fireProof.actual_registered_profile_method_counts.Python -ne 5 -or $fireProof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or
+            $fireProof.new_business_nodes -ne 0 -or $fireProof.begin_play_migrated -or @($fireAuthor.assets).Count -ne 2){throw 'Current five-method weapon Fire proof incomplete'}
+        foreach($asset in $fireAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon Fire asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $fireSummaryPath;Add-JumpInput $fireProofPath
+    }
     if($WeaponActorHelpers){
         $helperRoot=[IO.Path]::GetFullPath($WeaponActorHelpersAuthoringDirectory)
         if(!$helperRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon helper authoring required'}
@@ -490,7 +512,12 @@ try{
             !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
             $proof.actual_registered_profile_method_counts.Python -ne 4 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
             @($proof.inherited_children).Count -ne 3 -or @($author.assets).Count -ne 2 -or $proof.fire_and_begin_play_migrated){throw 'Current native weapon parent helper proof incomplete'}
-        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+        $helperAssets=$author.assets
+        if($WeaponActorFireAuthoringDirectory){
+            if($fireAuthor.previous_dash_directory -ne $helperRoot){throw 'Weapon helper regression requires exact previous parent revision'}
+            $helperAssets=$fireAuthor.assets
+        }
+        foreach($asset in $helperAssets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon helper asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $helperSummary;Add-JumpInput $helperReport
@@ -1116,6 +1143,7 @@ try{
     if($GrenadeHit){$flag='-UEPGrenadeHitResult';$marker='UEP_GRENADE_HIT'}
     if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
     if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
+    if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1429,6 +1457,7 @@ try{
         if($GrenadeHit){$module='uep_lyra_weapons.grenade_hit_contract'}
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
+        if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
