@@ -18,6 +18,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeHit,[string]$GrenadeHitAuthoringDirectory,
       [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
+      [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -40,6 +41,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponActorHelpers){
+    $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponActorHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponHelperAllowed}).Count){throw 'Weapon Actor helpers require their isolated native child-instance lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponActorHelpersAuthoringDirectory -and !$WeaponActorHelpers){throw 'Weapon helper proof requires its explicit fixture'}
 if($GrenadeFlightNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$GrenadeFlightAbilityAuthoringDirectory){throw 'Natural Grenade flight requires actual predicted network and current ability/identity proof'}
     $GrenadeDetonateNetwork=$true
@@ -472,6 +479,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponActorHelpers){
+        $helperRoot=[IO.Path]::GetFullPath($WeaponActorHelpersAuthoringDirectory)
+        if(!$helperRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon helper authoring required'}
+        $helperSummary=Join-Path $helperRoot 'summary.json';$helperReport=Join-Path $helperRoot 'assets.json'
+        $author=Get-Content -LiteralPath $helperSummary -Raw|ConvertFrom-Json -Depth 80
+        $proof=Get-Content -LiteralPath $helperReport -Raw|ConvertFrom-Json -Depth 80
+        if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne 'weaponactorhelpers' -or $proof.kind -ne 'weaponactorhelpers' -or
+            !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or !$proof.native_register_restore_passed -or $proof.new_business_nodes -ne 0 -or
+            $proof.actual_registered_profile_method_counts.Python -ne 4 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
+            @($proof.inherited_children).Count -ne 3 -or @($author.assets).Count -ne 2 -or $proof.fire_and_begin_play_migrated){throw 'Current native weapon parent helper proof incomplete'}
+        foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon helper asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $helperSummary;Add-JumpInput $helperReport
     }
     if($GrenadeFlightNetwork){
         $flightRoot=[IO.Path]::GetFullPath($GrenadeFlightAbilityAuthoringDirectory)
@@ -1093,6 +1115,7 @@ try{
     if($GrenadeBegin){$flag='-UEPGrenadeBeginResult';$marker='UEP_GRENADE_BEGIN'}
     if($GrenadeHit){$flag='-UEPGrenadeHitResult';$marker='UEP_GRENADE_HIT'}
     if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
+    if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1405,6 +1428,7 @@ try{
         if($GrenadeBegin){$module='uep_lyra_weapons.grenade_begin_contract'}
         if($GrenadeHit){$module='uep_lyra_weapons.grenade_hit_contract'}
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
+        if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
