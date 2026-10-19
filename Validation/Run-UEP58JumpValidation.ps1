@@ -19,6 +19,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$NetShooterActor,[string]$NetShooterActorAuthoringDirectory,
+      [switch]$NetShooterAbility,[string]$NetShooterAbilityAuthoringDirectory,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
@@ -49,6 +50,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($NetShooterAbility){
+    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading')
+    if(!$NetShooterAbilityAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netAbilityAllowed}).Count){throw 'NetShooter ability requires its own native equipment/input/Cue/montage lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($NetShooterAbilityAuthoringDirectory -and !$NetShooterAbility){throw 'NetShooter ability proof requires its explicit native fixture'}
 if($NetShooterActor){
     $netActorAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterActor','NetShooterActorAuthoringDirectory','ThreadedLoading')
     if(!$NetShooterActorAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netActorAllowed}).Count){throw 'NetShooter Actor requires its native ray/overlap/physics lane and current proof'}
@@ -536,6 +543,24 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($NetShooterAbility){
+        $netAbilityRoot=[IO.Path]::GetFullPath($NetShooterAbilityAuthoringDirectory)
+        if(!$netAbilityRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned NetShooter ability asset revision required'}
+        $netAbilitySummary=Join-Path $netAbilityRoot 'summary.json';$netAbilityProofPath=Join-Path $netAbilityRoot 'assets.json'
+        $netAbilityAuthor=Get-Content -LiteralPath $netAbilitySummary -Raw|ConvertFrom-Json -Depth 80
+        $netAbilityProof=Get-Content -LiteralPath $netAbilityProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($netAbilityAuthor.status -ne 'passed' -or $netAbilityProof.status -ne 'passed' -or $netAbilityAuthor.kind -ne 'netshooterability' -or
+            !$netAbilityProof.original_full_cdo_preserved -or !$netAbilityProof.original_graphs_unmodified -or !$netAbilityProof.original_empty_target_data_override_preserved -or
+            !$netAbilityProof.native_weak_named_task_binding -or !$netAbilityProof.inherited_parent_namespace_preserved -or $netAbilityProof.inherited_selector_redeclared -or
+            $netAbilityProof.transport_nodes -ne 8 -or $netAbilityProof.actual_registered_profile_method_counts.Python -ne 5 -or
+            $netAbilityProof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or @($netAbilityAuthor.assets).Count -ne 2){throw 'Current native NetShooter ability proof incomplete'}
+        foreach($asset in $netAbilityAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'NetShooter ability asset changed'};Add-JumpInput $path
+        }}
+        $netParent=Join-Path $stage 'Content/Weapons/GA_Weapon_Fire.uasset'
+        if((Get-FileHash -LiteralPath $netParent).Hash -ne $netAbilityProof.parent_asset_sha256){throw 'NetShooter shared fire parent changed'}
+        Add-JumpInput $netAbilitySummary;Add-JumpInput $netAbilityProofPath;Add-JumpInput $netParent
     }
     if($NetShooterActor){
         $netActorRoot=[IO.Path]::GetFullPath($NetShooterActorAuthoringDirectory)
@@ -1292,6 +1317,7 @@ try{
     if($GrenadeHit){$flag='-UEPGrenadeHitResult';$marker='UEP_GRENADE_HIT'}
     if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
     if($NetShooterActor){$flag='-UEPNetShooterActorResult';$marker='UEP_NETSHOOTER_ACTOR'}
+    if($NetShooterAbility){$flag='-UEPNetShooterAbilityResult';$marker='UEP_NETSHOOTER_ABILITY'}
     if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
@@ -1617,6 +1643,7 @@ try{
         if($GrenadeHit){$module='uep_lyra_weapons.grenade_hit_contract'}
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
         if($NetShooterActor){$module='uep_lyra_weapons.netshooter_actor_contract'}
+        if($NetShooterAbility){$module='uep_lyra_weapons.netshooter_ability_contract'}
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
