@@ -20,6 +20,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$NetShooterActor,[string]$NetShooterActorAuthoringDirectory,
       [switch]$NetShooterAbility,[string]$NetShooterAbilityAuthoringDirectory,
+      [switch]$NetShooterNetwork,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
@@ -50,9 +51,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($NetShooterNetwork){
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
+    $NetShooterAbility=$true
+}
 if($NetShooterAbility){
-    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading')
+    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading','NetShooterNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','NetShooterActorAuthoringDirectory','ServerPort')
     if(!$NetShooterAbilityAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netAbilityAllowed}).Count){throw 'NetShooter ability requires its own native equipment/input/Cue/montage lane and current proof'}
+    if([bool]$Network -ne [bool]$NetShooterNetwork){throw 'NetShooter network must select its actual predicted two-owner fixture'}
     $AutoRespawnActivation=$true
 }
 if($NetShooterAbilityAuthoringDirectory -and !$NetShooterAbility){throw 'NetShooter ability proof requires its explicit native fixture'}
@@ -61,7 +67,7 @@ if($NetShooterActor){
     if(!$NetShooterActorAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netActorAllowed}).Count){throw 'NetShooter Actor requires its native ray/overlap/physics lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($NetShooterActorAuthoringDirectory -and !$NetShooterActor){throw 'NetShooter Actor proof requires its explicit native fixture'}
+if($NetShooterActorAuthoringDirectory -and !$NetShooterActor -and !$NetShooterNetwork){throw 'NetShooter Actor proof requires its explicit native fixture'}
 if($WeaponAbilityFireNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory){throw 'Network Weapon Fire requires actual two-owner transport and current native identity proof'}
     $WeaponAbilityFire=$true
@@ -175,7 +181,7 @@ if($GrenadeWidget){
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget -and !$GrenadeActivation){throw 'Grenade asset proof requires its dedicated fixture flag'}
-if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork -and !$GrenadeDetonateNetwork -and !$WeaponAbilityFireNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires two-owner Grenade lane and reviewed build proof'}
+if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork -and !$GrenadeDetonateNetwork -and !$WeaponAbilityFireNetwork -and !$NetShooterNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires a two-owner gameplay lane and reviewed build proof'}
 if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
 if($LazyPawnLifecycle -and (!$PawnWireIdentity -or $MeleeCharacterStartupProfile)){throw 'Lazy lifecycle requires native wire proof and no preloaded Character treatment'}
 if($JoinResetStress -and !$LazyPawnLifecycle){throw 'Native join Reset stress requires lazy lifecycle plus wire proof'}
@@ -562,7 +568,7 @@ try{
         if((Get-FileHash -LiteralPath $netParent).Hash -ne $netAbilityProof.parent_asset_sha256){throw 'NetShooter shared fire parent changed'}
         Add-JumpInput $netAbilitySummary;Add-JumpInput $netAbilityProofPath;Add-JumpInput $netParent
     }
-    if($NetShooterActor){
+    if($NetShooterActor -or $NetShooterNetwork){
         $netActorRoot=[IO.Path]::GetFullPath($NetShooterActorAuthoringDirectory)
         if(!$netActorRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned NetShooter Actor asset revision required'}
         $netActorSummary=Join-Path $netActorRoot 'summary.json';$netActorProofPath=Join-Path $netActorRoot 'assets.json'
@@ -1398,6 +1404,7 @@ try{
             if($GrenadeActivationNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeActivationResult=*'})}
             if($GrenadeDetonateNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPGrenadeDetonateResult=*'})}
             if($WeaponAbilityFireNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPWeaponAbilityFireResult=*'})}
+            if($NetShooterNetwork){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPNetShooterAbilityResult=*'})}
             if($DashLocalDirection){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashLocalDirectionResult=*'})}
             if($DashActivation){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashActivationResult=*'})}
             if($DashTasks){$peerArguments=@($peerArguments|Where-Object {$_ -notlike '-UEPDashTasksResult=*'})}
@@ -1446,6 +1453,7 @@ try{
             if($GrenadeDetonateNetwork){$resultFlag='-UEPGrenadeDetonateNetworkResult'}
             if($GrenadeFlightNetwork){$resultFlag='-UEPGrenadeFlightNetworkResult'}
             if($WeaponAbilityFireNetwork){$resultFlag='-UEPWeaponAbilityFireNetworkResult'}
+            if($NetShooterNetwork){$resultFlag='-UEPNetShooterNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -1527,6 +1535,7 @@ try{
             if($GrenadeDetonateNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_DETONATE_NETWORK_PASSED'}else{'UEP_GRENADE_DETONATE_NETWORK_SHUTDOWN_PASSED'}}
             if($GrenadeFlightNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_FLIGHT_NETWORK_PASSED'}else{'UEP_GRENADE_FLIGHT_NETWORK_SHUTDOWN_PASSED'}}
             if($WeaponAbilityFireNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_FIRE_NETWORK_PASSED'}else{'UEP_WEAPON_FIRE_NETWORK_SHUTDOWN_PASSED'}}
+            if($NetShooterNetwork){$pass=if($peer -eq 'server'){'UEP_NETSHOOTER_NETWORK_PASSED'}else{'UEP_NETSHOOTER_NETWORK_SHUTDOWN_PASSED'}}
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -1582,6 +1591,7 @@ try{
         if($GrenadeDetonateNetwork){$module='uep_lyra_weapons.grenade_detonate_network_contract'}
         if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($WeaponAbilityFireNetwork){$module='uep_lyra_weapons.weapon_ability_fire_network_contract'}
+        if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
