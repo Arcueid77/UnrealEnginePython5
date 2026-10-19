@@ -43,6 +43,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CueWidgets,[string]$CueWidgetAuthoringDirectory,
       [switch]$MessageWidgets,[string]$MessageWidgetAuthoringDirectory,
       [switch]$CharacterDamage,[string]$CharacterDamageAuthoringDirectory,
+      [switch]$HeroBurstCues,[string]$HeroBurstCueAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -70,6 +71,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($HeroBurstCues){
+    $heroBurstAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HeroBurstCues','HeroBurstCueAuthoringDirectory','ThreadedLoading')
+    if(!$HeroBurstCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $heroBurstAllowed}).Count){throw 'Hero burst Cues require their standalone native Timeline/material/Niagara lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($HeroBurstCueAuthoringDirectory -and !$HeroBurstCues){throw 'Hero burst Cue proof requires its explicit native fixture'}
 if($CharacterDamage){
     $damageAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CharacterDamage','CharacterDamageAuthoringDirectory','ThreadedLoading')
     if(!$CharacterDamageAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $damageAllowed}).Count){throw 'Character damage requires its standalone native parent/RPC/popup/effects lane and current proof'}
@@ -904,6 +911,24 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($HeroBurstCues){
+        $heroBurstRoot=[IO.Path]::GetFullPath($HeroBurstCueAuthoringDirectory)
+        if(!$heroBurstRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned hero burst Cue revision required'}
+        $heroBurstSummaryPath=Join-Path $heroBurstRoot 'summary.json';$heroBurstProofPath=Join-Path $heroBurstRoot 'assets.json'
+        $heroBurstAuthor=Get-Content -LiteralPath $heroBurstSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $heroBurstProof=Get-Content -LiteralPath $heroBurstProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($heroBurstAuthor.status -ne 'passed' -or $heroBurstProof.status -ne 'passed' -or $heroBurstAuthor.kind -ne 'heroburstcues' -or $heroBurstProof.kind -ne 'heroburstcues' -or
+            !$heroBurstProof.original_full_cdos_signatures_and_business_graphs_preserved -or !$heroBurstProof.original_native_parent_effects_and_five_second_minimum_timer_preserved -or
+            !$heroBurstProof.native_timeline_tick_update_and_finish_retained -or $heroBurstProof.python_timeline_clock_added -or $heroBurstProof.new_business_nodes -ne 0 -or
+            $heroBurstProof.cues.dash.original_graph_nodes -ne 63 -or $heroBurstProof.cues.death.original_graph_nodes -ne 91 -or $heroBurstProof.cues.dash.transport_nodes -ne 8 -or $heroBurstProof.cues.death.transport_nodes -ne 8 -or
+            !$heroBurstProof.cues.dash.original_native_timeline_templates_curves_guids_and_event_bindings_preserved -or !$heroBurstProof.cues.death.original_native_timeline_templates_curves_guids_and_event_bindings_preserved -or
+            $heroBurstProof.cues.dash.actual_registered_profile_method_counts.Python -ne 3 -or $heroBurstProof.cues.dash.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or
+            $heroBurstProof.cues.death.actual_registered_profile_method_counts.Python -ne 3 -or $heroBurstProof.cues.death.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or @($heroBurstAuthor.assets).Count -ne 4){throw 'Current native hero burst Timeline/template/Profile proof incomplete'}
+        foreach($asset in $heroBurstAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Hero burst Cue asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $heroBurstSummaryPath;Add-JumpInput $heroBurstProofPath
+    }
     if($CharacterDamage){
         $damageRoot=[IO.Path]::GetFullPath($CharacterDamageAuthoringDirectory)
         if(!$damageRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned character damage revision required'}
@@ -1679,6 +1704,7 @@ try{
     if($CueWidgets){$flag='-UEPCueWidgetResult';$marker='UEP_CUE_WIDGET'}
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
+    if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -2048,6 +2074,7 @@ try{
         if($CueWidgets){$module='uep_lyra_hud.cue_widget_contract'}
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
+        if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
