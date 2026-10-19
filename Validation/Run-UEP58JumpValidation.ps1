@@ -48,6 +48,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$SpawningCue,[string]$SpawningCueAuthoringDirectory,
       [switch]$SmallBurstCues,[string]$SmallBurstCueAuthoringDirectory,
       [switch]$PhysicsFields,[string]$PhysicsFieldAuthoringDirectory,
+      [switch]$ScoringBase,[string]$ScoringBaseAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -75,6 +76,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ScoringBase){
+    $scoringAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoringBase','ScoringBaseAuthoringDirectory','ThreadedLoading')
+    if(!$ScoringBaseAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $scoringAllowed}).Count){throw 'Shared scoring requires its standalone native message/reset/warmup lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ScoringBaseAuthoringDirectory -and !$ScoringBase){throw 'Shared scoring proof requires its explicit native fixture'}
 if($PhysicsFields){
     $physicsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','PhysicsFields','PhysicsFieldAuthoringDirectory','ThreadedLoading')
     if(!$PhysicsFieldAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $physicsAllowed}).Count){throw 'Physics fields require their standalone native parent/Chaos/material lane and current proof'}
@@ -938,6 +945,28 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ScoringBase){
+        $scoringRoot=[IO.Path]::GetFullPath($ScoringBaseAuthoringDirectory)
+        if(!$scoringRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned scoring revision required'}
+        $scoringSummaryPath=Join-Path $scoringRoot 'summary.json';$scoringProofPath=Join-Path $scoringRoot 'assets.json'
+        $scoringAuthor=Get-Content -LiteralPath $scoringSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $scoringProof=Get-Content -LiteralPath $scoringProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($scoringAuthor.status -ne 'passed' -or $scoringProof.status -ne 'passed' -or $scoringAuthor.kind -ne 'scoringbase' -or $scoringProof.kind -ne 'scoringbase' -or
+            !$scoringProof.original_full_cdo_signatures_business_graphs_children_and_hook_preserved -or !$scoringProof.original_authority_switch_exact_async_factories_and_listener_lifetime_preserved -or
+            !$scoringProof.base_owned_gates_cover_child_static_parent_and_public_calls -or $scoringProof.original_graph_nodes -ne 61 -or $scoringProof.transport_nodes -ne 21 -or $scoringProof.interface_nodes -ne 5 -or $scoringProof.new_business_nodes -ne 0 -or
+            $scoringProof.actual_registered_profile_method_counts.Python -ne 5 -or $scoringProof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or @($scoringAuthor.assets).Count -ne 2 -or !$scoringProof.fixture.stage_only){throw 'Current shared scoring authority/listener/child proof incomplete'}
+        foreach($asset in $scoringAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Scoring asset changed'};Add-JumpInput $path
+        }}
+        foreach($child in $scoringProof.child_asset_hashes.PSObject.Properties){
+            $childPath=Join-Path $stage $child.Value.relative
+            if((Get-FileHash -LiteralPath $childPath).Hash -ne $child.Value.sha256){throw 'Original scoring child changed'};Add-JumpInput $childPath
+        }
+        $scoringFixture=[IO.Path]::GetFullPath($scoringProof.fixture.asset)
+        if(!$scoringFixture.StartsWith(([IO.Path]::GetFullPath($stage)+[IO.Path]::DirectorySeparatorChar),[StringComparison]::OrdinalIgnoreCase) -or (Get-FileHash -LiteralPath $scoringFixture).Hash -ne $scoringProof.fixture.sha256){throw 'Owned concrete scoring fixture required'}
+        Add-JumpInput $scoringFixture;Add-JumpInput $scoringSummaryPath;Add-JumpInput $scoringProofPath
+        foreach($fixture in @('Content/UEPValidation/BP_MusicListenerProbe.uasset','Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_WeaponSpawner.uasset','Plugins/GameFeatures/ShooterCore/Content/Weapon/Grenade/B_Grenade.uasset','Plugins/GameFeatures/ShooterCore/Content/Weapons/Rifle/WeaponPickupData_Rifle.uasset')){Add-JumpInput (Join-Path $stage $fixture)}
     }
     if($PhysicsFields){
         $physicsRoot=[IO.Path]::GetFullPath($PhysicsFieldAuthoringDirectory)
@@ -1804,6 +1833,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ScoringBase){$flag='-UEPScoringBaseResult';$marker='UEP_SCORING_BASE'}
     if($PhysicsFields){$flag='-UEPPhysicsFieldResult';$marker='UEP_PHYSICS_FIELD'}
     if($SmallBurstCues){$flag='-UEPSmallBurstCueResult';$marker='UEP_SMALL_BURST_CUE'}
     if($SpawningCue){$flag='-UEPSpawningCueResult';$marker='UEP_SPAWNING_CUE'}
@@ -2179,6 +2209,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ScoringBase){$module='uep_lyra_weapons.scoring_base_contract'}
         if($PhysicsFields){$module='uep_lyra_weapons.physics_field_contract'}
         if($SmallBurstCues){$module='uep_lyra_weapons.small_burst_cue_contract'}
         if($SpawningCue){$module='uep_lyra_weapons.spawning_cue_contract'}
