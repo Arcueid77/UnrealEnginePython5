@@ -45,6 +45,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$CharacterDamage,[string]$CharacterDamageAuthoringDirectory,
       [switch]$HeroBurstCues,[string]$HeroBurstCueAuthoringDirectory,
       [switch]$TraversalCues,[string]$TraversalCueAuthoringDirectory,
+      [switch]$SpawningCue,[string]$SpawningCueAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -72,6 +73,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SpawningCue){
+    $spawningAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SpawningCue','SpawningCueAuthoringDirectory','ThreadedLoading')
+    if(!$SpawningCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $spawningAllowed}).Count){throw 'Spawning Cue requires its standalone native Timeline/team/parts lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($SpawningCueAuthoringDirectory -and !$SpawningCue){throw 'Spawning Cue proof requires its explicit native fixture'}
 if($TraversalCues){
     $traversalAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','TraversalCues','TraversalCueAuthoringDirectory','ThreadedLoading')
     if(!$TraversalCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $traversalAllowed}).Count){throw 'Traversal Cues require their standalone native device/Timeline/Niagara lane and current proof'}
@@ -918,6 +925,22 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($SpawningCue){
+        $spawningRoot=[IO.Path]::GetFullPath($SpawningCueAuthoringDirectory)
+        if(!$spawningRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned spawning Cue revision required'}
+        $spawningSummaryPath=Join-Path $spawningRoot 'summary.json';$spawningProofPath=Join-Path $spawningRoot 'assets.json'
+        $spawningAuthor=Get-Content -LiteralPath $spawningSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $spawningProof=Get-Content -LiteralPath $spawningProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($spawningAuthor.status -ne 'passed' -or $spawningProof.status -ne 'passed' -or $spawningAuthor.kind -ne 'spawningcue' -or $spawningProof.kind -ne 'spawningcue' -or
+            !$spawningProof.original_full_cdos_signatures_and_business_graphs_preserved -or !$spawningProof.original_native_timeline_templates_curves_guids_and_bindings_preserved -or
+            !$spawningProof.original_async_factory_proxy_assignment_callbacks_latent_uuid_and_delegate_identity_preserved -or !$spawningProof.original_native_parent_effects_and_lifetime_preserved -or
+            $spawningProof.original_graph_nodes -ne 118 -or $spawningProof.transport_nodes -ne 7 -or $spawningProof.interface_nodes -ne 5 -or $spawningProof.python_timeline_clock_added -or $spawningProof.new_business_nodes -ne 0 -or
+            $spawningProof.actual_registered_profile_method_counts.Python -ne 8 -or $spawningProof.actual_registered_profile_method_counts.BlueprintFallback -ne 8 -or @($spawningAuthor.assets).Count -ne 2){throw 'Current spawning Cue Timeline/async/delegate/Profile proof incomplete'}
+        foreach($asset in $spawningAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Spawning Cue asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $spawningSummaryPath;Add-JumpInput $spawningProofPath
+    }
     if($TraversalCues){
         $traversalRoot=[IO.Path]::GetFullPath($TraversalCueAuthoringDirectory)
         if(!$traversalRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned traversal Cue revision required'}
@@ -1729,6 +1752,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SpawningCue){$flag='-UEPSpawningCueResult';$marker='UEP_SPAWNING_CUE'}
     if($TraversalCues){$flag='-UEPTraversalCueResult';$marker='UEP_TRAVERSAL_CUE'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
@@ -2100,6 +2124,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($SpawningCue){$module='uep_lyra_weapons.spawning_cue_contract'}
         if($TraversalCues){$module='uep_lyra_weapons.traversal_cue_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
