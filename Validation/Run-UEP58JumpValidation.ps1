@@ -32,6 +32,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponAudioWhiz,[string]$WeaponAudioWhizAuthoringDirectory,[switch]$WeaponAudioWhizNoSound,
       [switch]$WeaponAudioEarly,[string]$WeaponAudioEarlyAuthoringDirectory,[switch]$WeaponAudioEarlyOpenGeometry,
       [switch]$WeaponAudioCold,[string]$WeaponAudioColdAuthoringDirectory,[ValidateSet('pistol','rifle','shotgun')][string]$WeaponAudioColdWeapon='pistol',
+      [switch]$WeaponAudioNetwork,[string]$WeaponAudioNetworkAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -59,6 +60,11 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioNetwork){
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$WeaponAudioNetworkAuthoringDirectory -or !$WeaponFireCueAuthoringDirectory){throw 'Network audio requires actual two-owner transport and current audio/Cue/native identity proof'}
+    $WeaponFireCueNetwork=$true
+}
+if($WeaponAudioNetworkAuthoringDirectory -and !$WeaponAudioNetwork){throw 'Network audio proof requires its explicit predicted/remote fixture'}
 if($WeaponAudioCold){
     $coldAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioCold','WeaponAudioColdAuthoringDirectory','WeaponAudioColdWeapon','WeaponFireCueAuthoringDirectory','ThreadedLoading')
     if(!$WeaponAudioColdAuthoringDirectory -or !$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $coldAllowed}).Count){throw 'Cold audio requires its standalone natural-input/default-registration lane and current audio/Cue proof'}
@@ -123,7 +129,7 @@ if($WeaponAbilityFireNetwork){
 }
 if($PSBoundParameters.ContainsKey('WeaponFireNetworkWeapon') -and !$WeaponAbilityFireNetwork){throw 'Network weapon choice requires the explicit predicted firing lane'}
 if($WeaponAbilityFire){
-    $abilityFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAbilityFire','WeaponAbilityFireAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading','WeaponAbilityFireNetwork','WeaponFireNetworkWeapon','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort','WeaponFireCueNetwork','WeaponFireCueAuthoringDirectory')
+    $abilityFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAbilityFire','WeaponAbilityFireAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading','WeaponAbilityFireNetwork','WeaponFireNetworkWeapon','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort','WeaponFireCueNetwork','WeaponFireCueAuthoringDirectory','WeaponAudioNetwork','WeaponAudioNetworkAuthoringDirectory')
     if(!$WeaponAbilityFireAuthoringDirectory -or !$WeaponActorFireAuthoringDirectory -or !$WeaponActorBeginAuthoringDirectory -or !$WeaponFireFXAuthoringDirectory -or !$WeaponDecalsAuthoringDirectory -or !$WeaponImpactsAuthoringDirectory -or
         @($PSBoundParameters.Keys|Where-Object {$_ -notin $abilityFireAllowed}).Count){throw 'Shared Weapon Fire requires its native input lane and current ability/Actor/FX proof chain'}
     if([bool]$Network -ne [bool]$WeaponAbilityFireNetwork){throw 'Weapon Fire Network must select its actual predicted firing fixture'}
@@ -599,8 +605,8 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
-    if($WeaponAudioEarly -or $WeaponAudioCold){
-        $earlyRoot=[IO.Path]::GetFullPath($(if($WeaponAudioCold){$WeaponAudioColdAuthoringDirectory}else{$WeaponAudioEarlyAuthoringDirectory}))
+    if($WeaponAudioEarly -or $WeaponAudioCold -or $WeaponAudioNetwork){
+        $earlyRoot=[IO.Path]::GetFullPath($(if($WeaponAudioCold){$WeaponAudioColdAuthoringDirectory}elseif($WeaponAudioNetwork){$WeaponAudioNetworkAuthoringDirectory}else{$WeaponAudioEarlyAuthoringDirectory}))
         if(!$earlyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned static EarlyReflections revision required'}
         $earlySummary=Join-Path $earlyRoot 'summary.json';$earlyProofPath=Join-Path $earlyRoot 'assets.json'
         $earlyAuthor=Get-Content -LiteralPath $earlySummary -Raw|ConvertFrom-Json -Depth 100;$earlyProof=Get-Content -LiteralPath $earlyProofPath -Raw|ConvertFrom-Json -Depth 100
@@ -1475,6 +1481,7 @@ try{
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
     if($WeaponAudioCold){$arguments+=@("-UEPAudioColdWeapon=$WeaponAudioColdWeapon")}
+    if($WeaponAudioNetwork){$arguments+=@('-UEPWeaponAudioNetwork')}
     if($WeaponAudioEarlyOpenGeometry){$arguments+=@('-UEPWeaponAudioEarlyOpenGeometry')}
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
@@ -1740,6 +1747,7 @@ try{
         if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($WeaponAbilityFireNetwork){$module='uep_lyra_weapons.weapon_ability_fire_network_contract'}
         if($WeaponFireCueNetwork){$module='uep_lyra_weapons.weapon_fire_cue_network_contract'}
+        if($WeaponAudioNetwork){$module='uep_lyra_weapons.weapon_audio_network_contract'}
         if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
         if($NetShooterImpactNetwork){$module='uep_lyra_weapons.netshooter_impact_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
