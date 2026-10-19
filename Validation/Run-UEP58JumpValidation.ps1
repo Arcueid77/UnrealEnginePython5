@@ -27,6 +27,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$WeaponFireCues,[string]$WeaponFireCueAuthoringDirectory,
+      [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
       [switch]$WeaponAbilityFire,[string]$WeaponAbilityFireAuthoringDirectory,
@@ -53,12 +54,16 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponFireCueNetwork){
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$WeaponFireCueAuthoringDirectory){throw 'Network firing Cues require actual two-owner prediction and current Cue/identity proof'}
+    $WeaponAbilityFireNetwork=$true
+}
 if($WeaponFireCues){
     $cueAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponFireCues','WeaponFireCueAuthoringDirectory','ThreadedLoading')
     if(!$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cueAllowed}).Count){throw 'Weapon firing Cues require their standalone native input/GAS/typed payload lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues){throw 'Firing Cue proof requires its explicit native fixture'}
+if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues -and !$WeaponFireCueNetwork){throw 'Firing Cue proof requires its explicit native fixture'}
 if($NetShooterImpactNetwork){$NetShooterNetwork=$true}
 if($NetShooterNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
@@ -83,7 +88,7 @@ if($WeaponAbilityFireNetwork){
 }
 if($PSBoundParameters.ContainsKey('WeaponFireNetworkWeapon') -and !$WeaponAbilityFireNetwork){throw 'Network weapon choice requires the explicit predicted firing lane'}
 if($WeaponAbilityFire){
-    $abilityFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAbilityFire','WeaponAbilityFireAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading','WeaponAbilityFireNetwork','WeaponFireNetworkWeapon','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort')
+    $abilityFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAbilityFire','WeaponAbilityFireAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading','WeaponAbilityFireNetwork','WeaponFireNetworkWeapon','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort','WeaponFireCueNetwork','WeaponFireCueAuthoringDirectory')
     if(!$WeaponAbilityFireAuthoringDirectory -or !$WeaponActorFireAuthoringDirectory -or !$WeaponActorBeginAuthoringDirectory -or !$WeaponFireFXAuthoringDirectory -or !$WeaponDecalsAuthoringDirectory -or !$WeaponImpactsAuthoringDirectory -or
         @($PSBoundParameters.Keys|Where-Object {$_ -notin $abilityFireAllowed}).Count){throw 'Shared Weapon Fire requires its native input lane and current ability/Actor/FX proof chain'}
     if([bool]$Network -ne [bool]$WeaponAbilityFireNetwork){throw 'Weapon Fire Network must select its actual predicted firing fixture'}
@@ -559,7 +564,7 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
-    if($WeaponFireCues){
+    if($WeaponFireCues -or $WeaponFireCueNetwork){
         $cueRoot=[IO.Path]::GetFullPath($WeaponFireCueAuthoringDirectory)
         if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned firing Cue asset revision required'}
         $cueSummary=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json'
@@ -1478,6 +1483,7 @@ try{
             if($GrenadeDetonateNetwork){$resultFlag='-UEPGrenadeDetonateNetworkResult'}
             if($GrenadeFlightNetwork){$resultFlag='-UEPGrenadeFlightNetworkResult'}
             if($WeaponAbilityFireNetwork){$resultFlag='-UEPWeaponAbilityFireNetworkResult'}
+            if($WeaponFireCueNetwork){$resultFlag='-UEPWeaponFireCueNetworkResult'}
             if($NetShooterNetwork){$resultFlag='-UEPNetShooterNetworkResult'}
             if($NetShooterImpactNetwork){$resultFlag='-UEPNetShooterImpactNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
@@ -1561,6 +1567,7 @@ try{
             if($GrenadeDetonateNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_DETONATE_NETWORK_PASSED'}else{'UEP_GRENADE_DETONATE_NETWORK_SHUTDOWN_PASSED'}}
             if($GrenadeFlightNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_FLIGHT_NETWORK_PASSED'}else{'UEP_GRENADE_FLIGHT_NETWORK_SHUTDOWN_PASSED'}}
             if($WeaponAbilityFireNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_FIRE_NETWORK_PASSED'}else{'UEP_WEAPON_FIRE_NETWORK_SHUTDOWN_PASSED'}}
+            if($WeaponFireCueNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_CUE_NETWORK_PASSED'}else{'UEP_WEAPON_CUE_NETWORK_SHUTDOWN_PASSED'}}
             if($NetShooterNetwork){$pass=if($peer -eq 'server'){'UEP_NETSHOOTER_NETWORK_PASSED'}else{'UEP_NETSHOOTER_NETWORK_SHUTDOWN_PASSED'}}
             if($NetShooterImpactNetwork){
                 $pass=if($peer -eq 'server'){'UEP_NETSHOOTER_IMPACT_PASSED'}else{'UEP_NETSHOOTER_IMPACT_SHUTDOWN_PASSED'}
@@ -1625,6 +1632,7 @@ try{
         if($GrenadeDetonateNetwork){$module='uep_lyra_weapons.grenade_detonate_network_contract'}
         if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($WeaponAbilityFireNetwork){$module='uep_lyra_weapons.weapon_ability_fire_network_contract'}
+        if($WeaponFireCueNetwork){$module='uep_lyra_weapons.weapon_fire_cue_network_contract'}
         if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
         if($NetShooterImpactNetwork){$module='uep_lyra_weapons.netshooter_impact_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
