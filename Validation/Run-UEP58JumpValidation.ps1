@@ -21,6 +21,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$NetShooterActor,[string]$NetShooterActorAuthoringDirectory,
       [switch]$NetShooterAbility,[string]$NetShooterAbilityAuthoringDirectory,
       [switch]$NetShooterNetwork,
+      [switch]$NetShooterImpactNetwork,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
@@ -51,12 +52,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($NetShooterImpactNetwork){$NetShooterNetwork=$true}
 if($NetShooterNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
     $NetShooterAbility=$true
 }
 if($NetShooterAbility){
-    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading','NetShooterNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','NetShooterActorAuthoringDirectory','ServerPort')
+    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading','NetShooterNetwork','NetShooterImpactNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','NetShooterActorAuthoringDirectory','ServerPort')
     if(!$NetShooterAbilityAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netAbilityAllowed}).Count){throw 'NetShooter ability requires its own native equipment/input/Cue/montage lane and current proof'}
     if([bool]$Network -ne [bool]$NetShooterNetwork){throw 'NetShooter network must select its actual predicted two-owner fixture'}
     $AutoRespawnActivation=$true
@@ -1454,6 +1456,7 @@ try{
             if($GrenadeFlightNetwork){$resultFlag='-UEPGrenadeFlightNetworkResult'}
             if($WeaponAbilityFireNetwork){$resultFlag='-UEPWeaponAbilityFireNetworkResult'}
             if($NetShooterNetwork){$resultFlag='-UEPNetShooterNetworkResult'}
+            if($NetShooterImpactNetwork){$resultFlag='-UEPNetShooterImpactNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
             if($DashLocalDirection){$resultFlag='-UEPDashLocalDirectionNetworkResult'}
             if($DashActivation){$resultFlag='-UEPDashActivationNetworkResult'}
@@ -1536,6 +1539,14 @@ try{
             if($GrenadeFlightNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_FLIGHT_NETWORK_PASSED'}else{'UEP_GRENADE_FLIGHT_NETWORK_SHUTDOWN_PASSED'}}
             if($WeaponAbilityFireNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_FIRE_NETWORK_PASSED'}else{'UEP_WEAPON_FIRE_NETWORK_SHUTDOWN_PASSED'}}
             if($NetShooterNetwork){$pass=if($peer -eq 'server'){'UEP_NETSHOOTER_NETWORK_PASSED'}else{'UEP_NETSHOOTER_NETWORK_SHUTDOWN_PASSED'}}
+            if($NetShooterImpactNetwork){
+                $pass=if($peer -eq 'server'){'UEP_NETSHOOTER_IMPACT_PASSED'}else{'UEP_NETSHOOTER_IMPACT_SHUTDOWN_PASSED'}
+                $baselinePython=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
+                $baselineArgs=@('-B','-m','uep_lyra_weapons.netshooter_actor_log_contract','--log',"$output/$peer.log",'--clean-log',"$output/$peer-baseline-audited.log",'--result',"$output/$peer-template-baseline.json")
+                if(!$summary.Contains('source_template_baseline_audits')){$summary['source_template_baseline_audits']=@{}}
+                $summary.source_template_baseline_audits[$peer]=Invoke-UEPValidationProcess $baselinePython $baselineArgs (Join-Path $overlay 'Content/Scripts') (Join-Path $output "$peer-template-audit") 'Original NetShooter peer template baseline audit' 30
+                $log=Get-Content -LiteralPath "$output/$peer-baseline-audited.log" -Raw
+            }
             if($DashRPCInput){$pass=if($peer -eq 'server'){'UEP_DASH_RPC_INPUT_NETWORK_PASSED'}else{'UEP_DASH_RPC_INPUT_SHUTDOWN_PASSED'}}
             if($DashLocalDirection){$pass=if($peer -eq 'server'){'UEP_DASH_LOCAL_DIRECTION_NETWORK_PASSED'}else{'UEP_DASH_LOCAL_DIRECTION_SHUTDOWN_PASSED'}}
             if($DashActivation){$pass=if($peer -eq 'server'){'UEP_DASH_ACTIVATION_NETWORK_PASSED'}else{'UEP_DASH_ACTIVATION_SHUTDOWN_PASSED'}}
@@ -1592,6 +1603,7 @@ try{
         if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($WeaponAbilityFireNetwork){$module='uep_lyra_weapons.weapon_ability_fire_network_contract'}
         if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
+        if($NetShooterImpactNetwork){$module='uep_lyra_weapons.netshooter_impact_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
         $gateArgs=@('--directory',$output)
