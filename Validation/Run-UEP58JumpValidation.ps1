@@ -31,6 +31,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponAudioDispatch,[string]$WeaponAudioDispatchAuthoringDirectory,
       [switch]$WeaponAudioWhiz,[string]$WeaponAudioWhizAuthoringDirectory,[switch]$WeaponAudioWhizNoSound,
       [switch]$WeaponAudioEarly,[string]$WeaponAudioEarlyAuthoringDirectory,[switch]$WeaponAudioEarlyOpenGeometry,
+      [switch]$WeaponAudioCold,[string]$WeaponAudioColdAuthoringDirectory,[ValidateSet('pistol','rifle','shotgun')][string]$WeaponAudioColdWeapon='pistol',
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -58,6 +59,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioCold){
+    $coldAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioCold','WeaponAudioColdAuthoringDirectory','WeaponAudioColdWeapon','WeaponFireCueAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponAudioColdAuthoringDirectory -or !$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $coldAllowed}).Count){throw 'Cold audio requires its standalone natural-input/default-registration lane and current audio/Cue proof'}
+    $AutoRespawnActivation=$true
+}
+if(($WeaponAudioColdAuthoringDirectory -or $PSBoundParameters.ContainsKey('WeaponAudioColdWeapon')) -and !$WeaponAudioCold){throw 'Cold audio proof/weapon requires its explicit native fixture'}
 if($WeaponAudioEarly){
     $earlyAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioEarly','WeaponAudioEarlyAuthoringDirectory','WeaponAudioEarlyOpenGeometry','ThreadedLoading')
     if(!$WeaponAudioEarlyAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $earlyAllowed}).Count){throw 'EarlyReflections requires its standalone native collision/Tap/static caller lane and current proof'}
@@ -91,7 +98,7 @@ if($WeaponFireCues){
     if(!$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cueAllowed}).Count){throw 'Weapon firing Cues require their standalone native input/GAS/typed payload lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues -and !$WeaponFireCueNetwork){throw 'Firing Cue proof requires its explicit native fixture'}
+if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues -and !$WeaponFireCueNetwork -and !$WeaponAudioCold){throw 'Firing Cue proof requires its explicit native fixture'}
 if($NetShooterImpactNetwork){$NetShooterNetwork=$true}
 if($NetShooterNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
@@ -592,8 +599,8 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
-    if($WeaponAudioEarly){
-        $earlyRoot=[IO.Path]::GetFullPath($WeaponAudioEarlyAuthoringDirectory)
+    if($WeaponAudioEarly -or $WeaponAudioCold){
+        $earlyRoot=[IO.Path]::GetFullPath($(if($WeaponAudioCold){$WeaponAudioColdAuthoringDirectory}else{$WeaponAudioEarlyAuthoringDirectory}))
         if(!$earlyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned static EarlyReflections revision required'}
         $earlySummary=Join-Path $earlyRoot 'summary.json';$earlyProofPath=Join-Path $earlyRoot 'assets.json'
         $earlyAuthor=Get-Content -LiteralPath $earlySummary -Raw|ConvertFrom-Json -Depth 100;$earlyProof=Get-Content -LiteralPath $earlyProofPath -Raw|ConvertFrom-Json -Depth 100
@@ -608,6 +615,7 @@ try{
         foreach($path in @('Content/UEPMixins/BP_WeaponAudioMathRouter.uasset','Content/UEPMixins/DA_WeaponAudioMathMixin.uasset','Content/UEPValidation/BP_WeaponAudioMathCaller.uasset',
             'Content/UEPMixins/BP_WeaponAudioDispatchRouter.uasset','Content/UEPMixins/DA_WeaponAudioDispatchMixin.uasset','Content/UEPValidation/BP_WeaponAudioDispatchCaller.uasset',
             'Content/UEPMixins/BP_WeaponAudioWhizRouter.uasset','Content/UEPMixins/DA_WeaponAudioWhizMixin.uasset','Content/UEPValidation/BP_WeaponAudioWhizCaller.uasset','Content/Audio/Effects/SubmixEffects/TAP_EarlyReflections.uasset')){Add-JumpInput (Join-Path $stage $path)}
+        if($WeaponAudioCold){foreach($path in @('Content/UEPValidation/BP_WeaponAbilityFireProbe.uasset','Content/Weapons/GA_Weapon_Fire.uasset','Content/Weapons/B_Weapon.uasset')){Add-JumpInput (Join-Path $stage $path)}}
     }
     if($WeaponAudioWhiz){
         $whizRoot=[IO.Path]::GetFullPath($WeaponAudioWhizAuthoringDirectory)
@@ -655,7 +663,7 @@ try{
         if((Get-FileHash -LiteralPath $mathProof.caller_probe.asset).Hash -ne $mathProof.caller_probe.sha256){throw 'Static Blueprint caller changed'}
         Add-JumpInput $mathProof.caller_probe.asset;Add-JumpInput $mathSummary;Add-JumpInput $mathProofPath
     }
-    if($WeaponFireCues -or $WeaponFireCueNetwork){
+    if($WeaponFireCues -or $WeaponFireCueNetwork -or $WeaponAudioCold){
         $cueRoot=[IO.Path]::GetFullPath($WeaponFireCueAuthoringDirectory)
         if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned firing Cue asset revision required'}
         $cueSummary=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json'
@@ -1453,6 +1461,7 @@ try{
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
     if($WeaponAudioWhiz){$flag='-UEPWeaponAudioWhizResult';$marker='UEP_WEAPON_AUDIO_WHIZ'}
     if($WeaponAudioEarly){$flag='-UEPWeaponAudioEarlyResult';$marker='UEP_WEAPON_AUDIO_EARLY'}
+    if($WeaponAudioCold){$flag='-UEPWeaponAudioColdResult';$marker='UEP_WEAPON_AUDIO_COLD'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1465,6 +1474,7 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    if($WeaponAudioCold){$arguments+=@("-UEPAudioColdWeapon=$WeaponAudioColdWeapon")}
     if($WeaponAudioEarlyOpenGeometry){$arguments+=@('-UEPWeaponAudioEarlyOpenGeometry')}
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
@@ -1803,6 +1813,7 @@ try{
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
         if($WeaponAudioWhiz){$module='uep_lyra_weapons.weapon_audio_whiz_contract'}
         if($WeaponAudioEarly){$module='uep_lyra_weapons.weapon_audio_early_contract'}
+        if($WeaponAudioCold){$module='uep_lyra_weapons.weapon_audio_cold_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
