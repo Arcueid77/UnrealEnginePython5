@@ -42,6 +42,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$Footstep,[string]$FootstepAuthoringDirectory,
       [switch]$CueWidgets,[string]$CueWidgetAuthoringDirectory,
       [switch]$MessageWidgets,[string]$MessageWidgetAuthoringDirectory,
+      [switch]$CharacterDamage,[string]$CharacterDamageAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -69,6 +70,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CharacterDamage){
+    $damageAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CharacterDamage','CharacterDamageAuthoringDirectory','ThreadedLoading')
+    if(!$CharacterDamageAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $damageAllowed}).Count){throw 'Character damage requires its standalone native parent/RPC/popup/effects lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($CharacterDamageAuthoringDirectory -and !$CharacterDamage){throw 'Character damage proof requires its explicit native fixture'}
 if($MessageWidgets){
     $messageAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MessageWidgets','MessageWidgetAuthoringDirectory','CueWidgetAuthoringDirectory','ThreadedLoading')
     if(!$MessageWidgetAuthoringDirectory -or !$CueWidgetAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $messageAllowed}).Count){throw 'Message widgets require their native style/message/Cue lane and both current proofs'}
@@ -897,6 +904,23 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($CharacterDamage){
+        $damageRoot=[IO.Path]::GetFullPath($CharacterDamageAuthoringDirectory)
+        if(!$damageRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned character damage revision required'}
+        $damageSummaryPath=Join-Path $damageRoot 'summary.json';$damageProofPath=Join-Path $damageRoot 'assets.json'
+        $damageAuthor=Get-Content -LiteralPath $damageSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $damageProof=Get-Content -LiteralPath $damageProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($damageAuthor.status -ne 'passed' -or $damageProof.status -ne 'passed' -or $damageAuthor.kind -ne 'characterdamage' -or $damageProof.kind -ne 'characterdamage' -or
+            !$damageProof.original_full_cdo_event_signatures_business_and_rpc_preserved -or !$damageProof.native_parent_burst_effects_and_lifetime_timer_preserved -or
+            !$damageProof.original_unreliable_multicast_shell_preserved -or $damageProof.rpc_function_overridden -or !$damageProof.original_native_rng_nodes_ranges_and_select_topology_retained -or
+            !$damageProof.typed_native_message_thunk_adapter -or $damageProof.original_graph_nodes -ne 160 -or $damageProof.transport_nodes -ne 25 -or !$damageProof.generic_native_interface_array_count_and_object_accessors -or $damageProof.new_business_nodes -ne 0 -or
+            $damageProof.actual_registered_profile_method_counts.Python -ne 7 -or $damageProof.actual_registered_profile_method_counts.BlueprintFallback -ne 7 -or @($damageAuthor.assets).Count -ne 2){throw 'Current damage parent/RPC/RNG/message proof incomplete'}
+        foreach($asset in $damageAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Character damage asset changed'};Add-JumpInput $path
+        }}
+        if((Get-FileHash -LiteralPath $damageProof.caller_probe.asset).Hash -ne $damageProof.caller_probe.sha256){throw 'Character damage typed caller changed'}
+        Add-JumpInput $damageProof.caller_probe.asset;Add-JumpInput $damageSummaryPath;Add-JumpInput $damageProofPath
+    }
     if($MessageWidgets){
         $messageRoot=[IO.Path]::GetFullPath($MessageWidgetAuthoringDirectory)
         if(!$messageRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned message widget revision required'}
@@ -1654,6 +1678,7 @@ try{
     if($Footstep){$flag='-UEPFootstepResult';$marker='UEP_FOOTSTEP'}
     if($CueWidgets){$flag='-UEPCueWidgetResult';$marker='UEP_CUE_WIDGET'}
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
+    if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -2022,6 +2047,7 @@ try{
         if($Footstep){$module='uep_lyra_weapons.footstep_contract'}
         if($CueWidgets){$module='uep_lyra_hud.cue_widget_contract'}
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
+        if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
