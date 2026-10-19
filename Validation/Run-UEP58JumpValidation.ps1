@@ -47,6 +47,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TraversalCues,[string]$TraversalCueAuthoringDirectory,
       [switch]$SpawningCue,[string]$SpawningCueAuthoringDirectory,
       [switch]$SmallBurstCues,[string]$SmallBurstCueAuthoringDirectory,
+      [switch]$PhysicsFields,[string]$PhysicsFieldAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -74,6 +75,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($PhysicsFields){
+    $physicsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','PhysicsFields','PhysicsFieldAuthoringDirectory','ThreadedLoading')
+    if(!$PhysicsFieldAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $physicsAllowed}).Count){throw 'Physics fields require their standalone native parent/Chaos/material lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($PhysicsFieldAuthoringDirectory -and !$PhysicsFields){throw 'Physics field proof requires its explicit native fixture'}
 if($SmallBurstCues){
     $smallBurstAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SmallBurstCues','SmallBurstCueAuthoringDirectory','ThreadedLoading')
     if(!$SmallBurstCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $smallBurstAllowed}).Count){throw 'Small Burst Cues require their standalone native parent/Niagara/offline-audio lane and current proof'}
@@ -932,6 +939,25 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($PhysicsFields){
+        $physicsRoot=[IO.Path]::GetFullPath($PhysicsFieldAuthoringDirectory)
+        if(!$physicsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned physics field revision required'}
+        $physicsSummaryPath=Join-Path $physicsRoot 'summary.json';$physicsProofPath=Join-Path $physicsRoot 'assets.json'
+        $physicsAuthor=Get-Content -LiteralPath $physicsSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $physicsProof=Get-Content -LiteralPath $physicsProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($physicsAuthor.status -ne 'passed' -or $physicsProof.status -ne 'passed' -or $physicsAuthor.kind -ne 'physicsfields' -or $physicsProof.kind -ne 'physicsfields' -or
+            !$physicsProof.original_full_cdos_signatures_business_graphs_and_component_templates_preserved -or !$physicsProof.original_engine_field_parent_and_geometry_collection_dependency_retained -or
+            !$physicsProof.original_chaos_delegate_identity_and_disconnected_shatter_tick_preserved -or $physicsProof.new_business_nodes -ne 0 -or @($physicsAuthor.assets).Count -ne 4){throw 'Current physics field parent/Chaos/Profile proof incomplete'}
+        foreach($label in @('example','sphere')){
+            $actor=$physicsProof.actors.$label;$expectedNodes=@{example=7;sphere=20}[$label];$expectedTransport=@{example=6;sphere=5}[$label]
+            if($actor.original_graph_nodes -ne $expectedNodes -or $actor.transport_nodes -ne $expectedTransport -or $actor.interface_nodes -ne 5 -or $actor.actual_registered_profile_method_counts.Python -ne 3 -or $actor.actual_registered_profile_method_counts.BlueprintFallback -ne 3){throw 'Current physics complete Profile families required'}
+        }
+        foreach($asset in $physicsAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Physics field asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $physicsSummaryPath;Add-JumpInput $physicsProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Content/EditorResources/FieldNodes/FS_MasterField.uasset')
+        foreach($dependency in @('Content/Effects/Physics/ShatterSphere_GeometryCollection.uasset','Content/Effects/Physics/M_GlowyPink.uasset')){Add-JumpInput (Join-Path $stage $dependency)}
+    }
     if($SmallBurstCues){
         $smallBurstRoot=[IO.Path]::GetFullPath($SmallBurstCueAuthoringDirectory)
         if(!$smallBurstRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned small Burst Cue revision required'}
@@ -1778,6 +1804,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($PhysicsFields){$flag='-UEPPhysicsFieldResult';$marker='UEP_PHYSICS_FIELD'}
     if($SmallBurstCues){$flag='-UEPSmallBurstCueResult';$marker='UEP_SMALL_BURST_CUE'}
     if($SpawningCue){$flag='-UEPSpawningCueResult';$marker='UEP_SPAWNING_CUE'}
     if($TraversalCues){$flag='-UEPTraversalCueResult';$marker='UEP_TRAVERSAL_CUE'}
@@ -2152,6 +2179,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($PhysicsFields){$module='uep_lyra_weapons.physics_field_contract'}
         if($SmallBurstCues){$module='uep_lyra_weapons.small_burst_cue_contract'}
         if($SpawningCue){$module='uep_lyra_weapons.spawning_cue_contract'}
         if($TraversalCues){$module='uep_lyra_weapons.traversal_cue_contract'}
