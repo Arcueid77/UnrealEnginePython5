@@ -27,6 +27,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$WeaponFireCues,[string]$WeaponFireCueAuthoringDirectory,
+      [switch]$WeaponAudioMath,[string]$WeaponAudioMathAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -54,6 +55,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioMath){
+    $audioMathAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioMath','WeaponAudioMathAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponAudioMathAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $audioMathAllowed}).Count){throw 'Static weapon audio math requires its typed Object/static Blueprint caller lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponAudioMathAuthoringDirectory -and !$WeaponAudioMath){throw 'Static audio math proof requires its explicit native fixture'}
 if($WeaponFireCueNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$WeaponFireCueAuthoringDirectory){throw 'Network firing Cues require actual two-owner prediction and current Cue/identity proof'}
     $WeaponAbilityFireNetwork=$true
@@ -563,6 +570,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponAudioMath){
+        $mathRoot=[IO.Path]::GetFullPath($WeaponAudioMathAuthoringDirectory)
+        if(!$mathRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned static audio math revision required'}
+        $mathSummary=Join-Path $mathRoot 'summary.json';$mathProofPath=Join-Path $mathRoot 'assets.json'
+        $mathAuthor=Get-Content -LiteralPath $mathSummary -Raw|ConvertFrom-Json -Depth 100;$mathProof=Get-Content -LiteralPath $mathProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($mathAuthor.status -ne 'passed' -or $mathProof.status -ne 'passed' -or $mathAuthor.kind -ne 'weaponaudiomath' -or
+            !$mathProof.original_full_cdo_preserved -or !$mathProof.original_static_signatures_flags_preserved -or !$mathProof.original_local_defaults_preserved -or
+            !$mathProof.original_business_graphs_preserved_with_dispatch -or $mathProof.static_functions_registered_as_mixins -or
+            $mathProof.original_graph_nodes -ne 348 -or $mathProof.transport_nodes -ne 10 -or @($mathAuthor.assets).Count -ne 3 -or
+            $mathProof.actual_registered_profile_method_counts.Python -ne 2 -or $mathProof.actual_registered_profile_method_counts.BlueprintFallback -ne 2){throw 'Current static ABI/typed audio math router proof incomplete'}
+        foreach($asset in $mathAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Static audio math asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $mathProof.caller_probe.asset).Hash -ne $mathProof.caller_probe.sha256){throw 'Static Blueprint caller changed'}
+        Add-JumpInput $mathProof.caller_probe.asset;Add-JumpInput $mathSummary;Add-JumpInput $mathProofPath
     }
     if($WeaponFireCues -or $WeaponFireCueNetwork){
         $cueRoot=[IO.Path]::GetFullPath($WeaponFireCueAuthoringDirectory)
@@ -1358,6 +1379,7 @@ try{
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
+    if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1702,6 +1724,7 @@ try{
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
+        if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}

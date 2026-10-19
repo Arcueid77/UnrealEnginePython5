@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -49,6 +49,7 @@ try{
     if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'meleehitmontage'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset'}
     if($Kind -eq 'grenadewidget'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset'}
+    if($Kind -eq 'weaponaudiomath'){$relative='Plugins/GameFeatures/ShooterCore/Content/System/Audio/WeaponAudioFunctions.uasset'}
     if($Kind -eq 'weaponfirecues'){$relative='Plugins/GameFeatures/ShooterCore/Content/Weapons/Pistol/GCN_Weapon_Pistol_Fire.uasset'}
     if($Kind -eq 'netshooterability'){$relative='Plugins/GameFeatures/ShooterCore/Content/Weapons/NetShooter_PROTO/GA_WeaponNetShooter.uasset'}
     if($Kind -eq 'netshooteractor'){$relative='Plugins/GameFeatures/ShooterCore/Content/Weapons/NetShooter_PROTO/B_NetShooter.uasset'}
@@ -92,6 +93,10 @@ try{
     }
     if($Kind -eq 'weaponabilityfire'){
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_ability_fire_assets.py')
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
+    }
+    if($Kind -eq 'weaponaudiomath'){
+        Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_audio_math_assets.py')
         Add-HeroHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_dash_selector_assets.py')
     }
     if($Kind -eq 'weaponfirecues'){
@@ -168,9 +173,9 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
-    if($Kind -in @('dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues')){$expectedEndNodes=0}
+    if($Kind -in @('dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
-       @($report.assets).Count -ne $(if($Kind -eq 'weaponfirecues'){4}else{2}) -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
+       @($report.assets).Count -ne $(if($Kind -eq 'weaponfirecues'){4}elseif($Kind -eq 'weaponaudiomath'){3}else{2}) -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'grenadewidget' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
         $report.new_business_nodes -ne 0 -or $report.whole_grenade_activation_projectile_damage_migrated -or
         ($report.implemented_methods -join ',') -ne 'K2_OnPawnAvatarSet,K2_OnAbilityRemoved' -or
@@ -183,6 +188,10 @@ try{
         !$report.native_register_restore_passed -or !$report.original_retriggerable_delay_node_reused -or !$report.native_delay_uuid_preserved -or
         !$report.cleanup_tests_validity_not_active -or $report.native_delay_seconds -ne 3 -or $report.transport_nodes -ne 3 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2)){throw 'Weapon fire FX original latent/dispatch proof incomplete'}
+    if($Kind -eq 'weaponaudiomath' -and (!$report.original_full_cdo_preserved -or !$report.original_static_signatures_flags_preserved -or
+        !$report.original_business_graphs_preserved_with_dispatch -or !$report.original_local_defaults_preserved -or !$report.native_register_restore_passed -or
+        $report.static_functions_registered_as_mixins -or $report.original_graph_nodes -ne 348 -or $report.transport_nodes -ne 10 -or $report.new_business_nodes -ne 0 -or
+        $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2)){throw 'Static audio ABI/typed Object router/original graph proof incomplete'}
     if($Kind -eq 'weaponfirecues' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or
         !$report.native_register_restore_passed -or !$report.original_native_burst_effects_preserved -or $report.static_audio_library_business_migrated -or
         $report.original_graph_nodes -ne 76 -or $report.transport_nodes -ne 0 -or $report.new_business_nodes -ne 0 -or @($report.records).Count -ne 3 -or
