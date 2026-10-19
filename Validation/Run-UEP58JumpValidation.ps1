@@ -44,6 +44,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MessageWidgets,[string]$MessageWidgetAuthoringDirectory,
       [switch]$CharacterDamage,[string]$CharacterDamageAuthoringDirectory,
       [switch]$HeroBurstCues,[string]$HeroBurstCueAuthoringDirectory,
+      [switch]$TraversalCues,[string]$TraversalCueAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -71,6 +72,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($TraversalCues){
+    $traversalAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','TraversalCues','TraversalCueAuthoringDirectory','ThreadedLoading')
+    if(!$TraversalCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $traversalAllowed}).Count){throw 'Traversal Cues require their standalone native device/Timeline/Niagara lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($TraversalCueAuthoringDirectory -and !$TraversalCues){throw 'Traversal Cue proof requires its explicit native fixture'}
 if($HeroBurstCues){
     $heroBurstAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HeroBurstCues','HeroBurstCueAuthoringDirectory','ThreadedLoading')
     if(!$HeroBurstCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $heroBurstAllowed}).Count){throw 'Hero burst Cues require their standalone native Timeline/material/Niagara lane and current proof'}
@@ -911,6 +918,23 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($TraversalCues){
+        $traversalRoot=[IO.Path]::GetFullPath($TraversalCueAuthoringDirectory)
+        if(!$traversalRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned traversal Cue revision required'}
+        $traversalSummaryPath=Join-Path $traversalRoot 'summary.json';$traversalProofPath=Join-Path $traversalRoot 'assets.json'
+        $traversalAuthor=Get-Content -LiteralPath $traversalSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $traversalProof=Get-Content -LiteralPath $traversalProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($traversalAuthor.status -ne 'passed' -or $traversalProof.status -ne 'passed' -or $traversalAuthor.kind -ne 'traversalcues' -or $traversalProof.kind -ne 'traversalcues' -or
+            !$traversalProof.original_full_cdos_signatures_and_business_graphs_preserved -or !$traversalProof.original_native_parent_effects_and_timer_preserved -or !$traversalProof.original_native_launcher_timeline_templates_curves_guids_and_bindings_preserved -or
+            !$traversalProof.original_teleporter_increment_macro_graph_retained -or $traversalProof.python_timeline_clock_added -or $traversalProof.new_business_nodes -ne 0 -or
+            $traversalProof.cues.launcher.original_graph_nodes -ne 98 -or $traversalProof.cues.teleporter.original_graph_nodes -ne 92 -or $traversalProof.cues.launcher.transport_nodes -ne 4 -or $traversalProof.cues.teleporter.transport_nodes -ne 0 -or
+            $traversalProof.cues.launcher.actual_registered_profile_method_counts.Python -ne 3 -or $traversalProof.cues.launcher.actual_registered_profile_method_counts.BlueprintFallback -ne 3 -or
+            $traversalProof.cues.teleporter.actual_registered_profile_method_counts.Python -ne 1 -or $traversalProof.cues.teleporter.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or @($traversalAuthor.assets).Count -ne 4){throw 'Current traversal Timeline/macro/Profile proof incomplete'}
+        foreach($asset in $traversalAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Traversal Cue asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $traversalSummaryPath;Add-JumpInput $traversalProofPath
+    }
     if($HeroBurstCues){
         $heroBurstRoot=[IO.Path]::GetFullPath($HeroBurstCueAuthoringDirectory)
         if(!$heroBurstRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned hero burst Cue revision required'}
@@ -1705,6 +1729,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($TraversalCues){$flag='-UEPTraversalCueResult';$marker='UEP_TRAVERSAL_CUE'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -2075,6 +2100,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($TraversalCues){$module='uep_lyra_weapons.traversal_cue_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
