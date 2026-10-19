@@ -23,6 +23,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
+      [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -45,6 +46,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponImpacts){
+    $weaponImpactsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponImpacts','WeaponImpactsAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponImpactsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponImpactsAllowed}).Count){throw 'Weapon Impacts requires its native Niagara/channel/latent lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponImpactsAuthoringDirectory -and !$WeaponImpacts -and !$WeaponActorFire){throw 'Weapon Impacts proof requires its explicit fixture or parent integration'}
 if($WeaponDecals){
     $weaponDecalsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponDecals','WeaponDecalsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponDecalsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponDecalsAllowed}).Count){throw 'Weapon Decals requires its native Niagara/latent lane and current proof'}
@@ -64,7 +71,7 @@ if($WeaponActorBegin){
 }
 if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
 if($WeaponActorFire){
-    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','ThreadedLoading')
+    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -507,6 +514,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponImpacts -or ($WeaponActorFire -and $WeaponImpactsAuthoringDirectory)){
+        $impactRoot=[IO.Path]::GetFullPath($WeaponImpactsAuthoringDirectory)
+        if(!$impactRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon impact revision required'}
+        $impactSummaryPath=Join-Path $impactRoot 'summary.json';$impactProofPath=Join-Path $impactRoot 'assets.json'
+        $impactAuthor=Get-Content -LiteralPath $impactSummaryPath -Raw|ConvertFrom-Json -Depth 80;$impactProof=Get-Content -LiteralPath $impactProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($impactAuthor.status -ne 'passed' -or $impactProof.status -ne 'passed' -or $impactAuthor.kind -ne 'weaponimpacts' -or $impactProof.kind -ne 'weaponimpacts' -or
+            !$impactProof.original_full_cdo_preserved -or !$impactProof.original_business_graphs_preserved_with_dispatch -or !$impactProof.original_retriggerable_delay_node_reused -or
+            !$impactProof.native_delay_uuid_preserved -or !$impactProof.cleanup_tests_validity_not_active -or $impactProof.native_delay_seconds -ne 3 -or $impactProof.transport_nodes -ne 3 -or
+            $impactProof.new_business_nodes -ne 0 -or !$impactProof.original_greater_distance_reuse_rule_preserved -or !$impactProof.original_typed_array_and_legacy_channel_apis_preserved -or $impactProof.actual_registered_profile_method_counts.Python -ne 6 -or $impactProof.actual_registered_profile_method_counts.BlueprintFallback -ne 6 -or @($impactAuthor.assets).Count -ne 2){throw 'Current native weapon impact delay/dispatch proof incomplete'}
+        foreach($asset in $impactAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $impactSummaryPath;Add-JumpInput $impactProofPath
     }
     if($WeaponDecals -or ($WeaponActorFire -and $WeaponDecalsAuthoringDirectory)){
         $decalRoot=[IO.Path]::GetFullPath($WeaponDecalsAuthoringDirectory)
@@ -1216,6 +1237,7 @@ try{
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
+    if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1533,17 +1555,19 @@ try{
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
+        if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
-        if($WeaponActorFire -and ($WeaponFireFXAuthoringDirectory -or $WeaponDecalsAuthoringDirectory)){
+        if($WeaponActorFire -and ($WeaponFireFXAuthoringDirectory -or $WeaponDecalsAuthoringDirectory -or $WeaponImpactsAuthoringDirectory)){
             $fxIntegration=Get-Content -LiteralPath "$output/jump.json" -Raw|ConvertFrom-Json -Depth 80
             if(!$fxIntegration.world_owned_test_components_destroyed){throw 'Parent Fire left world-owned test Niagara components'}
             $expectedFX=@()
             if($WeaponFireFXAuthoringDirectory){$expectedFX+='/Game/Effects/Blueprints/B_WeaponFire.B_WeaponFire_C'}
             if($WeaponDecalsAuthoringDirectory){$expectedFX+='/Game/Effects/Blueprints/B_WeaponDecals.B_WeaponDecals_C'}
+            if($WeaponImpactsAuthoringDirectory){$expectedFX+='/Game/Effects/Blueprints/B_WeaponImpacts.B_WeaponImpacts_C'}
             foreach($expected in $expectedFX){
                 $entries=@($fxIntegration.cases|ForEach-Object {$_.events}|Where-Object {$_.class -eq $expected})
                 if($expected -notin $fxIntegration.declared_fx_observed -or $entries.Count -ne 24 -or
