@@ -22,6 +22,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
+      [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -44,6 +45,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponDecals){
+    $weaponDecalsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponDecals','WeaponDecalsAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponDecalsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponDecalsAllowed}).Count){throw 'Weapon Decals requires its native Niagara/latent lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponDecalsAuthoringDirectory -and !$WeaponDecals -and !$WeaponActorFire){throw 'Weapon Decals proof requires its explicit fixture or parent integration'}
 if($WeaponFireFX){
     $weaponFXAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponFireFX','WeaponFireFXAuthoringDirectory','ThreadedLoading')
     if(!$WeaponFireFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFXAllowed}).Count){throw 'Weapon Fire FX requires its native Niagara/latent lane and current proof'}
@@ -57,7 +64,7 @@ if($WeaponActorBegin){
 }
 if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
 if($WeaponActorFire){
-    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','ThreadedLoading')
+    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -500,6 +507,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponDecals -or ($WeaponActorFire -and $WeaponDecalsAuthoringDirectory)){
+        $decalRoot=[IO.Path]::GetFullPath($WeaponDecalsAuthoringDirectory)
+        if(!$decalRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon decal revision required'}
+        $decalSummaryPath=Join-Path $decalRoot 'summary.json';$decalProofPath=Join-Path $decalRoot 'assets.json'
+        $decalAuthor=Get-Content -LiteralPath $decalSummaryPath -Raw|ConvertFrom-Json -Depth 80;$decalProof=Get-Content -LiteralPath $decalProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($decalAuthor.status -ne 'passed' -or $decalProof.status -ne 'passed' -or $decalAuthor.kind -ne 'weapondecals' -or $decalProof.kind -ne 'weapondecals' -or
+            !$decalProof.original_full_cdo_preserved -or !$decalProof.original_business_graphs_preserved_with_dispatch -or !$decalProof.original_retriggerable_delay_node_reused -or
+            !$decalProof.native_delay_uuid_preserved -or !$decalProof.cleanup_tests_validity_not_active -or $decalProof.native_delay_seconds -ne 3 -or $decalProof.transport_nodes -ne 3 -or
+            $decalProof.new_business_nodes -ne 0 -or !$decalProof.original_position_array_type_preserved -or !$decalProof.original_surface_array_tail_preserved -or $decalProof.actual_registered_profile_method_counts.Python -ne 2 -or $decalProof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or @($decalAuthor.assets).Count -ne 2){throw 'Current native weapon decal delay/dispatch proof incomplete'}
+        foreach($asset in $decalAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
     if($WeaponFireFX -or ($WeaponActorFire -and $WeaponFireFXAuthoringDirectory)){
         $fxRoot=[IO.Path]::GetFullPath($WeaponFireFXAuthoringDirectory)
@@ -1194,6 +1215,7 @@ try{
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
+    if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1510,11 +1532,24 @@ try{
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
+        if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
         if($CharacterInventory -and $AutoRespawnReset){$gateArgs+=@('--reset')}
         if($CharacterLifecycle -and $AutoRespawnReset){$gateArgs+=@('--reset')}
+        if($WeaponActorFire -and ($WeaponFireFXAuthoringDirectory -or $WeaponDecalsAuthoringDirectory)){
+            $fxIntegration=Get-Content -LiteralPath "$output/jump.json" -Raw|ConvertFrom-Json -Depth 80
+            if(!$fxIntegration.world_owned_test_components_destroyed){throw 'Parent Fire left world-owned test Niagara components'}
+            $expectedFX=@()
+            if($WeaponFireFXAuthoringDirectory){$expectedFX+='/Game/Effects/Blueprints/B_WeaponFire.B_WeaponFire_C'}
+            if($WeaponDecalsAuthoringDirectory){$expectedFX+='/Game/Effects/Blueprints/B_WeaponDecals.B_WeaponDecals_C'}
+            foreach($expected in $expectedFX){
+                $entries=@($fxIntegration.cases|ForEach-Object {$_.events}|Where-Object {$_.class -eq $expected})
+                if($expected -notin $fxIntegration.declared_fx_observed -or $entries.Count -ne 24 -or
+                    @($entries|Where-Object {!$_.production_handler_used -or $_.production_profile -ne 'Python'}).Count){throw 'Parent Fire did not use/restorably observe the current production FX Profile'}
+            }
+        }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
         if($GrenadeActivation -and $log -match '(?im)ImportText.*Missing opening parenthesis'){throw 'Grenade native parameter default import failed'}
