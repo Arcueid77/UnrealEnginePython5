@@ -18,6 +18,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeHit,[string]$GrenadeHitAuthoringDirectory,
       [switch]$GrenadeDetonate,[switch]$GrenadeDetonateNetwork,[string]$GrenadeDetonateAuthoringDirectory,
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
+      [switch]$NetShooterActor,[string]$NetShooterActorAuthoringDirectory,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
@@ -48,6 +49,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($NetShooterActor){
+    $netActorAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterActor','NetShooterActorAuthoringDirectory','ThreadedLoading')
+    if(!$NetShooterActorAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netActorAllowed}).Count){throw 'NetShooter Actor requires its native ray/overlap/physics lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($NetShooterActorAuthoringDirectory -and !$NetShooterActor){throw 'NetShooter Actor proof requires its explicit native fixture'}
 if($WeaponAbilityFireNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory){throw 'Network Weapon Fire requires actual two-owner transport and current native identity proof'}
     $WeaponAbilityFire=$true
@@ -529,6 +536,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($NetShooterActor){
+        $netActorRoot=[IO.Path]::GetFullPath($NetShooterActorAuthoringDirectory)
+        if(!$netActorRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned NetShooter Actor asset revision required'}
+        $netActorSummary=Join-Path $netActorRoot 'summary.json';$netActorProofPath=Join-Path $netActorRoot 'assets.json'
+        $netActorAuthor=Get-Content -LiteralPath $netActorSummary -Raw|ConvertFrom-Json -Depth 80
+        $netActorProof=Get-Content -LiteralPath $netActorProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($netActorAuthor.status -ne 'passed' -or $netActorProof.status -ne 'passed' -or $netActorAuthor.kind -ne 'netshooteractor' -or
+            !$netActorProof.original_full_cdo_preserved -or !$netActorProof.original_rpc_flags_and_entry_preserved -or $netActorProof.rpc_function_overridden -or
+            !$netActorProof.original_native_authority_do_once_preserved -or !$netActorProof.original_native_delay_node_uuid_preserved -or
+            !$netActorProof.native_overlap_weak_named_delegate_preserved -or $netActorProof.transport_nodes -ne 11 -or
+            $netActorProof.actual_registered_profile_method_counts.Python -ne 4 -or $netActorProof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or
+            @($netActorAuthor.assets).Count -ne 2){throw 'Current native NetShooter Actor transport proof incomplete'}
+        foreach($asset in $netActorAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'NetShooter Actor asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $netActorSummary;Add-JumpInput $netActorProofPath
     }
     if($WeaponAbilityFire){
         $abilityFireRoot=[IO.Path]::GetFullPath($WeaponAbilityFireAuthoringDirectory)
@@ -1267,6 +1291,7 @@ try{
     if($GrenadeBegin){$flag='-UEPGrenadeBeginResult';$marker='UEP_GRENADE_BEGIN'}
     if($GrenadeHit){$flag='-UEPGrenadeHitResult';$marker='UEP_GRENADE_HIT'}
     if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
+    if($NetShooterActor){$flag='-UEPNetShooterActorResult';$marker='UEP_NETSHOOTER_ACTOR'}
     if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
@@ -1591,6 +1616,7 @@ try{
         if($GrenadeBegin){$module='uep_lyra_weapons.grenade_begin_contract'}
         if($GrenadeHit){$module='uep_lyra_weapons.grenade_hit_contract'}
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
+        if($NetShooterActor){$module='uep_lyra_weapons.netshooter_actor_contract'}
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
@@ -1617,6 +1643,12 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($NetShooterActor){
+            $baselinePython=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
+            $baselineArgs=@('-B','-m','uep_lyra_weapons.netshooter_actor_log_contract','--log',"$output/jump.log",'--clean-log',"$output/jump-baseline-audited.log",'--result',"$output/source-template-baseline.json")
+            $summary['source_template_baseline_audit']=Invoke-UEPValidationProcess $baselinePython $baselineArgs (Join-Path $overlay 'Content/Scripts') (Join-Path $output 'source-template-audit') 'Original NetShooter template baseline audit' 30
+            $log=Get-Content -LiteralPath "$output/jump-baseline-audited.log" -Raw
+        }
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
         if($GrenadeActivation -and $log -match '(?im)ImportText.*Missing opening parenthesis'){throw 'Grenade native parameter default import failed'}
         if(($WidgetHeld -or $WidgetPressed) -and $log -match '(?im)Accessed None|Accessed array.*out of bounds'){throw 'Widget native BP runtime warning indicates invalid UI context'}
