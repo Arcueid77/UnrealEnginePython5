@@ -21,6 +21,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
+      [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -43,6 +44,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponFireFX){
+    $weaponFXAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponFireFX','WeaponFireFXAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponFireFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFXAllowed}).Count){throw 'Weapon Fire FX requires its native Niagara/latent lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponFireFXAuthoringDirectory -and !$WeaponFireFX -and !$WeaponActorFire){throw 'Weapon Fire FX proof requires its explicit fixture or parent integration'}
 if($WeaponActorBegin){
     $weaponBeginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorBegin','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorBeginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponBeginAllowed}).Count){throw 'Weapon BeginPlay requires its isolated native team-lifetime lane and current proof'}
@@ -50,7 +57,7 @@ if($WeaponActorBegin){
 }
 if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
 if($WeaponActorFire){
-    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
+    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -493,6 +500,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponFireFX -or ($WeaponActorFire -and $WeaponFireFXAuthoringDirectory)){
+        $fxRoot=[IO.Path]::GetFullPath($WeaponFireFXAuthoringDirectory)
+        if(!$fxRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon fire FX revision required'}
+        $fxSummaryPath=Join-Path $fxRoot 'summary.json';$fxProofPath=Join-Path $fxRoot 'assets.json'
+        $fxAuthor=Get-Content -LiteralPath $fxSummaryPath -Raw|ConvertFrom-Json -Depth 80;$fxProof=Get-Content -LiteralPath $fxProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($fxAuthor.status -ne 'passed' -or $fxProof.status -ne 'passed' -or $fxAuthor.kind -ne 'weaponfirefx' -or $fxProof.kind -ne 'weaponfirefx' -or
+            !$fxProof.original_full_cdo_preserved -or !$fxProof.original_business_graphs_preserved_with_dispatch -or !$fxProof.original_retriggerable_delay_node_reused -or
+            !$fxProof.native_delay_uuid_preserved -or !$fxProof.cleanup_tests_validity_not_active -or $fxProof.native_delay_seconds -ne 3 -or $fxProof.transport_nodes -ne 3 -or
+            $fxProof.new_business_nodes -ne 0 -or $fxProof.actual_registered_profile_method_counts.Python -ne 2 -or $fxProof.actual_registered_profile_method_counts.BlueprintFallback -ne 2 -or @($fxAuthor.assets).Count -ne 2){throw 'Current native weapon fire FX delay/dispatch proof incomplete'}
+        foreach($asset in $fxAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $fxSummaryPath;Add-JumpInput $fxProofPath
     }
     if($WeaponActorBegin -or (($WeaponActorFire -or $WeaponActorHelpers) -and $WeaponActorBeginAuthoringDirectory)){
         $beginRoot=[IO.Path]::GetFullPath($WeaponActorBeginAuthoringDirectory)
@@ -1172,6 +1193,7 @@ try{
     if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
+    if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1487,6 +1509,7 @@ try{
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
+        if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
