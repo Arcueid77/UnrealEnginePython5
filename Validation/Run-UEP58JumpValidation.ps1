@@ -49,6 +49,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$SmallBurstCues,[string]$SmallBurstCueAuthoringDirectory,
       [switch]$PhysicsFields,[string]$PhysicsFieldAuthoringDirectory,
       [switch]$ScoringBase,[string]$ScoringBaseAuthoringDirectory,
+      [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -76,6 +77,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($TDMScoring){
+    $tdmAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','TDMScoring','TDMScoringAuthoringDirectory','ThreadedLoading')
+    if(!$TDMScoringAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $tdmAllowed}).Count){throw 'TDM scoring requires its standalone native timer/notify/phase lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($TDMScoringAuthoringDirectory -and !$TDMScoring){throw 'TDM scoring proof requires its explicit native fixture'}
 if($ScoringBase){
     $scoringAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoringBase','ScoringBaseAuthoringDirectory','ThreadedLoading')
     if(!$ScoringBaseAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $scoringAllowed}).Count){throw 'Shared scoring requires its standalone native message/reset/warmup lane and current proof'}
@@ -945,6 +952,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($TDMScoring){
+        $tdmRoot=[IO.Path]::GetFullPath($TDMScoringAuthoringDirectory)
+        if(!$tdmRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned TDM scoring revision required'}
+        $tdmSummaryPath=Join-Path $tdmRoot 'summary.json';$tdmProofPath=Join-Path $tdmRoot 'assets.json'
+        $tdmAuthor=Get-Content -LiteralPath $tdmSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $tdmProof=Get-Content -LiteralPath $tdmProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($tdmAuthor.status -ne 'passed' -or $tdmProof.status -ne 'passed' -or $tdmAuthor.kind -ne 'tdmscoring' -or $tdmProof.kind -ne 'tdmscoring' -or
+            !$tdmProof.original_cdo_signatures_graphs_native_repnotify_timer_phase_and_shared_base_preserved -or !$tdmProof.base_owned_business_gates_cover_static_callers -or
+            $tdmProof.original_graph_nodes -ne 123 -or $tdmProof.transport_nodes -ne 57 -or $tdmProof.interface_nodes -ne 5 -or $tdmProof.new_business_nodes -ne 0 -or
+            $tdmProof.actual_registered_profile_method_counts.Python -ne 16 -or $tdmProof.actual_registered_profile_method_counts.BlueprintFallback -ne 16 -or @($tdmAuthor.assets).Count -ne 2){throw 'Current TDM timer/phase/RepNotify/base proof incomplete'}
+        foreach($asset in $tdmAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'TDM scoring asset changed'};Add-JumpInput $path
+        }}
+        foreach($dependency in $tdmProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'TDM base/CP dependency changed'};Add-JumpInput $path}
+        Add-JumpInput $tdmSummaryPath;Add-JumpInput $tdmProofPath
+        foreach($fixture in @('Content/UEPValidation/BP_MusicListenerProbe.uasset','Plugins/GameFeatures/ShooterCore/Content/GameplayCues/GCNL_WaitingForPlayers.uasset','Plugins/GameFeatures/ShooterCore/Content/GameplayCues/GCNL_MatchDecided.uasset','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/Phase_Warmup.uasset','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/Phase_PostGame.uasset','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/GE_DamageImmunity_FromGameMode.uasset')){Add-JumpInput (Join-Path $stage $fixture)}
     }
     if($ScoringBase){
         $scoringRoot=[IO.Path]::GetFullPath($ScoringBaseAuthoringDirectory)
@@ -1833,6 +1857,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($TDMScoring){$flag='-UEPTDMScoringResult';$marker='UEP_TDM_SCORING'}
     if($ScoringBase){$flag='-UEPScoringBaseResult';$marker='UEP_SCORING_BASE'}
     if($PhysicsFields){$flag='-UEPPhysicsFieldResult';$marker='UEP_PHYSICS_FIELD'}
     if($SmallBurstCues){$flag='-UEPSmallBurstCueResult';$marker='UEP_SMALL_BURST_CUE'}
@@ -2209,6 +2234,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($TDMScoring){$module='uep_lyra_weapons.tdm_scoring_contract'}
         if($ScoringBase){$module='uep_lyra_weapons.scoring_base_contract'}
         if($PhysicsFields){$module='uep_lyra_weapons.physics_field_contract'}
         if($SmallBurstCues){$module='uep_lyra_weapons.small_burst_cue_contract'}

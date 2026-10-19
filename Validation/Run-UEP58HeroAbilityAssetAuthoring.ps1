@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -49,6 +49,7 @@ try{
     if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'meleehitmontage'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset'}
     if($Kind -eq 'grenadewidget'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset'}
+    if($Kind -eq 'tdmscoring'){$relative='Plugins/GameFeatures/ShooterCore/Content/Elimination/B_TeamDeathMatchScoring.uasset'}
     if($Kind -eq 'scoringbase'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/B_ShooterGameScoring_Base.uasset'}
     if($Kind -eq 'physicsfields'){$relative='Content/Effects/Physics/B_ExamplePhysicsField.uasset'}
     if($Kind -eq 'smallburstcues'){$relative='Plugins/GameFeatures/ShooterCore/Content/GameplayCues/GCN_InteractPickUp.uasset'}
@@ -83,6 +84,10 @@ try{
     if(Test-Path -LiteralPath (Join-Path $overlay $relative)){throw 'Do not overwrite an existing Overlay ability asset'}
     Copy-Item -LiteralPath $copy -Destination "$output/PreviousAssets/before.uasset"
     Add-HeroHash $original;Add-HeroHash "$output/PreviousAssets/before.uasset"
+    if($Kind -eq 'tdmscoring'){
+        foreach($tool in @('generate_tdm_scoring_assets.py','generate_footstep_assets.py','generate_dash_selector_assets.py')){Add-HeroHash (Join-Path $repo "Demos/UEPLyraIntegration/Tools/$tool")}
+        foreach($dependency in @('Plugins/GameFeatures/ShooterCore/Content/Game/B_ShooterGameScoring_Base.uasset','Plugins/GameFeatures/ShooterCore/Content/ControlPoint/B_ControlPointScoring.uasset')){Add-HeroHash (Join-Path $stage $dependency)}
+    }
     if($Kind -eq 'scoringbase'){
         foreach($tool in @('generate_scoring_base_assets.py','generate_dash_selector_assets.py')){Add-HeroHash (Join-Path $repo "Demos/UEPLyraIntegration/Tools/$tool")}
         foreach($child in @('Plugins/GameFeatures/ShooterCore/Content/Elimination/B_TeamDeathMatchScoring.uasset','Plugins/GameFeatures/ShooterCore/Content/ControlPoint/B_ControlPointScoring.uasset')){
@@ -278,7 +283,7 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
-    if($Kind -in @('scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
+    if($Kind -in @('tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne $(if($Kind -eq 'smallburstcues'){8}elseif($Kind -in @('physicsfields','weaponfirecues','messagewidgets','heroburstcues','traversalcues')){4}elseif($Kind -in @('weaponaudiomath','generalaudio')){3}else{2}) -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'grenadewidget' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
@@ -293,6 +298,9 @@ try{
         !$report.native_register_restore_passed -or !$report.original_retriggerable_delay_node_reused -or !$report.native_delay_uuid_preserved -or
         !$report.cleanup_tests_validity_not_active -or $report.native_delay_seconds -ne 3 -or $report.transport_nodes -ne 3 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2)){throw 'Weapon fire FX original latent/dispatch proof incomplete'}
+    if($Kind -eq 'tdmscoring' -and (!$report.original_cdo_signatures_graphs_native_repnotify_timer_phase_and_shared_base_preserved -or !$report.base_owned_business_gates_cover_static_callers -or
+        $report.original_graph_nodes -ne 123 -or $report.transport_nodes -ne 57 -or $report.interface_nodes -ne 5 -or $report.new_business_nodes -ne 0 -or
+        $report.actual_registered_profile_method_counts.Python -ne 16 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 16)){throw 'Original TDM timer/RepNotify/phase/shared-base proof incomplete'}
     if($Kind -eq 'scoringbase' -and (!$report.original_full_cdo_signatures_business_graphs_children_and_hook_preserved -or !$report.original_authority_switch_exact_async_factories_and_listener_lifetime_preserved -or
         !$report.base_owned_gates_cover_child_static_parent_and_public_calls -or $report.original_graph_nodes -ne 61 -or $report.transport_nodes -ne 21 -or $report.interface_nodes -ne 5 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 5 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or !$report.fixture.stage_only)){throw 'Original shared scoring base/authority/listener/child proof incomplete'}
