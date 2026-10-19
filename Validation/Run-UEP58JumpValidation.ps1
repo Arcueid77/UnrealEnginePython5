@@ -41,6 +41,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GeneralAudio,[string]$GeneralAudioAuthoringDirectory,
       [switch]$Footstep,[string]$FootstepAuthoringDirectory,
       [switch]$CueWidgets,[string]$CueWidgetAuthoringDirectory,
+      [switch]$MessageWidgets,[string]$MessageWidgetAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -68,12 +69,18 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MessageWidgets){
+    $messageAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MessageWidgets','MessageWidgetAuthoringDirectory','CueWidgetAuthoringDirectory','ThreadedLoading')
+    if(!$MessageWidgetAuthoringDirectory -or !$CueWidgetAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $messageAllowed}).Count){throw 'Message widgets require their native style/message/Cue lane and both current proofs'}
+    $AutoRespawnActivation=$true
+}
+if($MessageWidgetAuthoringDirectory -and !$MessageWidgets){throw 'Message widget proof requires its explicit native fixture'}
 if($CueWidgets){
     $cueWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CueWidgets','CueWidgetAuthoringDirectory','ThreadedLoading')
     if(!$CueWidgetAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cueWidgetAllowed}).Count){throw 'Cue widgets require their standalone native UI/manager lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($CueWidgetAuthoringDirectory -and !$CueWidgets){throw 'Cue widget proof requires its explicit native fixture'}
+if($CueWidgetAuthoringDirectory -and !$CueWidgets -and !$MessageWidgets){throw 'Cue widget proof requires its explicit native fixture'}
 if($Footstep){
     $footstepAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','Footstep','FootstepAuthoringDirectory','ThreadedLoading')
     if(!$FootstepAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $footstepAllowed}).Count){throw 'Footstep requires its standalone native Niagara/latent lane and current proof'}
@@ -890,7 +897,25 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
-    if($CueWidgets){
+    if($MessageWidgets){
+        $messageRoot=[IO.Path]::GetFullPath($MessageWidgetAuthoringDirectory)
+        if(!$messageRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned message widget revision required'}
+        $messageSummaryPath=Join-Path $messageRoot 'summary.json';$messageProofPath=Join-Path $messageRoot 'assets.json'
+        $messageAuthor=Get-Content -LiteralPath $messageSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $messageProof=Get-Content -LiteralPath $messageProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($messageAuthor.status -ne 'passed' -or $messageProof.status -ne 'passed' -or $messageAuthor.kind -ne 'messagewidgets' -or $messageProof.kind -ne 'messagewidgets' -or
+            !$messageProof.original_full_cdos_widget_trees_event_signatures_and_business_preserved -or !$messageProof.original_localized_text_pins_retained -or
+            $messageProof.localized_text_roundtripped_through_python -or !$messageProof.original_native_listener_node_and_exact_channel_reused -or !$messageProof.no_python_subscription_roots -or
+            $messageProof.original_graph_nodes.match -ne 70 -or $messageProof.original_graph_nodes.waiting -ne 18 -or $messageProof.transport_nodes.match -ne 11 -or $messageProof.transport_nodes.waiting -ne 8 -or
+            $messageProof.actual_registered_profile_method_counts.match.Python -ne 3 -or $messageProof.actual_registered_profile_method_counts.match.BlueprintFallback -ne 3 -or
+            $messageProof.actual_registered_profile_method_counts.waiting.Python -ne 2 -or $messageProof.actual_registered_profile_method_counts.waiting.BlueprintFallback -ne 2 -or @($messageAuthor.assets).Count -ne 4){throw 'Current message style/localized text/native listener proof incomplete'}
+        foreach($asset in $messageAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Message widget asset changed'};Add-JumpInput $path
+        }}
+        if((Get-FileHash -LiteralPath $messageProof.caller_probe.asset).Hash -ne $messageProof.caller_probe.sha256){throw 'Typed message widget probe changed'}
+        Add-JumpInput $messageProof.caller_probe.asset;Add-JumpInput $messageSummaryPath;Add-JumpInput $messageProofPath
+    }
+    if($CueWidgets -or $MessageWidgets){
         $cueRoot=[IO.Path]::GetFullPath($CueWidgetAuthoringDirectory)
         if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Cue widget revision required'}
         $cueSummaryPath=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json'
@@ -1628,6 +1653,7 @@ try{
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($Footstep){$flag='-UEPFootstepResult';$marker='UEP_FOOTSTEP'}
     if($CueWidgets){$flag='-UEPCueWidgetResult';$marker='UEP_CUE_WIDGET'}
+    if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
@@ -1995,6 +2021,7 @@ try{
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($Footstep){$module='uep_lyra_weapons.footstep_contract'}
         if($CueWidgets){$module='uep_lyra_hud.cue_widget_contract'}
+        if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
