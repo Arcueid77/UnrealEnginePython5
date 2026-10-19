@@ -32,6 +32,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponAudioWhiz,[string]$WeaponAudioWhizAuthoringDirectory,[switch]$WeaponAudioWhizNoSound,
       [switch]$WeaponAudioEarly,[string]$WeaponAudioEarlyAuthoringDirectory,[switch]$WeaponAudioEarlyOpenGeometry,
       [switch]$WeaponAudioCold,[string]$WeaponAudioColdAuthoringDirectory,[ValidateSet('pistol','rifle','shotgun')][string]$WeaponAudioColdWeapon='pistol',
+      [switch]$WeaponAudioEffect,
       [switch]$WeaponAudioNetwork,[string]$WeaponAudioNetworkAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
@@ -60,13 +61,14 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioEffect){$WeaponAudioCold=$true}
 if($WeaponAudioNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$WeaponAudioNetworkAuthoringDirectory -or !$WeaponFireCueAuthoringDirectory){throw 'Network audio requires actual two-owner transport and current audio/Cue/native identity proof'}
     $WeaponFireCueNetwork=$true
 }
 if($WeaponAudioNetworkAuthoringDirectory -and !$WeaponAudioNetwork){throw 'Network audio proof requires its explicit predicted/remote fixture'}
 if($WeaponAudioCold){
-    $coldAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioCold','WeaponAudioColdAuthoringDirectory','WeaponAudioColdWeapon','WeaponFireCueAuthoringDirectory','ThreadedLoading')
+    $coldAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioCold','WeaponAudioColdAuthoringDirectory','WeaponAudioColdWeapon','WeaponFireCueAuthoringDirectory','WeaponAudioEffect','ThreadedLoading')
     if(!$WeaponAudioColdAuthoringDirectory -or !$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $coldAllowed}).Count){throw 'Cold audio requires its standalone natural-input/default-registration lane and current audio/Cue proof'}
     $AutoRespawnActivation=$true
 }
@@ -622,6 +624,7 @@ try{
             'Content/UEPMixins/BP_WeaponAudioDispatchRouter.uasset','Content/UEPMixins/DA_WeaponAudioDispatchMixin.uasset','Content/UEPValidation/BP_WeaponAudioDispatchCaller.uasset',
             'Content/UEPMixins/BP_WeaponAudioWhizRouter.uasset','Content/UEPMixins/DA_WeaponAudioWhizMixin.uasset','Content/UEPValidation/BP_WeaponAudioWhizCaller.uasset','Content/Audio/Effects/SubmixEffects/TAP_EarlyReflections.uasset')){Add-JumpInput (Join-Path $stage $path)}
         if($WeaponAudioCold){foreach($path in @('Content/UEPValidation/BP_WeaponAbilityFireProbe.uasset','Content/Weapons/GA_Weapon_Fire.uasset','Content/Weapons/B_Weapon.uasset')){Add-JumpInput (Join-Path $stage $path)}}
+        if($WeaponAudioEffect){Add-JumpInput (Join-Path $stage 'Content/Audio/Submixes/EarlyReflectionsSubmix.uasset');Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')}
     }
     if($WeaponAudioWhiz){
         $whizRoot=[IO.Path]::GetFullPath($WeaponAudioWhizAuthoringDirectory)
@@ -1468,6 +1471,7 @@ try{
     if($WeaponAudioWhiz){$flag='-UEPWeaponAudioWhizResult';$marker='UEP_WEAPON_AUDIO_WHIZ'}
     if($WeaponAudioEarly){$flag='-UEPWeaponAudioEarlyResult';$marker='UEP_WEAPON_AUDIO_EARLY'}
     if($WeaponAudioCold){$flag='-UEPWeaponAudioColdResult';$marker='UEP_WEAPON_AUDIO_COLD'}
+    if($WeaponAudioEffect){$flag='-UEPWeaponAudioEffectResult';$marker='UEP_WEAPON_AUDIO_EFFECT'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1484,6 +1488,7 @@ try{
     if($WeaponAudioNetwork){$arguments+=@('-UEPWeaponAudioNetwork')}
     if($WeaponAudioEarlyOpenGeometry){$arguments+=@('-UEPWeaponAudioEarlyOpenGeometry')}
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
     # Dedicated-server/NullRHI disables rendering; preserve the single common
     # argument initialization and add only this explicit server-only variant.
@@ -1822,6 +1827,7 @@ try{
         if($WeaponAudioWhiz){$module='uep_lyra_weapons.weapon_audio_whiz_contract'}
         if($WeaponAudioEarly){$module='uep_lyra_weapons.weapon_audio_early_contract'}
         if($WeaponAudioCold){$module='uep_lyra_weapons.weapon_audio_cold_contract'}
+        if($WeaponAudioEffect){$module='uep_lyra_weapons.weapon_audio_effect_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
@@ -1844,6 +1850,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($WeaponAudioEffect -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Actual effect initialization requires the offline native audio renderer'}
         if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Actual offline native audio renderer was not selected'}
         if($NetShooterActor){
             $baselinePython=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
