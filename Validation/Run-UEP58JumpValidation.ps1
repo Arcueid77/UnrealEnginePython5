@@ -35,6 +35,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponAudioEffect,
       [switch]$WeaponAudioNetwork,[string]$WeaponAudioNetworkAuthoringDirectory,
       [switch]$MusicControls,[string]$MusicControlsAuthoringDirectory,
+      [switch]$MusicLifecycle,[string]$MusicLifecycleAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -62,6 +63,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MusicLifecycle){
+    $musicLifeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MusicLifecycle','MusicLifecycleAuthoringDirectory','ThreadedLoading')
+    if(!$MusicLifecycleAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $musicLifeAllowed}).Count){throw 'Music lifecycle requires its standalone native BeginPlay/GMS/ownership lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($MusicLifecycleAuthoringDirectory -and !$MusicLifecycle){throw 'Music lifecycle proof requires its explicit native fixture'}
 if($MusicControls){
     $musicAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MusicControls','MusicControlsAuthoringDirectory','ThreadedLoading')
     if(!$MusicControlsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $musicAllowed}).Count){throw 'Music controls require standalone inherited component/native audio state and current proof'}
@@ -613,6 +620,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($MusicLifecycle){
+        $lifeRoot=[IO.Path]::GetFullPath($MusicLifecycleAuthoringDirectory)
+        if(!$lifeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned music lifecycle revision required'}
+        $lifeSummary=Join-Path $lifeRoot 'summary.json';$lifeProofPath=Join-Path $lifeRoot 'assets.json'
+        $lifeAuthor=Get-Content -LiteralPath $lifeSummary -Raw|ConvertFrom-Json -Depth 100;$lifeProof=Get-Content -LiteralPath $lifeProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($lifeAuthor.status -ne 'passed' -or $lifeProof.status -ne 'passed' -or $lifeAuthor.kind -ne 'musiclifecycle' -or !$lifeProof.original_full_cdo_and_signatures_preserved -or
+           !$lifeProof.original_business_graphs_preserved_with_dispatch -or !$lifeProof.no_python_subscription_roots -or !$lifeProof.native_listener_lifetime_unchanged -or
+           $lifeProof.native_listener_nodes_reused -ne 2 -or $lifeProof.transport_nodes -ne 9 -or @($lifeAuthor.assets).Count -ne 2 -or
+           $lifeProof.actual_registered_profile_method_counts.Python -ne 8 -or $lifeProof.actual_registered_profile_method_counts.BlueprintFallback -ne 8){throw 'Current native music listener/base-profile proof incomplete'}
+        foreach($asset in $lifeAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Music lifecycle asset changed'};Add-JumpInput $path}}
+        foreach($property in $lifeProof.child_asset_hashes.PSObject.Properties){$path=Join-Path $stage $property.Name;if((Get-FileHash $path).Hash -ne $property.Value){throw 'Music descendant changed'};Add-JumpInput $path}
+        if((Get-FileHash $lifeProof.caller_probe.asset).Hash -ne $lifeProof.caller_probe.sha256){throw 'Music native GMS probe changed'}
+        Add-JumpInput $lifeProof.caller_probe.asset;Add-JumpInput $lifeSummary;Add-JumpInput $lifeProofPath;Add-JumpInput (Join-Path $stage 'Content/B_LyraGameInstance.uasset')
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
     }
     if($MusicControls){
         $musicRoot=[IO.Path]::GetFullPath($MusicControlsAuthoringDirectory)
@@ -1495,6 +1517,7 @@ try{
     if($WeaponAudioCold){$flag='-UEPWeaponAudioColdResult';$marker='UEP_WEAPON_AUDIO_COLD'}
     if($WeaponAudioEffect){$flag='-UEPWeaponAudioEffectResult';$marker='UEP_WEAPON_AUDIO_EFFECT'}
     if($MusicControls){$flag='-UEPMusicControlsResult';$marker='UEP_MUSIC_CONTROLS'}
+    if($MusicLifecycle){$flag='-UEPMusicLifecycleResult';$marker='UEP_MUSIC_LIFECYCLE'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1513,6 +1536,7 @@ try{
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicControls){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($MusicLifecycle){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
     # Dedicated-server/NullRHI disables rendering; preserve the single common
     # argument initialization and add only this explicit server-only variant.
@@ -1853,6 +1877,7 @@ try{
         if($WeaponAudioCold){$module='uep_lyra_weapons.weapon_audio_cold_contract'}
         if($WeaponAudioEffect){$module='uep_lyra_weapons.weapon_audio_effect_contract'}
         if($MusicControls){$module='uep_lyra_audio.music_manager_contract'}
+        if($MusicLifecycle){$module='uep_lyra_audio.music_lifecycle_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
@@ -1877,6 +1902,7 @@ try{
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
         if($WeaponAudioEffect -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Actual effect initialization requires the offline native audio renderer'}
         if($MusicControls -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Music controls require the actual offline native audio renderer'}
+        if($MusicLifecycle -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Music lifecycle requires the actual offline native audio renderer'}
         if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Actual offline native audio renderer was not selected'}
         if($NetShooterActor){
             $baselinePython=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
