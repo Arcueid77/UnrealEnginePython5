@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ControlPointFeedback,[string]$ControlPointFeedbackAuthoringDirectory,
       [switch]$ControlPointState,[string]$ControlPointStateAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
@@ -80,6 +81,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ControlPointFeedback){
+    $pointFeedbackAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointFeedback','ControlPointFeedbackAuthoringDirectory','ThreadedLoading')
+    if(!$ControlPointFeedbackAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $pointFeedbackAllowed}).Count){throw 'Control point feedback requires its standalone CP-map physical-overlap lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ControlPointFeedbackAuthoringDirectory -and !$ControlPointFeedback){throw 'Control point feedback proof requires its explicit native fixture'}
 if($ControlPointState){
     $pointStateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointState','ControlPointStateAuthoringDirectory','ThreadedLoading')
     if(!$ControlPointStateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $pointStateAllowed}).Count){throw 'Control point state requires its standalone CP-map physical-overlap lane and current proof'}
@@ -973,6 +980,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ControlPointFeedback){
+        $pointFeedbackRoot=[IO.Path]::GetFullPath($ControlPointFeedbackAuthoringDirectory)
+        if(!$pointFeedbackRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned control point feedback revision required'}
+        $pointFeedbackSummaryPath=Join-Path $pointFeedbackRoot 'summary.json';$pointFeedbackProofPath=Join-Path $pointFeedbackRoot 'assets.json'
+        $pointFeedbackAuthor=Get-Content -LiteralPath $pointFeedbackSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $pointFeedbackProof=Get-Content -LiteralPath $pointFeedbackProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($pointFeedbackAuthor.status -ne 'passed' -or $pointFeedbackProof.status -ne 'passed' -or $pointFeedbackAuthor.kind -ne 'controlpointfeedback' -or $pointFeedbackProof.kind -ne 'controlpointfeedback' -or
+            !$pointFeedbackProof.accepted_parent_cdo_components_timeline_rpc_and_all_remaining_graphs_preserved -or !$pointFeedbackProof.native_capture_message_custom_thunk_preserved -or
+            $pointFeedbackProof.parent_revision_graph_nodes -ne 308 -or $pointFeedbackProof.new_transport_nodes_this_revision -ne 37 -or $pointFeedbackProof.cumulative_transport_nodes -ne 69 -or $pointFeedbackProof.interface_nodes -ne 5 -or $pointFeedbackProof.new_business_nodes -ne 0 -or
+            $pointFeedbackProof.actual_registered_profile_method_counts.Python -ne 17 -or $pointFeedbackProof.actual_registered_profile_method_counts.BlueprintFallback -ne 17 -or @($pointFeedbackAuthor.assets).Count -ne 2 -or !$pointFeedbackProof.timeline_update_finish_rpc_vfx_audio_business_migrated){throw 'Current point feedback authority/overlap/remaining-business proof incomplete'}
+        foreach($asset in $pointFeedbackAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Control point feedback asset changed'};Add-JumpInput $path
+        }}
+        foreach($dependency in $pointFeedbackProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'Control point CP dependency changed'};Add-JumpInput $path}
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        Add-JumpInput $pointFeedbackSummaryPath;Add-JumpInput $pointFeedbackProofPath;Add-JumpInput (Join-Path $stage 'Plugins/GameFeatures/ShooterMaps/Content/Maps/L_Convolution_Blockout.umap')
     }
     if($ControlPointState){
         $pointStateRoot=[IO.Path]::GetFullPath($ControlPointStateAuthoringDirectory)
@@ -1926,6 +1950,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ControlPointFeedback){$flag='-UEPControlPointFeedbackResult';$marker='UEP_CONTROL_POINT_FEEDBACK'}
     if($ControlPointState){$flag='-UEPControlPointStateResult';$marker='UEP_CONTROL_POINT_STATE'}
     if($ControlPointHelpers){$flag='-UEPControlPointHelpersResult';$marker='UEP_CONTROL_POINT_HELPERS'}
     if($CPScoring){$flag='-UEPCPScoringResult';$marker='UEP_CP_SCORING'}
@@ -1965,6 +1990,7 @@ try{
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($ControlPointFeedback){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicControls){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicLifecycle){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicFamily){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -1986,6 +2012,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($ControlPointFeedback){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointState){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointHelpers){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($CPScoring){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -2309,6 +2336,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ControlPointFeedback){$module='uep_lyra_world.control_point_feedback_contract'}
         if($ControlPointState){$module='uep_lyra_world.control_point_state_contract'}
         if($ControlPointHelpers){$module='uep_lyra_world.control_point_helpers_contract'}
         if($CPScoring){$module='uep_lyra_weapons.cp_scoring_contract'}
@@ -2352,6 +2380,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($ControlPointFeedback -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Point feedback requires the actual offline native audio renderer'}
         if($SmallBurstCues -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Small Burst Cue audio requires the actual offline native renderer'}
         if($SmallBurstCues -and ([regex]::Matches($log,'LogBlueprintUserMessages:.*NOT VALID')).Count -ne 2){throw 'Both original and Python pickup invalid-FX messages required'}
         if($WeaponAudioEffect -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Actual effect initialization requires the offline native audio renderer'}

@@ -2,12 +2,12 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][ValidateSet('controlpointstate','controlpointhelpers','cpscoring','tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
+      [Parameter(Mandatory=$true)][ValidateSet('controlpointfeedback','controlpointstate','controlpointhelpers','cpscoring','tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','weaponaudiomath','weaponfirecues','netshooterability','netshooteractor','weaponabilityfire','weaponimpacts','weapondecals','weaponfirefx','weaponactorhelpers','grenadevfx','grenadewidget','meleehitmontage','dashselector','quickslot','death','autoreload','heroheal','dropweapon','reloadmagazine','weaponinstance','spawneffect','devicecolor','widgetheld','widgetpressed','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')][string]$Kind,
       [string]$ControlPointHelpersBaseline,
       [ValidateSet('Python','BlueprintFallback')][string]$AutoRespawnDefaultProfile='Python')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-if(($Kind -eq 'controlpointstate') -ne [bool]$ControlPointHelpersBaseline){throw 'Control point state authoring requires its explicit accepted helper parent revision'}
+if(($Kind -in @('controlpointstate','controlpointfeedback')) -ne [bool]$ControlPointHelpersBaseline){throw 'Control point state authoring requires its explicit accepted helper parent revision'}
 if($AutoRespawnDefaultProfile -ne 'Python' -and $Kind -ne 'autorespawnactivation'){throw 'Startup Profile variant is scoped to full AutoRespawn lifecycle validation'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 . (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
@@ -51,7 +51,7 @@ try{
     if($Kind -eq 'dashselector'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset'}
     if($Kind -eq 'meleehitmontage'){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset'}
     if($Kind -eq 'grenadewidget'){$relative='Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset'}
-    if($Kind -eq 'controlpointstate'){$relative='Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_ControlPointVolume.uasset'}
+    if($Kind -in @('controlpointstate','controlpointfeedback')){$relative='Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_ControlPointVolume.uasset'}
     if($Kind -eq 'controlpointhelpers'){$relative='Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_ControlPointVolume.uasset'}
     if($Kind -eq 'cpscoring'){$relative='Plugins/GameFeatures/ShooterCore/Content/ControlPoint/B_ControlPointScoring.uasset'}
     if($Kind -eq 'tdmscoring'){$relative='Plugins/GameFeatures/ShooterCore/Content/Elimination/B_TeamDeathMatchScoring.uasset'}
@@ -85,13 +85,13 @@ try{
     if($Kind -in @('autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation')){$relative='Plugins/GameFeatures/ShooterCore/Content/Game/Respawn/GA_AutoRespawn.uasset'}
     $marker=Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json
     $original=Join-Path (Split-Path $marker.source -Parent) $relative;$copy=Join-Path $stage $relative
-    if($Kind -eq 'controlpointstate'){
+    if($Kind -in @('controlpointstate','controlpointfeedback')){
         $parentRoot=[IO.Path]::GetFullPath($ControlPointHelpersBaseline)
         if(!$parentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned helper parent revision required'}
         $parentSummaryPath=Join-Path $parentRoot 'summary.json';$parentProofPath=Join-Path $parentRoot 'assets.json'
         $parentSummary=Get-Content -LiteralPath $parentSummaryPath -Raw|ConvertFrom-Json -Depth 80
         $parentProof=Get-Content -LiteralPath $parentProofPath -Raw|ConvertFrom-Json -Depth 80
-        if($parentSummary.status -ne 'passed' -or $parentSummary.kind -ne 'controlpointhelpers' -or $parentProof.status -ne 'passed' -or $parentProof.kind -ne 'controlpointhelpers' -or @($parentSummary.assets).Count -ne 2){throw 'Accepted helper parent proof required'}
+        if($parentSummary.status -ne 'passed' -or $parentSummary.kind -ne $(if($Kind -eq 'controlpointfeedback'){'controlpointstate'}else{'controlpointhelpers'}) -or $parentProof.status -ne 'passed' -or $parentProof.kind -ne $(if($Kind -eq 'controlpointfeedback'){'controlpointstate'}else{'controlpointhelpers'}) -or @($parentSummary.assets).Count -ne 2){throw 'Accepted helper parent proof required'}
         foreach($asset in $parentSummary.assets){
             foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Helper parent revision changed'}}
             $backup=Join-Path "$output/PreviousAssets" ([IO.Path]::GetFileName($asset.stage));Copy-Item -LiteralPath $asset.stage -Destination $backup;Add-HeroHash $backup
@@ -103,8 +103,8 @@ try{
     }
     Copy-Item -LiteralPath $copy -Destination "$output/PreviousAssets/before.uasset"
     Add-HeroHash $original;Add-HeroHash "$output/PreviousAssets/before.uasset"
-    if($Kind -eq 'controlpointstate'){
-        foreach($tool in @('generate_control_point_state_assets.py','generate_control_point_helpers_assets.py','generate_small_burst_cue_assets.py','generate_hero_burst_cue_assets.py','generate_dash_selector_assets.py')){Add-HeroHash (Join-Path $repo "Demos/UEPLyraIntegration/Tools/$tool")}
+    if($Kind -in @('controlpointstate','controlpointfeedback')){
+        foreach($tool in @('generate_control_point_feedback_assets.py','generate_control_point_state_assets.py','generate_control_point_helpers_assets.py','generate_small_burst_cue_assets.py','generate_hero_burst_cue_assets.py','generate_dash_selector_assets.py')){Add-HeroHash (Join-Path $repo "Demos/UEPLyraIntegration/Tools/$tool")}
         Add-HeroHash (Join-Path $stage 'Plugins/GameFeatures/ShooterCore/Content/ControlPoint/B_ControlPointScoring.uasset')
     }
     if($Kind -eq 'controlpointhelpers'){
@@ -311,11 +311,11 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup',
         "-UEPHeroAbilityStageRoot=$stage","-UEPHeroAbilityKind=$Kind","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     if($Kind -eq 'autorespawnactivation'){$arguments+=@("-UEPAutoRespawnDefaultProfile=$AutoRespawnDefaultProfile")}
-    if($Kind -eq 'controlpointstate'){$arguments+=@('-UEPControlPointHelpersBaseline='+[IO.Path]::GetFullPath($ControlPointHelpersBaseline))}
+    if($Kind -in @('controlpointstate','controlpointfeedback')){$arguments+=@('-UEPControlPointHelpersBaseline='+[IO.Path]::GetFullPath($ControlPointHelpersBaseline))}
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Retained hero ability Interface authoring' 240
     $report=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 80
     $expectedEndNodes=if($Kind -eq 'widgetpressed'){3}elseif($Kind -in @('weaponinstance','devicecolor','autorespawnhelpers','autorespawnlisteners','autorespawnevents','autorespawnactivation','characterinventory','characteraudio','characterquickbar','characterloadout','characteroutline','characterteam','characterstencil','characterlifecycle','characterparts','characterhealth','characterinput','characterobserver','characterlistener','characterlegacy','characterready','characterwait','characterpossessed','charactervisibility','characterbeginplay','characterequipmenthide','characterragdoll','characterdeathstarted')){0}else{4}
-    if($Kind -in @('controlpointstate','controlpointhelpers','cpscoring','tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
+    if($Kind -in @('controlpointfeedback','controlpointstate','controlpointhelpers','cpscoring','tdmscoring','scoringbase','physicsfields','smallburstcues','spawningcue','traversalcues','heroburstcues','characterdamage','messagewidgets','cuewidgets','footstep','generalaudio','windsystem','musiccontrols','dashselector','meleehitmontage','grenadewidget','grenadevfx','weaponactorhelpers','weaponfirefx','weapondecals','weaponimpacts','weaponabilityfire','netshooteractor','netshooterability','weaponfirecues','weaponaudiomath')){$expectedEndNodes=0}
     if($report.status -ne 'passed' -or !$report.original_class_defaults_signature_graphs_preserved -or $report.native_end_adapter_nodes -ne $expectedEndNodes -or
        @($report.assets).Count -ne $(if($Kind -eq 'smallburstcues'){8}elseif($Kind -in @('physicsfields','weaponfirecues','messagewidgets','heroburstcues','traversalcues')){4}elseif($Kind -in @('weaponaudiomath','generalaudio')){3}else{2}) -or $report.runtime_acceptance -or $report.kind -ne $Kind){throw 'Hero ability authoring proof incomplete'}
     if($Kind -eq 'grenadewidget' -and (!$report.original_full_cdo_preserved -or !$report.original_graphs_unmodified -or !$report.native_register_restore_passed -or
@@ -330,6 +330,9 @@ try{
         !$report.native_register_restore_passed -or !$report.original_retriggerable_delay_node_reused -or !$report.native_delay_uuid_preserved -or
         !$report.cleanup_tests_validity_not_active -or $report.native_delay_seconds -ne 3 -or $report.transport_nodes -ne 3 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 2 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 2)){throw 'Weapon fire FX original latent/dispatch proof incomplete'}
+    if($Kind -eq 'controlpointfeedback' -and (!$report.accepted_parent_cdo_components_timeline_rpc_and_all_remaining_graphs_preserved -or !$report.native_capture_message_custom_thunk_preserved -or
+        $report.parent_revision_graph_nodes -ne 308 -or $report.new_transport_nodes_this_revision -ne 37 -or $report.cumulative_transport_nodes -ne 69 -or $report.interface_nodes -ne 5 -or $report.new_business_nodes -ne 0 -or
+        $report.actual_registered_profile_method_counts.Python -ne 17 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 17 -or !$report.timeline_update_finish_rpc_vfx_audio_business_migrated)){throw 'Current point feedback/Timeline/RPC/message proof incomplete'}
     if($Kind -eq 'controlpointstate' -and (!$report.accepted_helper_cdo_components_timeline_rpc_and_all_remaining_graphs_preserved -or !$report.native_experience_factory_component_overlap_binding_authority_switches_and_rpc_preserved -or
         $report.parent_revision_graph_nodes -ne 292 -or $report.new_transport_nodes_this_revision -ne 16 -or $report.cumulative_transport_nodes -ne 32 -or $report.interface_nodes -ne 5 -or $report.new_business_nodes -ne 0 -or
         $report.actual_registered_profile_method_counts.Python -ne 8 -or $report.actual_registered_profile_method_counts.BlueprintFallback -ne 8 -or $report.timeline_update_finish_rpc_vfx_audio_business_migrated)){throw 'Accepted volume state/authority/remaining-business proof incomplete'}
@@ -666,7 +669,7 @@ try{
     foreach($relative in $report.assets){
         $source=Join-Path $stage $relative;$target=Join-Path $overlay $relative
         if(Test-Path -LiteralPath $target){
-            if($Kind -ne 'controlpointstate'){throw 'Do not overwrite existing Overlay ability output'}
+            if($Kind -notin @('controlpointstate','controlpointfeedback')){throw 'Do not overwrite existing Overlay ability output'}
             $expectedParent=@($parentSummary.assets|Where-Object {[IO.Path]::GetFullPath($_.overlay) -eq [IO.Path]::GetFullPath($target)})
             if($expectedParent.Count -ne 1 -or (Get-FileHash -LiteralPath $target).Hash -ne $expectedParent[0].sha256){throw 'Do not overwrite changed or undeclared helper Overlay output'}
         }
