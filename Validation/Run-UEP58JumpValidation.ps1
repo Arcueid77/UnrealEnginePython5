@@ -24,6 +24,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
+      [switch]$WeaponAbilityFire,[string]$WeaponAbilityFireAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -46,36 +47,43 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAbilityFire){
+    $abilityFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAbilityFire','WeaponAbilityFireAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponAbilityFireAuthoringDirectory -or !$WeaponActorFireAuthoringDirectory -or !$WeaponActorBeginAuthoringDirectory -or !$WeaponFireFXAuthoringDirectory -or !$WeaponDecalsAuthoringDirectory -or !$WeaponImpactsAuthoringDirectory -or
+        @($PSBoundParameters.Keys|Where-Object {$_ -notin $abilityFireAllowed}).Count){throw 'Shared Weapon Fire requires its native input lane and current ability/Actor/FX proof chain'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponAbilityFireAuthoringDirectory -and !$WeaponAbilityFire){throw 'Shared Weapon Fire proof requires its explicit native input fixture'}
 if($WeaponImpacts){
     $weaponImpactsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponImpacts','WeaponImpactsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponImpactsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponImpactsAllowed}).Count){throw 'Weapon Impacts requires its native Niagara/channel/latent lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponImpactsAuthoringDirectory -and !$WeaponImpacts -and !$WeaponActorFire){throw 'Weapon Impacts proof requires its explicit fixture or parent integration'}
+if($WeaponImpactsAuthoringDirectory -and !$WeaponImpacts -and !$WeaponActorFire -and !$WeaponAbilityFire){throw 'Weapon Impacts proof requires its explicit fixture or parent integration'}
 if($WeaponDecals){
     $weaponDecalsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponDecals','WeaponDecalsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponDecalsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponDecalsAllowed}).Count){throw 'Weapon Decals requires its native Niagara/latent lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponDecalsAuthoringDirectory -and !$WeaponDecals -and !$WeaponActorFire){throw 'Weapon Decals proof requires its explicit fixture or parent integration'}
+if($WeaponDecalsAuthoringDirectory -and !$WeaponDecals -and !$WeaponActorFire -and !$WeaponAbilityFire){throw 'Weapon Decals proof requires its explicit fixture or parent integration'}
 if($WeaponFireFX){
     $weaponFXAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponFireFX','WeaponFireFXAuthoringDirectory','ThreadedLoading')
     if(!$WeaponFireFXAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFXAllowed}).Count){throw 'Weapon Fire FX requires its native Niagara/latent lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponFireFXAuthoringDirectory -and !$WeaponFireFX -and !$WeaponActorFire){throw 'Weapon Fire FX proof requires its explicit fixture or parent integration'}
+if($WeaponFireFXAuthoringDirectory -and !$WeaponFireFX -and !$WeaponActorFire -and !$WeaponAbilityFire){throw 'Weapon Fire FX proof requires its explicit fixture or parent integration'}
 if($WeaponActorBegin){
     $weaponBeginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorBegin','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorBeginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponBeginAllowed}).Count){throw 'Weapon BeginPlay requires its isolated native team-lifetime lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
+if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers -and !$WeaponAbilityFire){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
 if($WeaponActorFire){
     $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','WeaponFireFXAuthoringDirectory','WeaponDecalsAuthoringDirectory','WeaponImpactsAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
     $AutoRespawnActivation=$true
 }
-if($WeaponActorFireAuthoringDirectory -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon Fire proof requires its explicit fixture or helper-family regression'}
+if($WeaponActorFireAuthoringDirectory -and !$WeaponActorFire -and !$WeaponActorHelpers -and !$WeaponAbilityFire){throw 'Weapon Fire proof requires its explicit fixture or helper-family regression'}
 if($WeaponActorHelpers){
     $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponHelperAllowed}).Count){throw 'Weapon Actor helpers require their isolated native child-instance lane and current proof'}
@@ -515,7 +523,27 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
-    if($WeaponImpacts -or ($WeaponActorFire -and $WeaponImpactsAuthoringDirectory)){
+    if($WeaponAbilityFire){
+        $abilityFireRoot=[IO.Path]::GetFullPath($WeaponAbilityFireAuthoringDirectory)
+        if(!$abilityFireRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned shared fire asset revision required'}
+        $abilityFireSummary=Join-Path $abilityFireRoot 'summary.json';$abilityFireProofPath=Join-Path $abilityFireRoot 'assets.json'
+        $abilityFireAuthor=Get-Content -LiteralPath $abilityFireSummary -Raw|ConvertFrom-Json -Depth 80
+        $abilityFireProof=Get-Content -LiteralPath $abilityFireProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($abilityFireAuthor.status -ne 'passed' -or $abilityFireAuthor.kind -ne 'weaponabilityfire' -or $abilityFireProof.status -ne 'passed' -or
+            !$abilityFireProof.original_full_cdo_preserved -or !$abilityFireProof.original_business_graphs_preserved_with_dispatch -or
+            !$abilityFireProof.native_weak_named_task_binding -or !$abilityFireProof.native_function_name_timers -or $abilityFireProof.transport_nodes -ne 11 -or
+            $abilityFireProof.actual_registered_profile_method_counts.Python -ne 10 -or $abilityFireProof.actual_registered_profile_method_counts.BlueprintFallback -ne 10 -or
+            !$abilityFireProof.caller_probe.stage_only -or @($abilityFireAuthor.assets).Count -ne 2){throw 'Current ten-method native shared fire proof incomplete'}
+        foreach($asset in $abilityFireAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Shared fire asset changed'};Add-JumpInput $path
+        }}
+        foreach($child in $abilityFireProof.inherited_children){foreach($path in @($child.stage,$child.original)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $child.sha256){throw 'Shared fire original child changed'};Add-JumpInput $path
+        }}
+        if((Get-FileHash -LiteralPath $abilityFireProof.caller_probe.asset).Hash -ne $abilityFireProof.caller_probe.sha256){throw 'Typed native fire probe changed'}
+        Add-JumpInput $abilityFireProof.caller_probe.asset;Add-JumpInput $abilityFireSummary;Add-JumpInput $abilityFireProofPath
+    }
+    if($WeaponImpacts -or (($WeaponActorFire -or $WeaponAbilityFire) -and $WeaponImpactsAuthoringDirectory)){
         $impactRoot=[IO.Path]::GetFullPath($WeaponImpactsAuthoringDirectory)
         if(!$impactRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon impact revision required'}
         $impactSummaryPath=Join-Path $impactRoot 'summary.json';$impactProofPath=Join-Path $impactRoot 'assets.json'
@@ -529,7 +557,7 @@ try{
         }}
         Add-JumpInput $impactSummaryPath;Add-JumpInput $impactProofPath
     }
-    if($WeaponDecals -or ($WeaponActorFire -and $WeaponDecalsAuthoringDirectory)){
+    if($WeaponDecals -or (($WeaponActorFire -or $WeaponAbilityFire) -and $WeaponDecalsAuthoringDirectory)){
         $decalRoot=[IO.Path]::GetFullPath($WeaponDecalsAuthoringDirectory)
         if(!$decalRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon decal revision required'}
         $decalSummaryPath=Join-Path $decalRoot 'summary.json';$decalProofPath=Join-Path $decalRoot 'assets.json'
@@ -543,7 +571,7 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
-    if($WeaponFireFX -or ($WeaponActorFire -and $WeaponFireFXAuthoringDirectory)){
+    if($WeaponFireFX -or (($WeaponActorFire -or $WeaponAbilityFire) -and $WeaponFireFXAuthoringDirectory)){
         $fxRoot=[IO.Path]::GetFullPath($WeaponFireFXAuthoringDirectory)
         if(!$fxRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon fire FX revision required'}
         $fxSummaryPath=Join-Path $fxRoot 'summary.json';$fxProofPath=Join-Path $fxRoot 'assets.json'
@@ -557,7 +585,7 @@ try{
         }}
         Add-JumpInput $fxSummaryPath;Add-JumpInput $fxProofPath
     }
-    if($WeaponActorBegin -or (($WeaponActorFire -or $WeaponActorHelpers) -and $WeaponActorBeginAuthoringDirectory)){
+    if($WeaponActorBegin -or (($WeaponActorFire -or $WeaponActorHelpers -or $WeaponAbilityFire) -and $WeaponActorBeginAuthoringDirectory)){
         $beginRoot=[IO.Path]::GetFullPath($WeaponActorBeginAuthoringDirectory)
         if(!$beginRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon BeginPlay revision required'}
         $beginSummaryPath=Join-Path $beginRoot 'summary.json';$beginProofPath=Join-Path $beginRoot 'assets.json'
@@ -572,7 +600,7 @@ try{
         }}
         Add-JumpInput $beginSummaryPath;Add-JumpInput $beginProofPath
     }
-    if($WeaponActorFire -or ($WeaponActorHelpers -and $WeaponActorFireAuthoringDirectory)){
+    if($WeaponActorFire -or (($WeaponActorHelpers -or $WeaponAbilityFire) -and $WeaponActorFireAuthoringDirectory)){
         $fireRoot=[IO.Path]::GetFullPath($WeaponActorFireAuthoringDirectory)
         if(!$fireRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon Fire revision required'}
         $fireSummaryPath=Join-Path $fireRoot 'summary.json';$fireProofPath=Join-Path $fireRoot 'assets.json'
@@ -1238,6 +1266,7 @@ try{
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
+    if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1556,6 +1585,7 @@ try{
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
+        if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
