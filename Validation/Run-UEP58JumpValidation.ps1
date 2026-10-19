@@ -28,6 +28,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
       [switch]$WeaponFireCues,[string]$WeaponFireCueAuthoringDirectory,
       [switch]$WeaponAudioMath,[string]$WeaponAudioMathAuthoringDirectory,
+      [switch]$WeaponAudioDispatch,[string]$WeaponAudioDispatchAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -55,6 +56,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioDispatch){
+    $audioDispatchAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioDispatch','WeaponAudioDispatchAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponAudioDispatchAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $audioDispatchAllowed}).Count){throw 'Static audio dispatch requires its standalone native state/caller lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponAudioDispatchAuthoringDirectory -and !$WeaponAudioDispatch){throw 'Static audio dispatch proof requires its explicit native fixture'}
 if($WeaponAudioMath){
     $audioMathAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioMath','WeaponAudioMathAuthoringDirectory','ThreadedLoading')
     if(!$WeaponAudioMathAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $audioMathAllowed}).Count){throw 'Static weapon audio math requires its typed Object/static Blueprint caller lane and current proof'}
@@ -570,6 +577,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponAudioDispatch){
+        $dispatchRoot=[IO.Path]::GetFullPath($WeaponAudioDispatchAuthoringDirectory)
+        if(!$dispatchRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned static audio dispatch revision required'}
+        $dispatchSummary=Join-Path $dispatchRoot 'summary.json';$dispatchProofPath=Join-Path $dispatchRoot 'assets.json'
+        $dispatchAuthor=Get-Content -LiteralPath $dispatchSummary -Raw|ConvertFrom-Json -Depth 100;$dispatchProof=Get-Content -LiteralPath $dispatchProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($dispatchAuthor.status -ne 'passed' -or $dispatchProof.status -ne 'passed' -or $dispatchAuthor.kind -ne 'weaponaudiodispatch' -or
+           !$dispatchProof.original_full_cdo_preserved -or !$dispatchProof.original_static_signatures_flags_preserved -or !$dispatchProof.original_local_defaults_preserved -or
+           !$dispatchProof.original_business_graphs_preserved_with_dispatch -or !$dispatchProof.existing_math_transport_preserved -or
+           $dispatchProof.static_functions_registered_as_mixins -or $dispatchProof.transport_nodes -ne 20 -or @($dispatchAuthor.assets).Count -ne 3 -or
+           $dispatchProof.actual_registered_profile_method_counts.Python -ne 4 -or $dispatchProof.actual_registered_profile_method_counts.BlueprintFallback -ne 4){throw 'Current four-function static audio dispatch proof incomplete'}
+        foreach($asset in $dispatchAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Static audio dispatch asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $dispatchProof.caller_probe.asset).Hash -ne $dispatchProof.caller_probe.sha256){throw 'Static audio dispatch Blueprint caller changed'}
+        Add-JumpInput $dispatchProof.caller_probe.asset;Add-JumpInput $dispatchSummary;Add-JumpInput $dispatchProofPath
+        foreach($path in @('Content/UEPMixins/BP_WeaponAudioMathRouter.uasset','Content/UEPMixins/DA_WeaponAudioMathMixin.uasset','Content/UEPValidation/BP_WeaponAudioMathCaller.uasset','Content/Audio/Effects/SubmixEffects/TAP_EarlyReflections.uasset')){Add-JumpInput (Join-Path $stage $path)}
     }
     if($WeaponAudioMath){
         $mathRoot=[IO.Path]::GetFullPath($WeaponAudioMathAuthoringDirectory)
@@ -1380,6 +1402,7 @@ try{
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
     if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
+    if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1725,6 +1748,7 @@ try{
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
         if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
+        if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
