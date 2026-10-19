@@ -37,6 +37,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$MusicControls,[string]$MusicControlsAuthoringDirectory,
       [switch]$MusicLifecycle,[string]$MusicLifecycleAuthoringDirectory,
       [switch]$MusicFamily,[string]$MusicFamilyAuthoringDirectory,
+      [switch]$WindSystem,[string]$WindSystemAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -64,6 +65,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WindSystem){
+    $windAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WindSystem','WindSystemAuthoringDirectory','ThreadedLoading')
+    if(!$WindSystemAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $windAllowed}).Count){throw 'Wind system requires its standalone native scheduler/physics/parameter lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WindSystemAuthoringDirectory -and !$WindSystem){throw 'Wind proof requires its explicit native fixture'}
 if($MusicFamily){
     $familyAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MusicFamily','MusicFamilyAuthoringDirectory','ThreadedLoading')
     if(!$MusicFamilyAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $familyAllowed}).Count){throw 'Music family requires its standalone native parent/Delay/team-message lane and current proof'}
@@ -627,6 +634,18 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WindSystem){
+        $windRoot=[IO.Path]::GetFullPath($WindSystemAuthoringDirectory)
+        if(!$windRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned wind revision required'}
+        $windSummary=Join-Path $windRoot 'summary.json';$windProofPath=Join-Path $windRoot 'assets.json'
+        $windAuthor=Get-Content -LiteralPath $windSummary -Raw|ConvertFrom-Json -Depth 100;$windProof=Get-Content -LiteralPath $windProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($windAuthor.status -ne 'passed' -or $windProof.status -ne 'passed' -or $windAuthor.kind -ne 'windsystem' -or !$windProof.original_full_cdo_preserved -or
+           !$windProof.original_business_graphs_preserved_with_dispatch -or !$windProof.native_multigate_state_reused -or !$windProof.native_array_set_and_no_resize_preserved -or
+           $windProof.original_graph_nodes -ne 62 -or $windProof.transport_nodes -ne 18 -or @($windAuthor.assets).Count -ne 2 -or
+           $windProof.actual_registered_profile_method_counts.Python -ne 3 -or $windProof.actual_registered_profile_method_counts.BlueprintFallback -ne 3){throw 'Current wind scheduler/array/source graph proof incomplete'}
+        foreach($asset in $windAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash $path).Hash -ne $asset.sha256){throw 'Wind asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $windSummary;Add-JumpInput $windProofPath
     }
     if($MusicFamily){
         $familyRoot=[IO.Path]::GetFullPath($MusicFamilyAuthoringDirectory)
@@ -1540,6 +1559,7 @@ try{
     if($MusicControls){$flag='-UEPMusicControlsResult';$marker='UEP_MUSIC_CONTROLS'}
     if($MusicLifecycle){$flag='-UEPMusicLifecycleResult';$marker='UEP_MUSIC_LIFECYCLE'}
     if($MusicFamily){$flag='-UEPMusicFamilyResult';$marker='UEP_MUSIC_FAMILY'}
+    if($WindSystem){$flag='-UEPWindSystemResult';$marker='UEP_WIND_SYSTEM'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1902,6 +1922,7 @@ try{
         if($MusicControls){$module='uep_lyra_audio.music_manager_contract'}
         if($MusicLifecycle){$module='uep_lyra_audio.music_lifecycle_contract'}
         if($MusicFamily){$module='uep_lyra_audio.music_family_contract'}
+        if($WindSystem){$module='uep_lyra_audio.wind_system_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
