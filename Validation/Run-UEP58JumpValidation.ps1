@@ -26,6 +26,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
       [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$WeaponFireFX,[string]$WeaponFireFXAuthoringDirectory,
+      [switch]$WeaponFireCues,[string]$WeaponFireCueAuthoringDirectory,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
       [switch]$WeaponAbilityFire,[string]$WeaponAbilityFireAuthoringDirectory,
@@ -52,6 +53,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponFireCues){
+    $cueAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponFireCues','WeaponFireCueAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponFireCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cueAllowed}).Count){throw 'Weapon firing Cues require their standalone native input/GAS/typed payload lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues){throw 'Firing Cue proof requires its explicit native fixture'}
 if($NetShooterImpactNetwork){$NetShooterNetwork=$true}
 if($NetShooterNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
@@ -551,6 +558,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponFireCues){
+        $cueRoot=[IO.Path]::GetFullPath($WeaponFireCueAuthoringDirectory)
+        if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned firing Cue asset revision required'}
+        $cueSummary=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json'
+        $cueAuthor=Get-Content -LiteralPath $cueSummary -Raw|ConvertFrom-Json -Depth 100
+        $cueProof=Get-Content -LiteralPath $cueProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($cueAuthor.status -ne 'passed' -or $cueProof.status -ne 'passed' -or $cueAuthor.kind -ne 'weaponfirecues' -or
+            !$cueProof.original_full_cdo_preserved -or !$cueProof.original_graphs_unmodified -or !$cueProof.native_register_restore_passed -or
+            !$cueProof.original_native_burst_effects_preserved -or $cueProof.original_graph_nodes -ne 76 -or @($cueAuthor.assets).Count -ne 4 -or
+            @($cueProof.actual_registered_profile_method_counts.PSObject.Properties|Where-Object {$_.Value.Python -ne 1 -or $_.Value.BlueprintFallback -ne 1}).Count){throw 'Current native firing Cue graph/CDO/OnBurst proof incomplete'}
+        foreach($asset in $cueAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Firing Cue asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $cueSummary;Add-JumpInput $cueProofPath;Add-JumpInput (Join-Path $stage 'Content/UEPValidation/BP_WeaponAbilityFireProbe.uasset')
     }
     if($NetShooterAbility){
         $netAbilityRoot=[IO.Path]::GetFullPath($NetShooterAbilityAuthoringDirectory)
@@ -1330,6 +1352,7 @@ try{
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
     if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($WeaponFireFX){$flag='-UEPWeaponFireFXResult';$marker='UEP_WEAPON_FIRE_FX'}
+    if($WeaponFireCues){$flag='-UEPWeaponFireCuesResult';$marker='UEP_WEAPON_FIRE_CUES'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1670,6 +1693,7 @@ try{
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         if($WeaponFireFX){$module='uep_lyra_weapons.weapon_fire_fx_contract'}
+        if($WeaponFireCues){$module='uep_lyra_weapons.weapon_fire_cue_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
