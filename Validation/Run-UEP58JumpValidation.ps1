@@ -51,6 +51,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$ScoringBase,[string]$ScoringBaseAuthoringDirectory,
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
+      [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -78,6 +79,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ControlPointHelpers){
+    $pointHelpersAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointHelpers','ControlPointHelpersAuthoringDirectory','ThreadedLoading')
+    if(!$ControlPointHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $pointHelpersAllowed}).Count){throw 'Control point helpers require their standalone CP-map construction/native-helper lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ControlPointHelpersAuthoringDirectory -and !$ControlPointHelpers){throw 'Control point helper proof requires its explicit native fixture'}
 if($CPScoring){
     $cpAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CPScoring','CPScoringAuthoringDirectory','ThreadedLoading')
     if(!$CPScoringAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cpAllowed}).Count){throw 'CP scoring requires its standalone native control-point/map/timer lane and current proof'}
@@ -959,6 +966,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ControlPointHelpers){
+        $pointHelpersRoot=[IO.Path]::GetFullPath($ControlPointHelpersAuthoringDirectory)
+        if(!$pointHelpersRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned control point helper revision required'}
+        $pointHelpersSummaryPath=Join-Path $pointHelpersRoot 'summary.json';$pointHelpersProofPath=Join-Path $pointHelpersRoot 'assets.json'
+        $pointHelpersAuthor=Get-Content -LiteralPath $pointHelpersSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $pointHelpersProof=Get-Content -LiteralPath $pointHelpersProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($pointHelpersAuthor.status -ne 'passed' -or $pointHelpersProof.status -ne 'passed' -or $pointHelpersAuthor.kind -ne 'controlpointhelpers' -or $pointHelpersProof.kind -ne 'controlpointhelpers' -or
+            !$pointHelpersProof.original_full_cdo_components_timeline_curves_guids_rpc_signatures_and_other_business_preserved -or $pointHelpersProof.original_graph_nodes -ne 271 -or $pointHelpersProof.transport_nodes -ne 16 -or $pointHelpersProof.interface_nodes -ne 5 -or
+            $pointHelpersProof.new_business_nodes -ne 0 -or $pointHelpersProof.actual_registered_profile_method_counts.Python -ne 4 -or $pointHelpersProof.actual_registered_profile_method_counts.BlueprintFallback -ne 4 -or @($pointHelpersAuthor.assets).Count -ne 2 -or $pointHelpersProof.volume_arbitration_overlap_timeline_rpc_audio_business_migrated){throw 'Current volume helper/Timeline/RPC/remaining-business proof incomplete'}
+        foreach($asset in $pointHelpersAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Control point helper asset changed'};Add-JumpInput $path
+        }}
+        foreach($dependency in $pointHelpersProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'Control point CP dependency changed'};Add-JumpInput $path}
+        Add-JumpInput $pointHelpersSummaryPath;Add-JumpInput $pointHelpersProofPath;Add-JumpInput (Join-Path $stage 'Plugins/GameFeatures/ShooterMaps/Content/Maps/L_Convolution_Blockout.umap')
     }
     if($CPScoring){
         $cpRoot=[IO.Path]::GetFullPath($CPScoringAuthoringDirectory)
@@ -1881,6 +1903,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ControlPointHelpers){$flag='-UEPControlPointHelpersResult';$marker='UEP_CONTROL_POINT_HELPERS'}
     if($CPScoring){$flag='-UEPCPScoringResult';$marker='UEP_CP_SCORING'}
     if($TDMScoring){$flag='-UEPTDMScoringResult';$marker='UEP_TDM_SCORING'}
     if($ScoringBase){$flag='-UEPScoringBaseResult';$marker='UEP_SCORING_BASE'}
@@ -1939,6 +1962,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($ControlPointHelpers){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($CPScoring){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($WidgetHeld){
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
@@ -2260,6 +2284,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ControlPointHelpers){$module='uep_lyra_world.control_point_helpers_contract'}
         if($CPScoring){$module='uep_lyra_weapons.cp_scoring_contract'}
         if($TDMScoring){$module='uep_lyra_weapons.tdm_scoring_contract'}
         if($ScoringBase){$module='uep_lyra_weapons.scoring_base_contract'}
