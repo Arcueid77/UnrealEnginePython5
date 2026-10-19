@@ -1,14 +1,30 @@
 # UEP 5.8 automated validation
 
 Current validation uses the approved upstream UE 5.8.1 update and bundled
-CPython 3.11. For each migration batch, `Test-UEPStagedBatch.ps1` tests an
-isolated Git-index-only Examples archive against committed core, then
+CPython 3.11. For each migration batch, `Test-UEPStagedBatch.ps1` tests isolated
+Git-index-only core and Examples archives, then
 `Save-UEPBatchAcceptance.ps1` records bounded native evidence. Host/model checks
 are not runtime acceptance. Native runs retain their actual DLL provenance;
 later source-hash freezes do not re-execute old scenarios. Failed or unfinished
 batches must not be committed as accepted. See
 [batch ledgers](../Demos/UEPLyraIntegration/Migration/Acceptance/) and
 [current progress](../Demos/UEPLyraIntegration/Migration/PROGRESS.md).
+
+As requested on 2026-10-20, regression is incremental by default. The staged
+driver checks changed Python syntax/imports and selects host tests affected by
+local imports, inheritance and literal module/file references. Each report lists
+changed paths, selected tests, dependency reasons and unmapped paths. Add
+`-TestPattern 'test_footstep_*.py'` for dependencies that static analysis cannot
+resolve. A code change with no identified tests fails with a request for an
+explicit test scope; it never silently expands to the full suite. Native asset,
+runtime, caller and lifecycle scenarios still run for the affected feature.
+
+Use `-FullRegression` only for an intentionally broad check, such as shared SDK
+changes or version acceptance; it also checks every indexed Python file. The
+direct host runner has matching `--test-pattern`, `--changes-file` and explicit
+`--all` options. Historical full-suite counts remain historical; an incremental
+report only certifies its listed tests. Full mode includes both Examples and
+Validation Python tests.
 
 `UEP58Host` is a disposable, minimal C++ project used to validate the current
 plugin against Unreal Engine 5.8 and the engine-bundled CPython 3.11.
@@ -32,7 +48,7 @@ acceptance remain open; see the scoped 2026-09-07 record in
 Run the lightweight checks without launching or compiling Unreal:
 
 ```powershell
-& F:\UnrealEngine\Engine\Binaries\ThirdParty\Python3\Win64\python.exe -B -m unittest discover -s Demos/UEPLyraIntegration/Tests -p 'test_*.py' -v
+& F:\UnrealEngine\Engine\Binaries\ThirdParty\Python3\Win64\python.exe -B Validation/Run-UEPLyraHostTests.py --result .build/host-incremental.json
 .\Validation\Tests\Test-LyraHUDContracts.ps1
 ```
 
