@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$PreviousDashDirectory,
-    [ValidateSet('weaponactorfire','dashrpcinput','dashlocaldirection','dashactivation','dashtasks','meleeactivation','meleetrace','grenadeactivation','grenadecleanup','grenadeactions','grenadebegin','grenadehit','grenadedetonate')][string]$Kind='dashrpcinput')
+    [ValidateSet('weaponactorbegin','weaponactorfire','dashrpcinput','dashlocaldirection','dashactivation','dashtasks','meleeactivation','meleetrace','grenadeactivation','grenadecleanup','grenadeactions','grenadebegin','grenadehit','grenadedetonate')][string]$Kind='dashrpcinput')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -17,13 +17,15 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $previousRoot=[IO.Path]::GetFullPath($PreviousDashDirectory)
 if(!$previousRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Previous Dash proof must be workspace-owned'}
 $previous=Get-Content -LiteralPath (Join-Path $previousRoot 'summary.json') -Raw|ConvertFrom-Json -Depth 90
-$previousKind=switch($Kind){'weaponactorfire'{'weaponactorhelpers'} 'grenadedetonate'{'grenadehit'} 'grenadehit'{'grenadebegin'} 'grenadebegin'{'grenadeactions'} 'grenadeactions'{'grenadecleanup'} 'grenadecleanup'{'grenadevfx'} 'grenadeactivation'{'grenadewidget'} 'meleetrace'{'meleeactivation'} 'meleeactivation'{'meleehitmontage'} 'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
+$previousKind=switch($Kind){'weaponactorbegin'{'weaponactorfire'} 'weaponactorfire'{'weaponactorhelpers'} 'grenadedetonate'{'grenadehit'} 'grenadehit'{'grenadebegin'} 'grenadebegin'{'grenadeactions'} 'grenadeactions'{'grenadecleanup'} 'grenadecleanup'{'grenadevfx'} 'grenadeactivation'{'grenadewidget'} 'meleetrace'{'meleeactivation'} 'meleeactivation'{'meleehitmontage'} 'dashtasks'{'dashactivation'} 'dashactivation'{'dashlocaldirection'} 'dashlocaldirection'{'dashrpcinput'} default{'dashselector'}}
 if($previous.status -ne 'passed' -or $previous.kind -ne $previousKind -or $previous.runtime_acceptance -or @($previous.assets).Count -ne 2){throw 'Accepted preceding Dash authoring required'}
 $relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Dash/GA_Hero_Dash.uasset','Content/UEPMixins/DA_DashSelectorMixin.uasset')
-if($Kind -eq 'weaponactorfire'){$relative=@('Content/Weapons/B_Weapon.uasset','Content/UEPMixins/DA_WeaponActorHelpersMixin.uasset')}
+if($Kind -in @('weaponactorfire','weaponactorbegin')){$relative=@('Content/Weapons/B_Weapon.uasset','Content/UEPMixins/DA_WeaponActorHelpersMixin.uasset')}
 if($Kind -in @('meleeactivation','meleetrace')){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Game/Melee/GA_Melee.uasset','Content/UEPMixins/DA_MeleeHitMontageMixin.uasset')}
 if($Kind -eq 'grenadeactivation'){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Input/Abilities/GA_Grenade.uasset','Content/UEPMixins/DA_GrenadeWidgetMixin.uasset')}
 if($Kind -in @('grenadecleanup','grenadeactions','grenadebegin','grenadehit','grenadedetonate')){$relative=@('Plugins/GameFeatures/ShooterCore/Content/Weapon/Grenade/B_Grenade.uasset','Content/UEPMixins/DA_GrenadeVFXMixin.uasset')}
+$outputRelative=@($relative)
+$newRelative=@()
 foreach($name in $relative){
     $from=Join-Path $stage $name;$other=Join-Path $overlay $name
     $row=@($previous.assets|Where-Object {$_.stage -eq $from -and $_.overlay -eq $other})
@@ -64,7 +66,7 @@ try{
         Copy-Item -LiteralPath $file.FullName -Destination $target -Force
         Add-DashHash $file.FullName;Add-DashHash $target
     }
-    $generator=switch($Kind){'weaponactorfire'{'generate_weapon_actor_fire_assets.py'} 'grenadedetonate'{'generate_grenade_detonate_assets.py'} 'grenadehit'{'generate_grenade_hit_assets.py'} 'grenadebegin'{'generate_grenade_begin_assets.py'} 'grenadeactions'{'generate_grenade_actions_assets.py'} 'grenadecleanup'{'generate_grenade_cleanup_assets.py'} 'grenadeactivation'{'generate_grenade_activation_assets.py'} 'meleetrace'{'generate_melee_trace_assets.py'} 'meleeactivation'{'generate_melee_activation_assets.py'} 'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
+    $generator=switch($Kind){'weaponactorbegin'{'generate_weapon_actor_begin_assets.py'} 'weaponactorfire'{'generate_weapon_actor_fire_assets.py'} 'grenadedetonate'{'generate_grenade_detonate_assets.py'} 'grenadehit'{'generate_grenade_hit_assets.py'} 'grenadebegin'{'generate_grenade_begin_assets.py'} 'grenadeactions'{'generate_grenade_actions_assets.py'} 'grenadecleanup'{'generate_grenade_cleanup_assets.py'} 'grenadeactivation'{'generate_grenade_activation_assets.py'} 'meleetrace'{'generate_melee_trace_assets.py'} 'meleeactivation'{'generate_melee_activation_assets.py'} 'dashtasks'{'generate_dash_tasks_assets.py'} 'dashactivation'{'generate_dash_activation_assets.py'} 'dashlocaldirection'{'generate_dash_local_direction_assets.py'} default{'generate_dash_rpc_input_assets.py'}}
     $script=Join-Path $repo "Demos/UEPLyraIntegration/Tools/$generator"
     foreach($path in @($PSCommandPath,$script,(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),
         (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/message_payload_graphs.py'),
@@ -73,15 +75,28 @@ try{
     if($Kind -in @('meleeactivation','meleetrace')){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_melee_hit_montage_assets.py')}
     if($Kind -eq 'grenadeactivation'){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_widget_assets.py')}
     if($Kind -in @('grenadecleanup','grenadeactions','grenadebegin','grenadehit','grenadedetonate')){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_grenade_vfx_assets.py')}
-    if($Kind -eq 'weaponactorfire'){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_actor_helpers_assets.py')}
+    if($Kind -in @('weaponactorfire','weaponactorbegin')){Add-DashHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_weapon_actor_helpers_assets.py')}
     $mutating=$true
+    if($Kind -eq 'weaponactorbegin'){
+        $stageMarker=Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json
+        $officialParent=Join-Path (Split-Path $stageMarker.source -Parent) 'Content/Weapons/B_Weapon.uasset'
+        Add-DashHash $officialParent
+        Copy-Item -LiteralPath $officialParent -Destination (Join-Path $stage 'Content/Weapons/B_Weapon.uasset') -Force
+        $summary['official_rebuild_source']=$officialParent
+    }
     $arguments=@($project,'-run=Py',$script,'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-UTF8Output','-DisablePython','-NoDDCCleanup',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-AsyncLoadingThread',
         "-UEPDashRPCStageRoot=$stage","-UEPHeroAbilityAssetsResult=$output/assets.json","-abslog=$output/assets.log")
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'assets') 'Dash native RPC receiver two-store authoring' 240
     $proof=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 90
     $methods=switch($Kind){'grenadeactivation'{3} 'meleetrace'{4} 'meleeactivation'{3} 'dashtasks'{7} 'dashactivation'{4} 'dashlocaldirection'{3} default{2}}
-    if($Kind -eq 'weaponactorfire'){
+    if($Kind -eq 'weaponactorbegin'){
+        if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or
+            !$proof.native_register_restore_passed -or !$proof.parent_rebuilt_from_official -or !$proof.begin_play_migrated -or !$proof.native_weak_delegate_retained -or
+            $proof.python_callback_retained -or $proof.transport_nodes -ne 4 -or $proof.new_business_nodes -ne 0 -or
+            $proof.actual_registered_profile_method_counts.Python -ne 7 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 7 -or
+            ($proof.assets -join ',') -ne ($outputRelative -join ',')){throw 'Weapon BeginPlay native delegate/seven-method proof incomplete'}
+    }elseif($Kind -eq 'weaponactorfire'){
         if($proof.status -ne 'passed' -or $proof.kind -ne $Kind -or !$proof.original_full_cdo_preserved -or !$proof.original_graphs_unmodified -or
             !$proof.native_register_restore_passed -or !$proof.native_original_fx_actors_retained -or $proof.new_business_nodes -ne 0 -or
             $proof.actual_registered_profile_method_counts.Python -ne 5 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or
@@ -164,14 +179,17 @@ try{
         throw 'Task/Delay dispatch, original latent node and no double remote body proof incomplete'
     }
     $log=Get-Content -LiteralPath "$output/assets.log" -Raw
-    $marker=switch($Kind){'weaponactorfire'{'UEP_WEAPON_ACTOR_FIRE_ASSETS_PASSED'} 'grenadedetonate'{'UEP_GRENADE_DETONATE_ASSETS_PASSED'} 'grenadehit'{'UEP_GRENADE_HIT_ASSETS_PASSED'} 'grenadebegin'{'UEP_GRENADE_BEGIN_ASSETS_PASSED'} 'grenadeactions'{'UEP_GRENADE_ACTIONS_ASSETS_PASSED'} 'grenadecleanup'{'UEP_GRENADE_CLEANUP_ASSETS_PASSED'} 'grenadeactivation'{'UEP_GRENADE_ACTIVATION_ASSETS_PASSED'} 'meleetrace'{'UEP_MELEE_TRACE_ASSETS_PASSED'} 'meleeactivation'{'UEP_MELEE_ACTIVATION_ASSETS_PASSED'} 'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
+    $marker=switch($Kind){'weaponactorbegin'{'UEP_WEAPON_ACTOR_BEGIN_ASSETS_PASSED'} 'weaponactorfire'{'UEP_WEAPON_ACTOR_FIRE_ASSETS_PASSED'} 'grenadedetonate'{'UEP_GRENADE_DETONATE_ASSETS_PASSED'} 'grenadehit'{'UEP_GRENADE_HIT_ASSETS_PASSED'} 'grenadebegin'{'UEP_GRENADE_BEGIN_ASSETS_PASSED'} 'grenadeactions'{'UEP_GRENADE_ACTIONS_ASSETS_PASSED'} 'grenadecleanup'{'UEP_GRENADE_CLEANUP_ASSETS_PASSED'} 'grenadeactivation'{'UEP_GRENADE_ACTIVATION_ASSETS_PASSED'} 'meleetrace'{'UEP_MELEE_TRACE_ASSETS_PASSED'} 'meleeactivation'{'UEP_MELEE_ACTIVATION_ASSETS_PASSED'} 'dashtasks'{'UEP_DASH_TASKS_ASSETS_PASSED'} 'dashactivation'{'UEP_DASH_ACTIVATION_ASSETS_PASSED'} 'dashlocaldirection'{'UEP_DASH_LOCAL_DIRECTION_ASSETS_PASSED'} default{'UEP_DASH_RPC_INPUT_ASSETS_PASSED'}}
     Assert-UEPFocusedLog $log $marker
     if($log -notmatch ('(?s)'+$marker+'.*Goodbye Python.*Log file closed')){throw 'Dash authoring exit incomplete'}
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Dash authoring frozen input changed'}}
-    foreach($name in $relative){
+    foreach($name in $outputRelative){
         $from=Join-Path $stage $name;$other=Join-Path $overlay $name
-        $before=@($summary.previous_assets|Where-Object overlay -eq $other)[0]
-        if((Get-FileHash -LiteralPath $other).Hash -ne (Get-FileHash -LiteralPath $before.overlay_backup).Hash){throw 'Overlay changed during authoring; preserve concurrent changes'}
+        $before=@($summary.previous_assets|Where-Object overlay -eq $other)
+        if($before.Count){
+            if((Get-FileHash -LiteralPath $other).Hash -ne (Get-FileHash -LiteralPath $before[0].overlay_backup).Hash){throw 'Overlay changed during authoring; preserve concurrent changes'}
+        }elseif(Test-Path -LiteralPath $other){throw 'New Overlay output appeared concurrently'}
+
         $copiedOverlay[$other]=(Get-FileHash -LiteralPath $from).Hash
         Copy-Item -LiteralPath $from -Destination $other -Force
         $hash=(Get-FileHash -LiteralPath $from).Hash
@@ -189,6 +207,12 @@ try{
             Copy-Item -LiteralPath $before.overlay_backup -Destination $before.overlay -Force
         }
     }}
+    foreach($name in $newRelative){
+        $failedStage=Join-Path $stage $name;$newOverlay=Join-Path $overlay $name
+        if(!$failedStage.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'New failed output escaped workspace'}
+        if(Test-Path -LiteralPath $failedStage){Copy-Item -LiteralPath $failedStage -Destination (Join-Path $output ('failed-new-'+[IO.Path]::GetFileName($name)));Remove-Item -LiteralPath $failedStage}
+        if($copiedOverlay.ContainsKey($newOverlay) -and (Test-Path -LiteralPath $newOverlay) -and (Get-FileHash -LiteralPath $newOverlay).Hash -eq $copiedOverlay[$newOverlay]){Remove-Item -LiteralPath $newOverlay}
+    }
     throw
 }finally{$summary|ConvertTo-Json -Depth 15|Set-Content -LiteralPath "$output/summary.json" -Encoding utf8}
 Write-Host "Dash RPC input authoring: $($summary.status); $output"

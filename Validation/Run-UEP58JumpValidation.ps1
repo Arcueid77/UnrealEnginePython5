@@ -20,6 +20,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
+      [switch]$WeaponActorBegin,[string]$WeaponActorBeginAuthoringDirectory,
       [switch]$PawnWireIdentity,[string]$IdentityBuildDirectory,
       [switch]$LazyPawnLifecycle,
       [switch]$JoinResetStress,
@@ -42,14 +43,20 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponActorBegin){
+    $weaponBeginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorBegin','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
+    if(!$WeaponActorBeginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponBeginAllowed}).Count){throw 'Weapon BeginPlay requires its isolated native team-lifetime lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($WeaponActorBeginAuthoringDirectory -and !$WeaponActorBegin -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon BeginPlay proof requires its explicit fixture or same-family regression'}
 if($WeaponActorFire){
-    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','ThreadedLoading')
+    $weaponFireAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorFire','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorFireAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponFireAllowed}).Count){throw 'Weapon Fire requires its isolated original-FX lane and current proof'}
     $AutoRespawnActivation=$true
 }
 if($WeaponActorFireAuthoringDirectory -and !$WeaponActorFire -and !$WeaponActorHelpers){throw 'Weapon Fire proof requires its explicit fixture or helper-family regression'}
 if($WeaponActorHelpers){
-    $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','WeaponActorFireAuthoringDirectory','ThreadedLoading')
+    $weaponHelperAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponActorHelpers','WeaponActorHelpersAuthoringDirectory','WeaponActorFireAuthoringDirectory','WeaponActorBeginAuthoringDirectory','ThreadedLoading')
     if(!$WeaponActorHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $weaponHelperAllowed}).Count){throw 'Weapon Actor helpers require their isolated native child-instance lane and current proof'}
     $AutoRespawnActivation=$true
 }
@@ -487,6 +494,21 @@ try{
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
     }
+    if($WeaponActorBegin -or (($WeaponActorFire -or $WeaponActorHelpers) -and $WeaponActorBeginAuthoringDirectory)){
+        $beginRoot=[IO.Path]::GetFullPath($WeaponActorBeginAuthoringDirectory)
+        if(!$beginRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon BeginPlay revision required'}
+        $beginSummaryPath=Join-Path $beginRoot 'summary.json';$beginProofPath=Join-Path $beginRoot 'assets.json'
+        $beginAuthor=Get-Content -LiteralPath $beginSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $beginProof=Get-Content -LiteralPath $beginProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($beginAuthor.status -ne 'passed' -or $beginProof.status -ne 'passed' -or $beginAuthor.kind -ne 'weaponactorbegin' -or $beginProof.kind -ne 'weaponactorbegin' -or
+            !$beginProof.original_full_cdo_preserved -or !$beginProof.original_graphs_unmodified -or !$beginProof.native_register_restore_passed -or !$beginProof.parent_rebuilt_from_official -or
+            !$beginProof.begin_play_migrated -or !$beginProof.native_weak_delegate_retained -or $beginProof.python_callback_retained -or $beginProof.transport_nodes -ne 4 -or $beginProof.new_business_nodes -ne 0 -or
+            $beginProof.actual_registered_profile_method_counts.Python -ne 7 -or $beginProof.actual_registered_profile_method_counts.BlueprintFallback -ne 7 -or @($beginAuthor.assets).Count -ne 2){throw 'Current seven-method weapon BeginPlay proof incomplete'}
+        foreach($asset in $beginAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon BeginPlay asset changed'};Add-JumpInput $path
+        }}
+        Add-JumpInput $beginSummaryPath;Add-JumpInput $beginProofPath
+    }
     if($WeaponActorFire -or ($WeaponActorHelpers -and $WeaponActorFireAuthoringDirectory)){
         $fireRoot=[IO.Path]::GetFullPath($WeaponActorFireAuthoringDirectory)
         if(!$fireRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned weapon Fire revision required'}
@@ -497,7 +519,12 @@ try{
             !$fireProof.original_full_cdo_preserved -or !$fireProof.original_graphs_unmodified -or !$fireProof.native_register_restore_passed -or !$fireProof.native_original_fx_actors_retained -or !$fireProof.parent_saved_bytes_unchanged -or
             $fireProof.actual_registered_profile_method_counts.Python -ne 5 -or $fireProof.actual_registered_profile_method_counts.BlueprintFallback -ne 5 -or
             $fireProof.new_business_nodes -ne 0 -or $fireProof.begin_play_migrated -or @($fireAuthor.assets).Count -ne 2){throw 'Current five-method weapon Fire proof incomplete'}
-        foreach($asset in $fireAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+        $fireAssets=$fireAuthor.assets
+        if($WeaponActorBeginAuthoringDirectory){
+            if($beginAuthor.previous_dash_directory -ne $fireRoot){throw 'Weapon Fire regression requires exact previous revision'}
+            $fireAssets=$beginAuthor.assets
+        }
+        foreach($asset in $fireAssets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon Fire asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $fireSummaryPath;Add-JumpInput $fireProofPath
@@ -515,7 +542,7 @@ try{
         $helperAssets=$author.assets
         if($WeaponActorFireAuthoringDirectory){
             if($fireAuthor.previous_dash_directory -ne $helperRoot){throw 'Weapon helper regression requires exact previous parent revision'}
-            $helperAssets=$fireAuthor.assets
+            $helperAssets=if($WeaponActorBeginAuthoringDirectory){$beginAuthor.assets}else{$fireAuthor.assets}
         }
         foreach($asset in $helperAssets){foreach($path in @($asset.stage,$asset.overlay)){
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon helper asset changed'};Add-JumpInput $path
@@ -1144,6 +1171,7 @@ try{
     if($GrenadeDetonate){$flag='-UEPGrenadeDetonateResult';$marker='UEP_GRENADE_DETONATE'}
     if($WeaponActorHelpers){$flag='-UEPWeaponActorHelpersResult';$marker='UEP_WEAPON_ACTOR_HELPERS'}
     if($WeaponActorFire){$flag='-UEPWeaponActorFireResult';$marker='UEP_WEAPON_ACTOR_FIRE'}
+    if($WeaponActorBegin){$flag='-UEPWeaponActorBeginResult';$marker='UEP_WEAPON_ACTOR_BEGIN'}
     if($DashLocalDirection){$flag='-UEPDashLocalDirectionResult';$marker='UEP_DASH_LOCAL_DIRECTION'}
     if($DashActivation){$flag='-UEPDashActivationResult';$marker='UEP_DASH_ACTIVATION'}
     if($DashTasks){$flag='-UEPDashTasksResult';$marker='UEP_DASH_TASKS'}
@@ -1458,6 +1486,7 @@ try{
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
+        if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
         $gateArgs=@('--report',"$output/jump.json")
         if($GrenadeHeadless){$gateArgs+=@('--headless')}
         if($DashTasksLifecycle){$module='uep_lyra_abilities.dash_tasks_lifecycle_contract'}
