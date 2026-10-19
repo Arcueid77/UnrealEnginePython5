@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ControlPointState,[string]$ControlPointStateAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -79,6 +80,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ControlPointState){
+    $pointStateAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointState','ControlPointStateAuthoringDirectory','ThreadedLoading')
+    if(!$ControlPointStateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $pointStateAllowed}).Count){throw 'Control point state requires its standalone CP-map physical-overlap lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ControlPointStateAuthoringDirectory -and !$ControlPointState){throw 'Control point state proof requires its explicit native fixture'}
 if($ControlPointHelpers){
     $pointHelpersAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointHelpers','ControlPointHelpersAuthoringDirectory','ThreadedLoading')
     if(!$ControlPointHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $pointHelpersAllowed}).Count){throw 'Control point helpers require their standalone CP-map construction/native-helper lane and current proof'}
@@ -966,6 +973,22 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ControlPointState){
+        $pointStateRoot=[IO.Path]::GetFullPath($ControlPointStateAuthoringDirectory)
+        if(!$pointStateRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned control point state revision required'}
+        $pointStateSummaryPath=Join-Path $pointStateRoot 'summary.json';$pointStateProofPath=Join-Path $pointStateRoot 'assets.json'
+        $pointStateAuthor=Get-Content -LiteralPath $pointStateSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $pointStateProof=Get-Content -LiteralPath $pointStateProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($pointStateAuthor.status -ne 'passed' -or $pointStateProof.status -ne 'passed' -or $pointStateAuthor.kind -ne 'controlpointstate' -or $pointStateProof.kind -ne 'controlpointstate' -or
+            !$pointStateProof.accepted_helper_cdo_components_timeline_rpc_and_all_remaining_graphs_preserved -or !$pointStateProof.native_experience_factory_component_overlap_binding_authority_switches_and_rpc_preserved -or
+            $pointStateProof.parent_revision_graph_nodes -ne 292 -or $pointStateProof.new_transport_nodes_this_revision -ne 16 -or $pointStateProof.cumulative_transport_nodes -ne 32 -or $pointStateProof.interface_nodes -ne 5 -or $pointStateProof.new_business_nodes -ne 0 -or
+            $pointStateProof.actual_registered_profile_method_counts.Python -ne 8 -or $pointStateProof.actual_registered_profile_method_counts.BlueprintFallback -ne 8 -or @($pointStateAuthor.assets).Count -ne 2 -or $pointStateProof.timeline_update_finish_rpc_vfx_audio_business_migrated){throw 'Current point state authority/overlap/remaining-business proof incomplete'}
+        foreach($asset in $pointStateAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Control point state asset changed'};Add-JumpInput $path
+        }}
+        foreach($dependency in $pointStateProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'Control point CP dependency changed'};Add-JumpInput $path}
+        Add-JumpInput $pointStateSummaryPath;Add-JumpInput $pointStateProofPath;Add-JumpInput (Join-Path $stage 'Plugins/GameFeatures/ShooterMaps/Content/Maps/L_Convolution_Blockout.umap')
     }
     if($ControlPointHelpers){
         $pointHelpersRoot=[IO.Path]::GetFullPath($ControlPointHelpersAuthoringDirectory)
@@ -1903,6 +1926,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ControlPointState){$flag='-UEPControlPointStateResult';$marker='UEP_CONTROL_POINT_STATE'}
     if($ControlPointHelpers){$flag='-UEPControlPointHelpersResult';$marker='UEP_CONTROL_POINT_HELPERS'}
     if($CPScoring){$flag='-UEPCPScoringResult';$marker='UEP_CP_SCORING'}
     if($TDMScoring){$flag='-UEPTDMScoringResult';$marker='UEP_TDM_SCORING'}
@@ -1962,6 +1986,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($ControlPointState){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointHelpers){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($CPScoring){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($WidgetHeld){
@@ -2284,6 +2309,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ControlPointState){$module='uep_lyra_world.control_point_state_contract'}
         if($ControlPointHelpers){$module='uep_lyra_world.control_point_helpers_contract'}
         if($CPScoring){$module='uep_lyra_weapons.cp_scoring_contract'}
         if($TDMScoring){$module='uep_lyra_weapons.tdm_scoring_contract'}
