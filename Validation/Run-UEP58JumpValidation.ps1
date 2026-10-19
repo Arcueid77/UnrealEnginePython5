@@ -30,6 +30,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$WeaponAudioMath,[string]$WeaponAudioMathAuthoringDirectory,
       [switch]$WeaponAudioDispatch,[string]$WeaponAudioDispatchAuthoringDirectory,
       [switch]$WeaponAudioWhiz,[string]$WeaponAudioWhizAuthoringDirectory,[switch]$WeaponAudioWhizNoSound,
+      [switch]$WeaponAudioEarly,[string]$WeaponAudioEarlyAuthoringDirectory,[switch]$WeaponAudioEarlyOpenGeometry,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -57,6 +58,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($WeaponAudioEarly){
+    $earlyAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioEarly','WeaponAudioEarlyAuthoringDirectory','WeaponAudioEarlyOpenGeometry','ThreadedLoading')
+    if(!$WeaponAudioEarlyAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $earlyAllowed}).Count){throw 'EarlyReflections requires its standalone native collision/Tap/static caller lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if(($WeaponAudioEarlyAuthoringDirectory -or $WeaponAudioEarlyOpenGeometry) -and !$WeaponAudioEarly){throw 'EarlyReflections proof/geometry requires its explicit native fixture'}
 if($WeaponAudioWhiz){
     $whizAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','WeaponAudioWhiz','WeaponAudioWhizAuthoringDirectory','WeaponAudioWhizNoSound','ThreadedLoading')
     if(!$WeaponAudioWhizAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $whizAllowed}).Count){throw 'WhizBy requires its standalone native audio component/static caller lane and current proof'}
@@ -584,6 +591,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $row.sha256){throw 'Identity build source changed'};Add-JumpInput $path
         }}
         Add-JumpInput $identityBuildPath;Add-JumpInput $identityDll
+    }
+    if($WeaponAudioEarly){
+        $earlyRoot=[IO.Path]::GetFullPath($WeaponAudioEarlyAuthoringDirectory)
+        if(!$earlyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned static EarlyReflections revision required'}
+        $earlySummary=Join-Path $earlyRoot 'summary.json';$earlyProofPath=Join-Path $earlyRoot 'assets.json'
+        $earlyAuthor=Get-Content -LiteralPath $earlySummary -Raw|ConvertFrom-Json -Depth 100;$earlyProof=Get-Content -LiteralPath $earlyProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($earlyAuthor.status -ne 'passed' -or $earlyProof.status -ne 'passed' -or $earlyAuthor.kind -ne 'weaponaudioearly' -or
+           !$earlyProof.original_full_cdo_preserved -or !$earlyProof.original_static_signatures_flags_preserved -or !$earlyProof.original_local_defaults_preserved -or
+           !$earlyProof.original_business_graphs_preserved_with_dispatch -or !$earlyProof.existing_math_transport_preserved -or !$earlyProof.existing_dispatch_transport_preserved -or !$earlyProof.existing_whiz_transport_preserved -or
+           $earlyProof.static_functions_registered_as_mixins -or $earlyProof.transport_nodes -ne 5 -or @($earlyAuthor.assets).Count -ne 3 -or
+           $earlyProof.actual_registered_profile_method_counts.Python -ne 1 -or $earlyProof.actual_registered_profile_method_counts.BlueprintFallback -ne 1){throw 'Current static EarlyReflections dispatch proof incomplete'}
+        foreach($asset in $earlyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Static EarlyReflections asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $earlyProof.caller_probe.asset).Hash -ne $earlyProof.caller_probe.sha256){throw 'Static EarlyReflections Blueprint caller changed'}
+        Add-JumpInput $earlyProof.caller_probe.asset;Add-JumpInput $earlySummary;Add-JumpInput $earlyProofPath
+        foreach($path in @('Content/UEPMixins/BP_WeaponAudioMathRouter.uasset','Content/UEPMixins/DA_WeaponAudioMathMixin.uasset','Content/UEPValidation/BP_WeaponAudioMathCaller.uasset',
+            'Content/UEPMixins/BP_WeaponAudioDispatchRouter.uasset','Content/UEPMixins/DA_WeaponAudioDispatchMixin.uasset','Content/UEPValidation/BP_WeaponAudioDispatchCaller.uasset',
+            'Content/UEPMixins/BP_WeaponAudioWhizRouter.uasset','Content/UEPMixins/DA_WeaponAudioWhizMixin.uasset','Content/UEPValidation/BP_WeaponAudioWhizCaller.uasset','Content/Audio/Effects/SubmixEffects/TAP_EarlyReflections.uasset')){Add-JumpInput (Join-Path $stage $path)}
     }
     if($WeaponAudioWhiz){
         $whizRoot=[IO.Path]::GetFullPath($WeaponAudioWhizAuthoringDirectory)
@@ -1428,6 +1452,7 @@ try{
     if($WeaponAudioMath){$flag='-UEPWeaponAudioMathResult';$marker='UEP_WEAPON_AUDIO_MATH'}
     if($WeaponAudioDispatch){$flag='-UEPWeaponAudioDispatchResult';$marker='UEP_WEAPON_AUDIO_DISPATCH'}
     if($WeaponAudioWhiz){$flag='-UEPWeaponAudioWhizResult';$marker='UEP_WEAPON_AUDIO_WHIZ'}
+    if($WeaponAudioEarly){$flag='-UEPWeaponAudioEarlyResult';$marker='UEP_WEAPON_AUDIO_EARLY'}
     if($WeaponDecals){$flag='-UEPWeaponDecalsResult';$marker='UEP_WEAPON_DECALS'}
     if($WeaponImpacts){$flag='-UEPWeaponImpactsResult';$marker='UEP_WEAPON_IMPACTS'}
     if($WeaponAbilityFire){$flag='-UEPWeaponAbilityFireResult';$marker='UEP_WEAPON_ABILITY_FIRE'}
@@ -1440,6 +1465,7 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none',
         "$flag=$output/jump.json","-abslog=$output/jump.log")
     if($ThreadedLoading){$arguments+=@('-AsyncLoadingThread')}
+    if($WeaponAudioEarlyOpenGeometry){$arguments+=@('-UEPWeaponAudioEarlyOpenGeometry')}
     if($WeaponAudioWhiz -and !$WeaponAudioWhizNoSound){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($GrenadeFlightNetwork){$arguments+=@('-LogCmds=LogNetTraffic Log,LogRepTraffic Log,LogRep Verbose')}
     # Dedicated-server/NullRHI disables rendering; preserve the single common
@@ -1776,6 +1802,7 @@ try{
         if($WeaponAudioMath){$module='uep_lyra_weapons.weapon_audio_math_contract'}
         if($WeaponAudioDispatch){$module='uep_lyra_weapons.weapon_audio_dispatch_contract'}
         if($WeaponAudioWhiz){$module='uep_lyra_weapons.weapon_audio_whiz_contract'}
+        if($WeaponAudioEarly){$module='uep_lyra_weapons.weapon_audio_early_contract'}
         if($WeaponDecals){$module='uep_lyra_weapons.weapon_decals_contract'}
         if($WeaponImpacts){$module='uep_lyra_weapons.weapon_impacts_contract'}
         if($WeaponAbilityFire){$module='uep_lyra_weapons.weapon_ability_fire_contract'}
