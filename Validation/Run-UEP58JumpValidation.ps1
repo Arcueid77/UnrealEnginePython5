@@ -50,6 +50,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$PhysicsFields,[string]$PhysicsFieldAuthoringDirectory,
       [switch]$ScoringBase,[string]$ScoringBaseAuthoringDirectory,
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
+      [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$WeaponFireCueNetwork,
       [switch]$WeaponDecals,[string]$WeaponDecalsAuthoringDirectory,
       [switch]$WeaponImpacts,[string]$WeaponImpactsAuthoringDirectory,
@@ -77,6 +78,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CPScoring){
+    $cpAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CPScoring','CPScoringAuthoringDirectory','ThreadedLoading')
+    if(!$CPScoringAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cpAllowed}).Count){throw 'CP scoring requires its standalone native control-point/map/timer lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($CPScoringAuthoringDirectory -and !$CPScoring){throw 'CP scoring proof requires its explicit native fixture'}
 if($TDMScoring){
     $tdmAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','TDMScoring','TDMScoringAuthoringDirectory','ThreadedLoading')
     if(!$TDMScoringAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $tdmAllowed}).Count){throw 'TDM scoring requires its standalone native timer/notify/phase lane and current proof'}
@@ -952,6 +959,23 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($CPScoring){
+        $cpRoot=[IO.Path]::GetFullPath($CPScoringAuthoringDirectory)
+        if(!$cpRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned CP scoring revision required'}
+        $cpSummaryPath=Join-Path $cpRoot 'summary.json';$cpProofPath=Join-Path $cpRoot 'assets.json'
+        $cpAuthor=Get-Content -LiteralPath $cpSummaryPath -Raw|ConvertFrom-Json -Depth 80
+        $cpProof=Get-Content -LiteralPath $cpProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($cpAuthor.status -ne 'passed' -or $cpProof.status -ne 'passed' -or $cpAuthor.kind -ne 'cpscoring' -or $cpProof.kind -ne 'cpscoring' -or
+            !$cpProof.original_cdo_signatures_graphs_authority_phase_timer_repnotify_and_shared_base_preserved -or !$cpProof.typed_gates_preserve_array_inputs_and_public_multi_output_abi -or
+            $cpProof.original_graph_nodes -ne 145 -or $cpProof.transport_nodes -ne 67 -or $cpProof.interface_nodes -ne 5 -or $cpProof.new_business_nodes -ne 0 -or
+            $cpProof.actual_registered_profile_method_counts.Python -ne 18 -or $cpProof.actual_registered_profile_method_counts.BlueprintFallback -ne 18 -or @($cpAuthor.assets).Count -ne 2){throw 'Current CP timer/phase/authority/array/base proof incomplete'}
+        foreach($asset in $cpAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){
+            if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'CP scoring asset changed'};Add-JumpInput $path
+        }}
+        foreach($dependency in $cpProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'CP base/TDM dependency changed'};Add-JumpInput $path}
+        Add-JumpInput $cpSummaryPath;Add-JumpInput $cpProofPath
+        foreach($fixture in @('Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_ControlPointVolume.uasset','Plugins/GameFeatures/ShooterMaps/Content/Maps/L_Convolution_Blockout.umap','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/Phase_Warmup.uasset','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/Phase_PostGame.uasset')){Add-JumpInput (Join-Path $stage $fixture)}
     }
     if($TDMScoring){
         $tdmRoot=[IO.Path]::GetFullPath($TDMScoringAuthoringDirectory)
@@ -1857,6 +1881,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($CPScoring){$flag='-UEPCPScoringResult';$marker='UEP_CP_SCORING'}
     if($TDMScoring){$flag='-UEPTDMScoringResult';$marker='UEP_TDM_SCORING'}
     if($ScoringBase){$flag='-UEPScoringBaseResult';$marker='UEP_SCORING_BASE'}
     if($PhysicsFields){$flag='-UEPPhysicsFieldResult';$marker='UEP_PHYSICS_FIELD'}
@@ -1914,6 +1939,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($CPScoring){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($WidgetHeld){
         $arguments+=@("-UEPWidgetHeldTarget=$WidgetHeldMode")
         if($WidgetHeldMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -2234,6 +2260,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($CPScoring){$module='uep_lyra_weapons.cp_scoring_contract'}
         if($TDMScoring){$module='uep_lyra_weapons.tdm_scoring_contract'}
         if($ScoringBase){$module='uep_lyra_weapons.scoring_base_contract'}
         if($PhysicsFields){$module='uep_lyra_weapons.physics_field_contract'}
