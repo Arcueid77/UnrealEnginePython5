@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$MenuButtons,[string]$MenuButtonsAuthoringDirectory,
       [switch]$FoundationButtons,[string]$FoundationButtonsAuthoringDirectory,
       [switch]$MacroClosure,[string]$MacroClosureAuthoringDirectory,
       [switch]$ShooterEQS,[string]$ShooterEQSAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterEQSProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterEQSMode='tdm',
@@ -96,6 +97,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MenuButtons){
+    $menuAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuButtons','MenuButtonsAuthoringDirectory','ThreadedLoading')
+    if(!$MenuButtonsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuAllowed}).Count){throw 'Menu buttons require their standalone native UMG/material/latent lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if($MenuButtonsAuthoringDirectory -and !$MenuButtons){throw 'Menu button proof requires its explicit native fixture'}
+
 if($FoundationButtons){
     $foundationAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FoundationButtons','FoundationButtonsAuthoringDirectory','ThreadedLoading')
     if(!$FoundationButtonsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $foundationAllowed}).Count){throw 'Foundation buttons require their standalone native CommonUI/UMG/input lane and current family proof'}
@@ -1094,6 +1102,23 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($MenuButtons){
+        $menuRoot=[IO.Path]::GetFullPath($MenuButtonsAuthoringDirectory)
+        if(!$menuRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned menu button revision required'}
+        $menuSummary=Join-Path $menuRoot 'summary.json';$menuProofPath=Join-Path $menuRoot 'assets.json';$menuAuthor=Get-Content -LiteralPath $menuSummary -Raw|ConvertFrom-Json -Depth 80;$menuProof=Get-Content -LiteralPath $menuProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($menuAuthor.status -ne 'passed' -or $menuProof.status -ne 'passed' -or $menuAuthor.kind -ne 'menubuttons' -or $menuProof.kind -ne 'menubuttons' -or !$menuProof.original_cdos_widget_trees_animations_signatures_guids_and_graphs_preserved -or !$menuProof.native_ftext_transport_preserved -or !$menuProof.native_latent_play_time_range_and_finished_retained -or !$menuProof.empty_menu_construct_stays_unconnected -or @($menuAuthor.assets).Count -ne 4){throw 'Current menu/tile native latent/text proof required'}
+        foreach($asset in $menuAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Menu button asset changed'};Add-JumpInput $path}}
+        foreach($name in @('W_LyraMenuButton_Modal','W_LyraArrowButton')){
+            $relative='Content/UI/Menu/'+$name+'.uasset';$child=Join-Path $stage $relative;$source=Join-Path (Split-Path ((Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json).source) -Parent) $relative
+            if((Get-FileHash -LiteralPath $child).Hash -ne (Get-FileHash -LiteralPath $source).Hash){throw 'Original inherited menu child bytes required'};Add-JumpInput $child;Add-JumpInput $source
+        }
+        if((Get-FileHash -LiteralPath $menuProof.fixture.asset).Hash -ne $menuProof.fixture.sha256){throw 'Native menu FText probe changed'};Add-JumpInput $menuProof.fixture.asset
+        Add-JumpInput $menuSummary;Add-JumpInput $menuProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        Add-JumpInput (Join-Path $stage 'Plugins/GameFeatures/ShooterCore/Content/UserInterface/ScoreBoard/W_SB_TeamStat.uasset')
+        foreach($family in @('MainMenu','SubMenu','Lobby')){foreach($action in @('Select','Highlight')){Add-JumpInput (Join-Path $stage "Content/Audio/Sounds/UI/sfx_UI_${family}_${action}_nl_meta_Preset.uasset")}}
+        Add-JumpInput (Join-Path $stage 'Source/LyraGame/UI/Foundation/LyraButtonBase.cpp')
+    }
+
     if($FoundationButtons){
         $foundationRoot=[IO.Path]::GetFullPath($FoundationButtonsAuthoringDirectory)
         if(!$foundationRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned foundation button revision required'}
@@ -2233,6 +2258,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($MenuButtons){$flag='-UEPMenuButtonsResult';$marker='UEP_MENU_BUTTONS'}
     if($FoundationButtons){$flag='-UEPFoundationButtonsResult';$marker='UEP_FOUNDATION_BUTTONS'}
     if($MacroClosure){$flag='-UEPMacroClosureResult';$marker='UEP_MACRO_CLOSURE'}
     if($ShooterEQS){$flag='-UEPShooterEQSResult';$marker='UEP_SHOOTER_EQS'}
@@ -2291,6 +2317,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($MenuButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($FoundationButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2645,6 +2672,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($MenuButtons){$module='uep_lyra_hud.menu_buttons_contract'}
         if($FoundationButtons){$module='uep_lyra_hud.foundation_buttons_contract'}
         if($MacroClosure){$module='uep_lyra_weapons.macro_closure_contract'}
         if($ShooterEQS){$module='uep_lyra_world.shooter_eqs_contract'}
@@ -2703,6 +2731,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($MenuButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Menu UI sound backend requires the native offline renderer'}
         if($FoundationButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Button UI sound backend requires the native offline renderer'}
         if($EliminationScore -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'TDM score/countdown audio requires the native offline renderer'}
         if($ControlPointWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'CP widget countdown requires the actual offline native audio renderer'}
