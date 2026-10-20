@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$MenuLayers,[string]$MenuLayersAuthoringDirectory,[ValidateSet('life','quit')][string]$MenuLayerMode='life',[ValidateSet('Python','BlueprintFallback')][string]$MenuLayerProfile='Python',
       [switch]$CreditsWidgets,[string]$CreditsWidgetsAuthoringDirectory,
       [switch]$DiagnosticWidgets,[string]$DiagnosticWidgetsAuthoringDirectory,
       [switch]$SettingsScreens,[string]$SettingsScreensAuthoringDirectory,
@@ -104,6 +105,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MenuLayers){
+    $menuLayerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuLayers','MenuLayersAuthoringDirectory','MenuLayerMode','MenuLayerProfile','ThreadedLoading')
+    if(!$MenuLayersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuLayerAllowed}).Count -or ($MenuLayerMode -eq 'life' -and $PSBoundParameters.ContainsKey('MenuLayerProfile'))){throw 'Menu layers require standalone native layer/menu/confirmation or owned-quit lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if(($MenuLayersAuthoringDirectory -or $PSBoundParameters.ContainsKey('MenuLayerMode') -or $PSBoundParameters.ContainsKey('MenuLayerProfile')) -and !$MenuLayers){throw 'Menu layer proof/mode/profile requires its explicit native fixture'}
+
 if($CreditsWidgets){
     $creditsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CreditsWidgets','CreditsWidgetsAuthoringDirectory','ThreadedLoading')
     if(!$CreditsWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $creditsAllowed}).Count){throw 'Credits widgets require their standalone native Delay/TimerManager/scroll lane and current proof'}
@@ -1158,6 +1166,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($MenuLayers){
+        $menuLayerRoot=[IO.Path]::GetFullPath($MenuLayersAuthoringDirectory)
+        if(!$menuLayerRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned menu/layer revision required'}
+        $menuLayerSummary=Join-Path $menuLayerRoot 'summary.json';$menuLayerProofPath=Join-Path $menuLayerRoot 'assets.json';$menuLayerAuthor=Get-Content -LiteralPath $menuLayerSummary -Raw|ConvertFrom-Json -Depth 80;$menuLayerProof=Get-Content -LiteralPath $menuLayerProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($menuLayerAuthor.status -ne 'passed' -or $menuLayerProof.status -ne 'passed' -or $menuLayerAuthor.kind -ne 'menulayers' -or $menuLayerProof.kind -ne 'menulayers' -or !$menuLayerProof.original_cdos_widget_trees_public_signatures_const_focus_node_guids_and_graphs_preserved -or !$menuLayerProof.original_layer_tag_stack_order_and_names_preserved -or !$menuLayerProof.original_async_settings_beforepush_deactivation_and_confirmation_localized_prompt_preserved -or !$menuLayerProof.original_confirmed_frontend_map_asset_experience_name_and_absolute_travel_payload_preserved -or !$menuLayerProof.original_quit_input_reset_preference_and_platform_restrictions_preserved -or @($menuLayerAuthor.assets).Count -ne 8){throw 'Current menu/layer native root/modal/confirmation/terminal proof required'}
+        foreach($asset in $menuLayerAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Menu/layer widget asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $menuLayerSummary;Add-JumpInput $menuLayerProofPath
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Plugins/CommonGame/Source') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($relative in @('Source/LyraGame/UI/LyraActivatableWidget.cpp','Source/LyraGame/UI/Foundation/LyraConfirmationScreen.cpp','Source/LyraGame/UI/Subsystem/LyraUIManagerSubsystem.cpp','Content/UI/Foundation/Dialogs/W_ConfirmationDialog.uasset','Content/UI/Settings/W_LyraSettingScreen.uasset','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($CreditsWidgets){
         $creditsRoot=[IO.Path]::GetFullPath($CreditsWidgetsAuthoringDirectory)
         if(!$creditsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned credits widget revision required'}
@@ -2396,6 +2415,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($MenuLayers){$flag='-UEPMenuLayersResult';$marker='UEP_MENU_LAYERS'}
     if($CreditsWidgets){$flag='-UEPCreditsWidgetsResult';$marker='UEP_CREDITS_WIDGETS'}
     if($DiagnosticWidgets){$flag='-UEPDiagnosticWidgetsResult';$marker='UEP_DIAGNOSTIC_WIDGETS'}
     if($SettingsScreens){$flag='-UEPSettingsScreensResult';$marker='UEP_SETTINGS_SCREENS'}
@@ -2462,6 +2482,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($MenuLayers){$arguments+=@("-UEPMenuLayerMode=$MenuLayerMode","-UEPMenuLayerProfile=$MenuLayerProfile")}
     if($SettingsEditors){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($BoundAction){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ExperienceTile){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2820,6 +2841,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($MenuLayers){$module='uep_lyra_hud.menu_layers_contract'}
         if($CreditsWidgets){$module='uep_lyra_hud.credits_widgets_contract'}
         if($DiagnosticWidgets){$module='uep_lyra_hud.diagnostic_widgets_contract'}
         if($SettingsScreens){$module='uep_lyra_hud.settings_screens_contract'}
