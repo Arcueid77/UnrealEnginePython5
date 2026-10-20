@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$MenuTravel,[string]$MenuTravelAuthoringDirectory,[string]$MenuTravelFrontendDirectory,[string]$MenuTravelStartupDirectory,[ValidateSet('Python','BlueprintFallback')][string]$MenuTravelProfile='Python',
       [switch]$FrontendLogout,[string]$FrontendLogoutMenuDirectory,[string]$FrontendLogoutStartupDirectory,
       [switch]$StartupLogin,[string]$StartupLoginAuthoringDirectory,
       [switch]$FrontendMenu,[string]$FrontendMenuAuthoringDirectory,[ValidateSet('life','quit')][string]$FrontendMenuMode='life',[ValidateSet('Python','BlueprintFallback')][string]$FrontendMenuProfile='Python',
@@ -108,6 +109,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MenuTravel){
+    $menuTravelAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuTravel','MenuTravelAuthoringDirectory','MenuTravelFrontendDirectory','MenuTravelStartupDirectory','MenuTravelProfile','ThreadedLoading')
+    if(!$MenuTravelAuthoringDirectory -or !$MenuTravelFrontendDirectory -or !$MenuTravelStartupDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuTravelAllowed}).Count){throw 'Menu travel requires standalone native confirmed soft-map travel and three current asset families'}
+    $AutoRespawnActivation=$true
+}
+if(($MenuTravelAuthoringDirectory -or $MenuTravelFrontendDirectory -or $MenuTravelStartupDirectory -or $PSBoundParameters.ContainsKey('MenuTravelProfile')) -and !$MenuTravel){throw 'Menu travel proof/profile requires its explicit native fixture'}
+
 if($FrontendLogout){
     $frontendLogoutAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FrontendLogout','FrontendLogoutMenuDirectory','FrontendLogoutStartupDirectory','ThreadedLoading')
     if(!$FrontendLogoutMenuDirectory -or !$FrontendLogoutStartupDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $frontendLogoutAllowed}).Count){throw 'Frontend logout requires standalone native NULL identity-logout confirmation/reset/startup proof and both current asset families'}
@@ -1190,6 +1198,20 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($MenuTravel){
+        foreach($family in @(@{directory=$MenuTravelAuthoringDirectory;kind='menulayers';count=8},@{directory=$MenuTravelFrontendDirectory;kind='frontendmenu';count=2},@{directory=$MenuTravelStartupDirectory;kind='startuplogin';count=4})){
+            $familyRoot=[IO.Path]::GetFullPath($family.directory)
+            if(!$familyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned menu travel asset families required'}
+            $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
+            if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current native menu travel family proofs required'}
+            if($family.kind -eq 'menulayers' -and !$familyProof.original_confirmed_frontend_map_asset_experience_name_and_absolute_travel_payload_preserved){throw 'Original confirmed soft-map travel payload required'}
+            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Menu travel asset changed'};Add-JumpInput $path}}
+            Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
+        }
+        foreach($folder in @('Plugins/CommonGame/Source','Plugins/CommonUser/Source','Source/LyraGame/UI/Frontend','Source/LyraGame/GameModes')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Content/System/FrontEnd/Maps/L_LyraFrontEnd.umap','Content/System/FrontEnd/B_LyraFrontEnd_Experience.uasset','Content/UI/B_LyraFrontendStateComponent.uasset','Content/UI/Hud/W_OpenMenuTouchButton.uasset','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll','Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($FrontendLogout){
         foreach($family in @(@{directory=$FrontendLogoutMenuDirectory;kind='frontendmenu';count=2},@{directory=$FrontendLogoutStartupDirectory;kind='startuplogin';count=4})){
             $familyRoot=[IO.Path]::GetFullPath($family.directory)
@@ -2479,6 +2501,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($MenuTravel){$flag='-UEPMenuTravelResult';$marker='UEP_MENU_TRAVEL'}
     if($FrontendLogout){$flag='-UEPFrontendLogoutResult';$marker='UEP_FRONTEND_LOGOUT'}
     if($StartupLogin){$flag='-UEPStartupLoginResult';$marker='UEP_STARTUP_LOGIN'}
     if($FrontendMenu){$flag='-UEPFrontendMenuResult';$marker='UEP_FRONTEND_MENU'}
@@ -2549,6 +2572,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($MenuTravel){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=3?UEPMenuTravelSentinel=before';$arguments+=@("-UEPMenuTravelProfile=$MenuTravelProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($FrontendLogout){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($StartupLogin){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($FrontendMenu){$arguments+=@("-UEPFrontendMenuMode=$FrontendMenuMode","-UEPFrontendMenuProfile=$FrontendMenuProfile")}
@@ -2911,6 +2935,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($MenuTravel){$module='uep_lyra_hud.menu_travel_contract'}
         if($FrontendLogout){$module='uep_lyra_hud.frontend_logout_contract'}
         if($StartupLogin){$module='uep_lyra_hud.startup_login_contract'}
         if($FrontendMenu){$module='uep_lyra_hud.frontend_menu_contract'}
