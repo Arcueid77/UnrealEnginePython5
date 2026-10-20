@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ControlPointWidgets,[string]$ControlPointWidgetsAuthoringDirectory,
       [switch]$ScoreboardStyle,[string]$ScoreboardStyleAuthoringDirectory,[ValidateSet('tdm','cp')][string]$ScoreboardStyleMode='tdm',
       [switch]$ScoreboardList,[string]$ScoreboardListAuthoringDirectory,
       [switch]$ScoreboardRows,[string]$ScoreboardRowsAuthoringDirectory,
@@ -89,6 +90,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ControlPointWidgets){
+    $cpWidgetsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointWidgets','ControlPointWidgetsAuthoringDirectory','ThreadedLoading')
+    if(!$ControlPointWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cpWidgetsAllowed}).Count){throw 'CP widgets require their standalone native UMG/material/audio lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ControlPointWidgetsAuthoringDirectory -and !$ControlPointWidgets){throw 'CP widget proof requires its explicit native fixture'}
+
 if($ScoreboardStyle){
     $styleAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoreboardStyle','ScoreboardStyleAuthoringDirectory','ScoreboardStyleMode','ThreadedLoading')
     if(!$ScoreboardStyleAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $styleAllowed}).Count){throw 'Scoreboard styling requires its standalone current-mode UMG/native timer lane and current proof'}
@@ -1038,6 +1046,16 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ControlPointWidgets){
+        $cpWidgetRoot=[IO.Path]::GetFullPath($ControlPointWidgetsAuthoringDirectory)
+        if(!$cpWidgetRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned CP widget revision required'}
+        $cpWidgetSummary=Join-Path $cpWidgetRoot 'summary.json';$cpWidgetProofPath=Join-Path $cpWidgetRoot 'assets.json';$cpWidgetAuthor=Get-Content -LiteralPath $cpWidgetSummary -Raw|ConvertFrom-Json -Depth 80;$cpWidgetProof=Get-Content -LiteralPath $cpWidgetProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($cpWidgetAuthor.status -ne 'passed' -or $cpWidgetProof.status -ne 'passed' -or $cpWidgetAuthor.kind -ne 'controlpointwidgets' -or $cpWidgetProof.kind -ne 'controlpointwidgets' -or !$cpWidgetProof.original_trees_animations_async_factories_delay_and_graphs_preserved -or !$cpWidgetProof.original_empty_tick_stays_unconnected -or $cpWidgetProof.new_business_nodes -ne 0 -or @($cpWidgetAuthor.assets).Count -ne 6){throw 'Current CP widget/native async/material/audio proof incomplete'}
+        foreach($asset in $cpWidgetAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'CP widget asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $cpWidgetSummary;Add-JumpInput $cpWidgetProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        foreach($dependency in @('Plugins/GameFeatures/ShooterCore/Content/ControlPoint/B_ControlPointScoring.uasset','Plugins/GameFeatures/ShooterCore/Content/Blueprint/B_ControlPointVolume.uasset','Content/Audio/MetaSounds/sfx_EndOfRound-LowScore_nl_meta.uasset')){Add-JumpInput (Join-Path $stage $dependency)}
+    }
+
     if($ScoreboardStyle){
         $styleRoot=[IO.Path]::GetFullPath($ScoreboardStyleAuthoringDirectory)
         if(!$styleRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned scoreboard style revision required'}
@@ -2098,6 +2116,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ControlPointWidgets){$flag='-UEPControlPointWidgetsResult';$marker='UEP_CONTROL_POINT_WIDGETS'}
     if($ScoreboardStyle){$flag='-UEPScoreboardStyleResult';$marker='UEP_SCOREBOARD_STYLE'}
     if($ScoreboardList){$flag='-UEPScoreboardListResult';$marker='UEP_SCOREBOARD_LIST'}
     if($ScoreboardRows){$flag='-UEPScoreboardRowsResult';$marker='UEP_SCOREBOARD_ROWS'}
@@ -2146,6 +2165,7 @@ try{
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($AccoladeWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointFeedback){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicControls){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicLifecycle){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2168,6 +2188,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($ControlPointWidgets){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ScoreboardStyle){$arguments+=@("-UEPScoreboardStyleMode=$ScoreboardStyleMode");if($ScoreboardStyleMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ControlPointFeedback){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointState){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -2496,6 +2517,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ControlPointWidgets){$module='uep_lyra_hud.control_point_widgets_contract'}
         if($ScoreboardStyle){$module='uep_lyra_hud.scoreboard_style_contract'}
         if($ScoreboardList){$module='uep_lyra_hud.scoreboard_list_contract'}
         if($ScoreboardRows){$module='uep_lyra_hud.scoreboard_rows_contract'}
@@ -2547,6 +2569,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($ControlPointWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'CP widget countdown requires the actual offline native audio renderer'}
         if($ControlPointFeedback -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Point feedback requires the actual offline native audio renderer'}
         if($AccoladeWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Accolade widgets require the native offline audio renderer'}
         if($SmallBurstCues -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Small Burst Cue audio requires the actual offline native renderer'}
