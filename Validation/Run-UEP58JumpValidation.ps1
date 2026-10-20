@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ScoreboardStyle,[string]$ScoreboardStyleAuthoringDirectory,[ValidateSet('tdm','cp')][string]$ScoreboardStyleMode='tdm',
       [switch]$ScoreboardList,[string]$ScoreboardListAuthoringDirectory,
       [switch]$ScoreboardRows,[string]$ScoreboardRowsAuthoringDirectory,
       [switch]$EliminationWidgets,[string]$EliminationWidgetsAuthoringDirectory,[string]$EliminationWidgetsRelayAuthoringDirectory,
@@ -88,6 +89,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ScoreboardStyle){
+    $styleAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoreboardStyle','ScoreboardStyleAuthoringDirectory','ScoreboardStyleMode','ThreadedLoading')
+    if(!$ScoreboardStyleAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $styleAllowed}).Count){throw 'Scoreboard styling requires its standalone current-mode UMG/native timer lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ScoreboardStyleAuthoringDirectory -and !$ScoreboardStyle){throw 'Scoreboard style proof requires its explicit native fixture'}
+if($PSBoundParameters.ContainsKey('ScoreboardStyleMode') -and !$ScoreboardStyle){throw 'Scoreboard style mode requires its explicit native fixture'}
 if($ScoreboardList){
     $scoreboardListAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoreboardList','ScoreboardListAuthoringDirectory','ThreadedLoading')
     if(!$ScoreboardListAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $scoreboardListAllowed}).Count){throw 'Scoreboard list require their standalone native parent/interface/stat-timer lane and current family proof'}
@@ -1029,6 +1037,14 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ScoreboardStyle){
+        $styleRoot=[IO.Path]::GetFullPath($ScoreboardStyleAuthoringDirectory)
+        if(!$styleRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned scoreboard style revision required'}
+        $styleSummary=Join-Path $styleRoot 'summary.json';$styleProofPath=Join-Path $styleRoot 'assets.json';$styleAuthor=Get-Content -LiteralPath $styleSummary -Raw|ConvertFrom-Json -Depth 80;$styleProof=Get-Content -LiteralPath $styleProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($styleAuthor.status -ne 'passed' -or $styleProof.status -ne 'passed' -or $styleAuthor.kind -ne 'scoreboardstyle' -or $styleProof.kind -ne 'scoreboardstyle' -or !$styleProof.original_trees_animations_native_timer_literal_team_names_and_graphs_preserved -or $styleProof.localized_text_roundtripped -or $styleProof.native_timer_seconds -ne 1 -or !$styleProof.construct_target_score_only -or $styleProof.new_business_nodes -ne 0 -or @($styleAuthor.assets).Count -ne 10){throw 'Current localized team/style/timer/board proof incomplete'}
+        foreach($asset in $styleAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Scoreboard style asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $styleSummary;Add-JumpInput $styleProofPath
     }
     if($ScoreboardList){
         $rowRoot=[IO.Path]::GetFullPath($ScoreboardListAuthoringDirectory)
@@ -2082,6 +2098,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ScoreboardStyle){$flag='-UEPScoreboardStyleResult';$marker='UEP_SCOREBOARD_STYLE'}
     if($ScoreboardList){$flag='-UEPScoreboardListResult';$marker='UEP_SCOREBOARD_LIST'}
     if($ScoreboardRows){$flag='-UEPScoreboardRowsResult';$marker='UEP_SCOREBOARD_ROWS'}
     if($EliminationWidgets){$flag='-UEPEliminationWidgetsResult';$marker='UEP_ELIMINATION_WIDGETS'}
@@ -2151,6 +2168,7 @@ try{
     if($AutoRespawnActivation){$arguments+=@('-UEPAutoRespawnActivation')}
     if($CharacterInventory){$arguments+=@('-UEPCharacterInventory')}
     if($CharacterLoadoutNatural){$arguments+=@('-UEPCharacterLoadoutNatural')}
+    if($ScoreboardStyle){$arguments+=@("-UEPScoreboardStyleMode=$ScoreboardStyleMode");if($ScoreboardStyleMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ControlPointFeedback){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointState){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
     if($ControlPointHelpers){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}
@@ -2478,6 +2496,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ScoreboardStyle){$module='uep_lyra_hud.scoreboard_style_contract'}
         if($ScoreboardList){$module='uep_lyra_hud.scoreboard_list_contract'}
         if($ScoreboardRows){$module='uep_lyra_hud.scoreboard_rows_contract'}
         if($EliminationWidgets){$module='uep_lyra_hud.elimination_widgets_contract'}
