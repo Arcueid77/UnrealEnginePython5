@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$SettingsScreens,[string]$SettingsScreensAuthoringDirectory,
       [switch]$SettingsEditors,[string]$SettingsEditorsAuthoringDirectory,
       [switch]$FoundationWidgets,[string]$FoundationWidgetsAuthoringDirectory,
       [switch]$BoundAction,[string]$BoundActionAuthoringDirectory,
@@ -101,6 +102,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SettingsScreens){
+    $settingsScreenAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SettingsScreens','SettingsScreensAuthoringDirectory','ThreadedLoading')
+    if(!$SettingsScreensAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $settingsScreenAllowed}).Count){throw 'Settings screens require their standalone native tab/modal/calibration lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($SettingsScreensAuthoringDirectory -and !$SettingsScreens){throw 'Settings screen proof requires its explicit native fixture'}
+
 if($SettingsEditors){
     $settingsEditorAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SettingsEditors','SettingsEditorsAuthoringDirectory','ThreadedLoading')
     if(!$SettingsEditorsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $settingsEditorAllowed}).Count){throw 'Settings editors require their standalone native model/presentation/localization lane and current proof'}
@@ -1134,6 +1142,19 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($SettingsScreens){
+        $settingsScreenRoot=[IO.Path]::GetFullPath($SettingsScreensAuthoringDirectory)
+        if(!$settingsScreenRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned settings screen revision required'}
+        $settingsScreenSummary=Join-Path $settingsScreenRoot 'summary.json';$settingsScreenProofPath=Join-Path $settingsScreenRoot 'assets.json';$settingsScreenAuthor=Get-Content -LiteralPath $settingsScreenSummary -Raw|ConvertFrom-Json -Depth 80;$settingsScreenProof=Get-Content -LiteralPath $settingsScreenProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($settingsScreenAuthor.status -ne 'passed' -or $settingsScreenProof.status -ne 'passed' -or $settingsScreenAuthor.kind -ne 'settingsscreens' -or $settingsScreenProof.kind -ne 'settingsscreens' -or !$settingsScreenProof.original_cdos_widget_trees_animations_signatures_guids_and_graphs_preserved -or !$settingsScreenProof.original_async_soft_class_input_suspension_afterpush_and_interface_payload_paths_retained -or !$settingsScreenProof.original_native_tab_descriptor_display_name_icon_brush_and_button_class_preserved -or !$settingsScreenProof.original_const_gamma_focus_signature_preserved -or !$settingsScreenProof.register_tab_signature_only_internal_hasdefaults_frame_flag_changed -or !$settingsScreenProof.settings_apply_save_reset_and_native_calibration_cpp_unchanged -or @($settingsScreenAuthor.assets).Count -ne 8){throw 'Current settings screen async/native descriptor/frame proof required'}
+        foreach($asset in $settingsScreenAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Settings screen asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $settingsScreenSummary;Add-JumpInput $settingsScreenProofPath
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Plugins/CommonGame/Source') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Plugins/GameSettings/Source') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Source/LyraGame/Settings') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($relative in @('Content/UI/Settings/Screens/SafeZone/W_SafeZoneEditor.uasset','Content/UI/DT_UniversalActions.uasset','Source/LyraGame/UI/LyraSettingScreen.cpp','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll','Plugins/GameSettings/Binaries/Win64/UnrealEditor-GameSettings.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($SettingsEditors){
         $settingsEditorRoot=[IO.Path]::GetFullPath($SettingsEditorsAuthoringDirectory)
         if(!$settingsEditorRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned settings editor revision required'}
@@ -2336,6 +2357,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SettingsScreens){$flag='-UEPSettingsScreensResult';$marker='UEP_SETTINGS_SCREENS'}
     if($SettingsEditors){$flag='-UEPSettingsEditorsResult';$marker='UEP_SETTINGS_EDITORS'}
     if($FoundationWidgets){$flag='-UEPFoundationWidgetsResult';$marker='UEP_FOUNDATION_WIDGETS'}
     if($BoundAction){$flag='-UEPBoundActionResult';$marker='UEP_BOUND_ACTION'}
@@ -2757,6 +2779,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($SettingsScreens){$module='uep_lyra_hud.settings_screens_contract'}
         if($SettingsEditors){$module='uep_lyra_hud.settings_editors_contract'}
         if($FoundationWidgets){$module='uep_lyra_hud.foundation_widgets_contract'}
         if($BoundAction){$module='uep_lyra_hud.bound_action_contract'}
