@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$FoundationButtons,[string]$FoundationButtonsAuthoringDirectory,
       [switch]$MacroClosure,[string]$MacroClosureAuthoringDirectory,
       [switch]$ShooterEQS,[string]$ShooterEQSAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterEQSProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterEQSMode='tdm',
       [switch]$ShooterAI,[string]$ShooterAIAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterAIProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterAIMode='tdm',
@@ -95,6 +96,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($FoundationButtons){
+    $foundationAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FoundationButtons','FoundationButtonsAuthoringDirectory','ThreadedLoading')
+    if(!$FoundationButtonsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $foundationAllowed}).Count){throw 'Foundation buttons require their standalone native CommonUI/UMG/input lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if($FoundationButtonsAuthoringDirectory -and !$FoundationButtons){throw 'Foundation button proof requires its explicit native fixture'}
+
 if($MacroClosure){
     $macroAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MacroClosure','MacroClosureAuthoringDirectory','ThreadedLoading')
     if(!$MacroClosureAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $macroAllowed}).Count){throw 'Macro closure requires its standalone exact-macro probe lane and current closure proof'}
@@ -1086,6 +1094,18 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($FoundationButtons){
+        $foundationRoot=[IO.Path]::GetFullPath($FoundationButtonsAuthoringDirectory)
+        if(!$foundationRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned foundation button revision required'}
+        $foundationSummary=Join-Path $foundationRoot 'summary.json';$foundationProofPath=Join-Path $foundationRoot 'assets.json';$foundationAuthor=Get-Content -LiteralPath $foundationSummary -Raw|ConvertFrom-Json -Depth 80;$foundationProof=Get-Content -LiteralPath $foundationProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($foundationAuthor.status -ne 'passed' -or $foundationProof.status -ne 'passed' -or $foundationAuthor.kind -ne 'foundationbuttons' -or $foundationProof.kind -ne 'foundationbuttons' -or !$foundationProof.original_cdos_widget_trees_animations_ftext_parent_calls_delegates_and_graphs_preserved -or !$foundationProof.native_text_forwarders_preserve_ftext_without_python_marshalling -or !$foundationProof.empty_action_complete_stays_unconnected -or @($foundationAuthor.assets).Count -ne 6){throw 'Current foundation button/tab CommonUI proof required'}
+        foreach($asset in $foundationAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Foundation button asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $foundationProof.fixture.asset).Hash -ne $foundationProof.fixture.sha256){throw 'Native foundation FText probe changed'};Add-JumpInput $foundationProof.fixture.asset
+        Add-JumpInput $foundationSummary;Add-JumpInput $foundationProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        foreach($relative in @('Plugins/GameFeatures/ShooterCore/Content/UserInterface/ScoreBoard/W_SB_TeamStat.uasset','Content/Audio/Sounds/UI/sfx_UI_SubMenu_Highlight_nl_meta_Preset.uasset','Content/Audio/Sounds/UI/sfx_UI_SubMenu_Select_nl_meta_Preset.uasset')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('UI/Foundation/LyraButtonBase.cpp','UI/Common/LyraTabButtonBase.cpp','UI/Common/LyraTabListWidgetBase.cpp')){Add-JumpInput (Join-Path $stage "Source/LyraGame/$relative")}
+    }
+
     if($MacroClosure){
         $macroRoot=[IO.Path]::GetFullPath($MacroClosureAuthoringDirectory)
         if(!$macroRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned macro closure revision required'}
@@ -2213,6 +2233,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($FoundationButtons){$flag='-UEPFoundationButtonsResult';$marker='UEP_FOUNDATION_BUTTONS'}
     if($MacroClosure){$flag='-UEPMacroClosureResult';$marker='UEP_MACRO_CLOSURE'}
     if($ShooterEQS){$flag='-UEPShooterEQSResult';$marker='UEP_SHOOTER_EQS'}
     if($ShooterAI){$flag='-UEPShooterAIResult';$marker='UEP_SHOOTER_AI'}
@@ -2270,6 +2291,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($FoundationButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointFeedback){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2623,6 +2645,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($FoundationButtons){$module='uep_lyra_hud.foundation_buttons_contract'}
         if($MacroClosure){$module='uep_lyra_weapons.macro_closure_contract'}
         if($ShooterEQS){$module='uep_lyra_world.shooter_eqs_contract'}
         if($ShooterAI){$module='uep_lyra_world.shooter_ai_contract'}
@@ -2680,6 +2703,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($FoundationButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Button UI sound backend requires the native offline renderer'}
         if($EliminationScore -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'TDM score/countdown audio requires the native offline renderer'}
         if($ControlPointWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'CP widget countdown requires the actual offline native audio renderer'}
         if($ControlPointFeedback -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Point feedback requires the actual offline native audio renderer'}
