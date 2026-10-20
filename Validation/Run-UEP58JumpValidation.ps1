@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [string]$UIExperienceMacroDirectory,[switch]$UIExperienceMacroProbe,[string]$UIExperienceMacroProbeDirectory,
       [switch]$SessionEntry,[string]$SessionEntryAuthoringDirectory,[string]$SessionEntryBrowserDirectory,[string]$SessionEntryHostDirectory,[string]$SessionEntrySelectionDirectory,[string]$SessionEntryListDirectory,[string]$SessionEntryButtonDirectory,
       [switch]$SessionBrowser,[string]$SessionBrowserAuthoringDirectory,[string]$SessionBrowserSelectionDirectory,[string]$SessionBrowserListDirectory,[string]$SessionBrowserButtonDirectory,
       [switch]$SessionButton,[string]$SessionButtonAuthoringDirectory,
@@ -115,8 +116,15 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($UIExperienceMacroDirectory -and !$SessionEntry -and !$HostSession -and !$ExperienceScreen -and !$UIExperienceMacroProbe){throw 'UI preparation revision requires an affected native consumer lane'}
+if($UIExperienceMacroProbe){
+    $uiPreparationAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','UIExperienceMacroDirectory','UIExperienceMacroProbe','UIExperienceMacroProbeDirectory','ThreadedLoading')
+    if(!$UIExperienceMacroDirectory -or !$UIExperienceMacroProbeDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $uiPreparationAllowed}).Count){throw 'UI preparation probe requires standalone exact original macro/current policy proof'}
+    $AutoRespawnActivation=$true
+}
+if($UIExperienceMacroProbeDirectory -and !$UIExperienceMacroProbe){throw 'UI preparation probe asset requires its explicit native lane'}
 if($SessionEntry){
-    $sessionEntryAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionEntry','SessionEntryAuthoringDirectory','SessionEntryBrowserDirectory','SessionEntryHostDirectory','SessionEntrySelectionDirectory','SessionEntryListDirectory','SessionEntryButtonDirectory','ServerPort','ThreadedLoading')
+    $sessionEntryAllowed=@('UIExperienceMacroDirectory','EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionEntry','SessionEntryAuthoringDirectory','SessionEntryBrowserDirectory','SessionEntryHostDirectory','SessionEntrySelectionDirectory','SessionEntryListDirectory','SessionEntryButtonDirectory','ServerPort','ThreadedLoading')
     if(!$SessionEntryAuthoringDirectory -or !$SessionEntryBrowserDirectory -or !$SessionEntryHostDirectory -or !$SessionEntrySelectionDirectory -or !$SessionEntryListDirectory -or !$SessionEntryButtonDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionEntryAllowed}).Count){throw 'Session entry requires its owned LAN host/two UI clients and six current asset families'}
     $AutoRespawnActivation=$true
 }
@@ -134,14 +142,14 @@ if($SessionButton){
 }
 if($SessionButtonAuthoringDirectory -and !$SessionButton){throw 'Session button proof requires its explicit native fixture'}
 if($HostSession){
-    $hostSessionAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HostSession','HostSessionAuthoringDirectory','HostSessionListDirectory','HostSessionMode','HostSessionProfile','ThreadedLoading')
+    $hostSessionAllowed=@('UIExperienceMacroDirectory','EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HostSession','HostSessionAuthoringDirectory','HostSessionListDirectory','HostSessionMode','HostSessionProfile','ThreadedLoading')
     if(!$HostSessionAuthoringDirectory -or !$HostSessionListDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $hostSessionAllowed}).Count -or ($HostSessionMode -eq 'life' -and $PSBoundParameters.ContainsKey('HostSessionProfile'))){throw 'Host session requires standalone native choices/payload lifecycle or owned NULL hosting and current host/list proofs'}
     $AutoRespawnActivation=$true
 }
 if(($HostSessionAuthoringDirectory -or $HostSessionListDirectory -or $PSBoundParameters.ContainsKey('HostSessionMode') -or $PSBoundParameters.ContainsKey('HostSessionProfile')) -and !$HostSession){throw 'Host session proof/mode/profile requires its explicit native fixture'}
 
 if($ExperienceScreen){
-    $experienceScreenAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceScreen','ExperienceScreenAuthoringDirectory','ExperienceScreenListDirectory','ExperienceScreenMode','ExperienceScreenProfile','ThreadedLoading')
+    $experienceScreenAllowed=@('UIExperienceMacroDirectory','EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceScreen','ExperienceScreenAuthoringDirectory','ExperienceScreenListDirectory','ExperienceScreenMode','ExperienceScreenProfile','ThreadedLoading')
     if(!$ExperienceScreenAuthoringDirectory -or !$ExperienceScreenListDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $experienceScreenAllowed}).Count -or ($ExperienceScreenMode -eq 'life' -and $PSBoundParameters.ContainsKey('ExperienceScreenProfile'))){throw 'Experience screen requires standalone native lifecycle or NULL quickplay and current selection/list proofs'}
     $AutoRespawnActivation=$true
 }
@@ -789,6 +797,7 @@ if($WidgetHeldMode -ne 'tdm' -and (!$WidgetHeld -or $Network)){throw 'ControlPoi
 if($WidgetPressed -and ($WidgetHeld -or $Emote -or $DeviceColor -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Pressed-widget is a separate native lane'}
 if($AutoRespawnHelpers -and ($WidgetPressed -or $WidgetHeld -or $Emote -or $DeviceColor -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'AutoRespawn helpers are a separate native lane'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
+. (Join-Path $PSScriptRoot 'UIExperiencePreparationRevision.ps1')
 if($AbilityWidgetFamilyRevisionDirectory -and !$WidgetLifecycle){throw 'Family revision chain currently applies to standalone shared-Widget lifecycle'}
 if($EquipmentGC -and !$WeaponInstance){throw 'Equipment GC requires its standalone equipment lane'}
 if($EquipmentDeath -and (!$Death -or $Network -or !$EquipmentAuthoringDirectory)){throw 'Dead equipment requires standalone native Death and both asset proofs'}
@@ -1045,7 +1054,7 @@ try{
            !$familyProof.original_business_graphs_preserved_with_dispatch -or !$familyProof.base_graphs_unchanged -or !$familyProof.base_owned_mixin_only -or !$familyProof.native_cp_listener_reused -or
            $familyProof.native_parent_calls_preserved -ne 3 -or $familyProof.native_delay_nodes_reused -ne 3 -or $familyProof.transport_nodes -ne 24 -or @($familyAuthor.assets).Count -ne 5 -or
            $familyProof.actual_registered_profile_method_counts.Python -ne 11 -or $familyProof.actual_registered_profile_method_counts.BlueprintFallback -ne 11){throw 'Current music parent/latent/listener family proof incomplete'}
-        foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash $path).Hash -ne $asset.sha256){throw 'Music family asset changed'};Add-JumpInput $path}}
+        foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash $path).Hash -ne $asset.sha256){throw 'Music family asset changed'};Add-JumpInput $path}}
         if((Get-FileHash $familyProof.caller_probe.asset).Hash -ne $familyProof.caller_probe.sha256){throw 'Music CP message probe changed'}
         Add-JumpInput $familyProof.caller_probe.asset;Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         Add-JumpInput (Join-Path $stage 'Content/UEPValidation/BP_MusicListenerProbe.uasset');Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
@@ -1243,6 +1252,15 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($UIExperienceMacroDirectory){Add-JumpInput (Join-Path $PSScriptRoot 'UIExperiencePreparationRevision.ps1')}
+    if($UIExperienceMacroProbe){
+        $null=@(Get-UIPreparationCurrentAssets -Assets @())
+        $probeRoot=[IO.Path]::GetFullPath($UIExperienceMacroProbeDirectory)
+        if(!$probeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned UI preparation probe required'}
+        $probeSummaryPath=Join-Path $probeRoot 'summary.json';$probeProofPath=Join-Path $probeRoot 'assets.json';$probeAuthor=Get-Content -LiteralPath $probeSummaryPath -Raw|ConvertFrom-Json -Depth 80;$probeProof=Get-Content -LiteralPath $probeProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($probeAuthor.status -ne 'passed' -or $probeProof.status -ne 'passed' -or $probeAuthor.kind -ne 'uipreparationprobe' -or !$probeProof.stage_only -or !$probeProof.original_macro_unchanged -or $probeProof.original_macro_nodes -ne 7 -or (Get-FileHash -LiteralPath $probeProof.fixture.asset).Hash -ne $probeProof.fixture.sha256){throw 'Exact original native UI preparation probe proof required'}
+        Add-JumpInput $probeSummaryPath;Add-JumpInput $probeProofPath;Add-JumpInput $probeProof.fixture.asset
+    }
     if($SessionEntry){
         foreach($family in @(@{directory=$SessionEntryAuthoringDirectory;kind='sessionentry';count=2},@{directory=$SessionEntryBrowserDirectory;kind='sessionbrowser';count=2},@{directory=$SessionEntryHostDirectory;kind='hostsession';count=2},@{directory=$SessionEntrySelectionDirectory;kind='experiencescreen';count=2},@{directory=$SessionEntryListDirectory;kind='experiencelist';count=4},@{directory=$SessionEntryButtonDirectory;kind='sessionbutton';count=2})){
             $familyRoot=[IO.Path]::GetFullPath($family.directory)
@@ -1250,7 +1268,7 @@ try{
             $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current native entry/caller authoring proofs required'}
             if($family.kind -eq 'sessionentry' -and (!$familyProof.original_native_five_text_payload_and_unwired_mapname_string_preserved -or !$familyProof.original_primary_load_and_spinner_loading_macro_order_preserved -or !$familyProof.original_join_binding_and_unbind_then_pop_before_bool_gate_preserved -or !$familyProof.original_failure_ftext_system_message_preserved -or !$familyProof.shared_macro_definition_unchanged -or $familyProof.original_graph_nodes -ne 62 -or $familyProof.transport_nodes -ne 38 -or $familyProof.interface_nodes -ne 5 -or $familyProof.method_counts.Python -ne 8 -or $familyProof.method_counts.BlueprintFallback -ne 8)){throw 'Complete entry native IO and Profile proof required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Session entry/caller asset changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Session entry/caller asset changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         Add-JumpInput (Join-Path $PSScriptRoot 'UEPSessionEntryProcesses.ps1')
@@ -1265,7 +1283,7 @@ try{
             $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current browser/caller native authoring proofs required'}
             if($family.kind -eq 'sessionbrowser' -and (!$familyProof.original_native_do_once_lock_shared_across_profiles_and_reset_preserved -or !$familyProof.original_create_store_bind_find_order_and_weak_completion_delegate_preserved -or !$familyProof.original_failed_search_ftext_system_message_before_results_gate_preserved -or $familyProof.original_graph_nodes -ne 62 -or $familyProof.transport_nodes -ne 27 -or $familyProof.interface_nodes -ne 5 -or $familyProof.method_counts.Python -ne 6 -or $familyProof.method_counts.BlueprintFallback -ne 6)){throw 'Native browser lock/opaque completion and complete Profile proof required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Browser/caller asset changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Browser/caller asset changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -1291,7 +1309,7 @@ try{
             $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current native host/list proofs required'}
             if($family.kind -eq 'hostsession' -and (!$familyProof.original_native_localized_mode_and_bot_texts_preserved -or !$familyProof.original_completion_unbind_before_bool_gate_and_opaque_error_message_preserved -or !$familyProof.shared_macro_definition_unchanged -or $familyProof.method_counts.Python -ne 12 -or $familyProof.method_counts.BlueprintFallback -ne 12)){throw 'Complete host native callback/text/binding proof required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Host/list asset changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Host/list asset changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -1305,7 +1323,7 @@ try{
             $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current selection/list authoring proof required'}
             if($family.kind -eq 'experiencescreen' -and (!$familyProof.original_async_preparation_macro_completed_before_request_and_submit_preserved -or !$familyProof.shared_macro_definition_unchanged -or $familyProof.method_counts.Python -ne 10 -or $familyProof.method_counts.BlueprintFallback -ne 10)){throw 'Native selection async preparation and complete Profile proof required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Selection/list asset changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Selection/list asset changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -1329,7 +1347,7 @@ try{
             $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current native menu travel family proofs required'}
             if($family.kind -eq 'menulayers' -and !$familyProof.original_confirmed_frontend_map_asset_experience_name_and_absolute_travel_payload_preserved){throw 'Original confirmed soft-map travel payload required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Menu travel asset changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Menu travel asset changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         foreach($folder in @('Plugins/CommonGame/Source','Plugins/CommonUser/Source','Source/LyraGame/UI/Frontend','Source/LyraGame/GameModes')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -1344,7 +1362,7 @@ try{
             if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current frontend logout native asset proofs required'}
             if($family.kind -eq 'frontendmenu' -and (!$familyProof.original_confirmed_quit_and_identity_logout_success_order_payloads_preserved -or $familyProof.original_identity_logout_proxy.factory -ne 'Logout' -or $familyProof.original_identity_logout_proxy.proxy_class -ne '/Script/OnlineSubsystemUtils.LogoutCallbackProxy' -or $familyProof.session_destruction_is_original_behavior -ne $false -or $familyProof.method_counts.Python -ne 11 -or $familyProof.method_counts.BlueprintFallback -ne 11)){throw 'Original frontend identity logout handlers required'}
             if($family.kind -eq 'startuplogin' -and (!$familyProof.original_native_key_arrays_local_defaults_and_delegate_payloads_preserved -or !$familyProof.original_localized_login_text_and_callback_binding_name_guid_preserved)){throw 'Original startup native input and callback payloads required'}
-            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Frontend logout asset family changed'};Add-JumpInput $path}}
+            foreach($asset in @(Get-UIPreparationCurrentAssets $familyAuthor.assets)){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Frontend logout asset family changed'};Add-JumpInput $path}}
             Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
         }
         foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -2625,6 +2643,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($UIExperienceMacroProbe){$flag='-UEPUIPreparationProbeResult';$marker='UEP_UI_PREPARATION_PROBE'}
     if($SessionEntry){$flag='-UEPSessionEntryResult';$marker='UEP_SESSION_ENTRY'}
     if($SessionBrowser){$flag='-UEPSessionBrowserResult';$marker='UEP_SESSION_BROWSER'}
     if($SessionButton){$flag='-UEPSessionButtonResult';$marker='UEP_SESSION_BUTTON'}
@@ -2702,6 +2721,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($UIExperienceMacroProbe){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($SessionEntry){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($SessionBrowser){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($HostSession){$arguments+=@("-UEPHostSessionMode=$HostSessionMode","-UEPHostSessionProfile=$HostSessionProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
@@ -3073,6 +3093,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($UIExperienceMacroProbe){$module='uep_lyra_hud.ui_preparation_probe_contract'}
         if($SessionBrowser){$module='uep_lyra_hud.session_browser_contract'}
         if($SessionButton){$module='uep_lyra_hud.session_button_contract'}
         if($HostSession){$module='uep_lyra_hud.host_session_contract'}
