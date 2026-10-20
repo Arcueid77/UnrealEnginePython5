@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerHelpers,[string]$ExplorerHelpersAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerHelpersProfile='Python',
       [switch]$ExplorerState,[string]$ExplorerStateAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerStateProfile='Python',
       [switch]$EditorExperiences,[string]$EditorExperiencesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$EditorExperiencesProfile='Python',
       [switch]$LobbyBackground,[string]$LobbyBackgroundAuthoringDirectory,
@@ -121,6 +122,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerHelpers){
+    $helpersAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerHelpers','ExplorerHelpersAuthoringDirectory','ExplorerHelpersProfile','ThreadedLoading')
+    if(!$ExplorerHelpersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $helpersAllowed}).Count){throw 'Explorer helpers requires owned native character/inventory/GAS fixture and current proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($ExplorerHelpersAuthoringDirectory -or $PSBoundParameters.ContainsKey('ExplorerHelpersProfile')) -and !$ExplorerHelpers){throw 'Explorer helpers proof/Profile requires explicit native fixture'}
 if($ExplorerState){
     $explorerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerState','ExplorerStateAuthoringDirectory','ExplorerStateProfile','ThreadedLoading')
     if(!$ExplorerStateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $explorerAllowed}).Count){throw 'Explorer StateTree requires original compiled tree/native latent fixture and current asset proof'}
@@ -1287,6 +1294,18 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerHelpers){
+        $helpersRoot=[IO.Path]::GetFullPath($ExplorerHelpersAuthoringDirectory)
+        if(!$helpersRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer helper authoring proof required'}
+        $helpersSummary=Join-Path $helpersRoot 'summary.json';$helpersProofPath=Join-Path $helpersRoot 'assets.json'
+        $helpersAuthor=Get-Content -LiteralPath $helpersSummary -Raw|ConvertFrom-Json -Depth 100;$helpersProof=Get-Content -LiteralPath $helpersProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($helpersAuthor.status -ne 'passed' -or $helpersProof.status -ne 'passed' -or $helpersAuthor.kind -ne 'explorercharacters' -or @($helpersAuthor.assets).Count -ne 4 -or !$helpersProof.original_five_helper_signatures_and_all_graphs_cdos_guids_preserved -or !$helpersProof.original_native_empty_loadout_unarmed_layer_payload_preserved -or $helpersProof.whole_characters_migrated -or @($helpersProof.fixtures).Count -ne 2){throw 'Complete Explorer helper source/native caller proof required'}
+        foreach($asset in $helpersAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer helper asset changed'};Add-JumpInput $path}}
+        foreach($fixture in $helpersProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256){throw 'Explorer native caller changed'};Add-JumpInput $fixture.asset}
+        Add-JumpInput $helpersSummary;Add-JumpInput $helpersProofPath
+        foreach($relative in @('Source/LyraGame/GameModes/LyraGameMode.cpp','Source/LyraGame/Character/LyraPawnExtensionComponent.cpp','Source/LyraGame/Player/LyraPlayerState.cpp','Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp','Source/LyraGame/Equipment/LyraQuickBarComponent.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Source/Runtime/Engine/Classes/Animation/AnimInstance.h','Engine/Source/Runtime/Engine/Classes/Components/SkeletalMeshComponent.h','Engine/Source/Runtime/Engine/Private/Components/SkeletalMeshComponent.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/Async/AbilityAsync_WaitGameplayEvent.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ExplorerState){
         $explorerRoot=[IO.Path]::GetFullPath($ExplorerStateAuthoringDirectory)
@@ -2736,6 +2755,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerHelpers){$flag='-UEPExplorerHelpersResult';$marker='UEP_EXPLORER_HELPERS'}
     if($ExplorerState){$flag='-UEPExplorerStateResult';$marker='UEP_EXPLORER_STATE'}
     if($EditorExperiences){$flag='-UEPEditorExperienceResult';$marker='UEP_EDITOR_EXPERIENCE'}
     if($LobbyBackground){$flag='-UEPLobbyBackgroundResult';$marker='UEP_LOBBY_BACKGROUND'}
@@ -2819,6 +2839,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerHelpers){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerHelpersProfile=$ExplorerHelpersProfile")}
     if($ExplorerState){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerStateProfile=$ExplorerStateProfile")}
     if($EditorExperiences){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPEditorExperienceProfile=$EditorExperiencesProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($LobbyBackground){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments=@($arguments|Where-Object {$_ -ne '-NoLoadingScreen'})}
@@ -3196,6 +3217,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerHelpers){$module='uep_lyra_characters.explorer_helpers_contract'}
         if($ExplorerState){$module='uep_lyra_world.explorer_state_contract'}
         if($EditorExperiences){$module='uep_lyra_hud.editor_experience_contract'}
         if($LobbyBackground){$module='uep_lyra_hud.lobby_background_contract'}
