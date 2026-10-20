@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ReplayRuntime,[string]$ReplayRuntimeAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayRuntimeProfile='Python',
       [switch]$ReplayBrowser,[string]$ReplayBrowserAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayBrowserProfile='Python',
       [string]$UIExperienceMacroDirectory,[switch]$UIExperienceMacroProbe,[string]$UIExperienceMacroProbeDirectory,
       [switch]$SessionEntry,[string]$SessionEntryAuthoringDirectory,[string]$SessionEntryBrowserDirectory,[string]$SessionEntryHostDirectory,[string]$SessionEntrySelectionDirectory,[string]$SessionEntryListDirectory,[string]$SessionEntryButtonDirectory,
@@ -117,8 +118,15 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ReplayRuntime){
+    $replayRuntimeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ReplayRuntime','ReplayRuntimeAuthoringDirectory','ReplayRuntimeProfile','ReplayBrowserAuthoringDirectory','ThreadedLoading')
+    if(!$ReplayRuntimeAuthoringDirectory -or !$ReplayBrowserAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $replayRuntimeAllowed}).Count){throw 'Replay runtime requires isolated natural component/HUD/tick/native-pointer playback and both asset proofs'}
+    $ReplayBrowser=$true;$ReplayBrowserProfile=$ReplayRuntimeProfile
+}
+if(($ReplayRuntimeAuthoringDirectory -or $PSBoundParameters.ContainsKey('ReplayRuntimeProfile')) -and !$ReplayRuntime){throw 'Replay runtime proof/Profile requires its explicit native fixture'}
 if($ReplayBrowser){
     $replayBrowserAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ReplayBrowser','ReplayBrowserAuthoringDirectory','ReplayBrowserProfile','ThreadedLoading')
+    if($ReplayRuntime){$replayBrowserAllowed+=@('ReplayRuntime','ReplayRuntimeAuthoringDirectory','ReplayRuntimeProfile')}
     if(!$ReplayBrowserAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $replayBrowserAllowed}).Count){throw 'Replay browser requires isolated recordings/query/confirmation/playback and current native assets'}
     $AutoRespawnActivation=$true
 }
@@ -1258,6 +1266,16 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ReplayRuntime){
+        $runtimeRoot=[IO.Path]::GetFullPath($ReplayRuntimeAuthoringDirectory)
+        if(!$runtimeRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned replay runtime revision required'}
+        $runtimeSummaryPath=Join-Path $runtimeRoot 'summary.json';$runtimeProofPath=Join-Path $runtimeRoot 'assets.json';$runtimeAuthor=Get-Content -LiteralPath $runtimeSummaryPath -Raw|ConvertFrom-Json -Depth 80;$runtimeProof=Get-Content -LiteralPath $runtimeProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($runtimeAuthor.status -ne 'passed' -or $runtimeProof.status -ne 'passed' -or $runtimeAuthor.kind -ne 'replayruntime' -or $runtimeProof.kind -ne 'replayruntime' -or @($runtimeAuthor.assets).Count -ne 6 -or !$runtimeProof.original_native_component_beginplay_and_widget_creation_payload_preserved -or !$runtimeProof.original_native_umg_tick_and_current_length_getter_order_preserved -or !$runtimeProof.original_mouse_geometry_pointer_and_handled_reply_entirely_native -or !$runtimeProof.original_unclamped_ratio_and_native_zero_divide_diagnostic_preserved){throw 'Complete native replay runtime asset proof required'}
+        foreach($asset in $runtimeAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Replay runtime asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $runtimeSummaryPath;Add-JumpInput $runtimeProofPath
+        foreach($file in @('Engine/Source/Runtime/Engine/Classes/Kismet/KismetMathLibrary.inl','Engine/Source/Runtime/Engine/Private/KismetMathLibrary.cpp','Engine/Source/Runtime/UMG/Private/Components/Border.cpp')){Add-JumpInput (Join-Path $EngineRoot $file)}
+        foreach($file in @('Source/UnrealEnginePython/Private/Slate/UEPySWidget.cpp','Source/UnrealEnginePython/Private/Slate/UEPyFPointerEvent.cpp')){Add-JumpInput (Join-Path $repo $file)}
     }
     if($ReplayBrowser){
         $replayRoot=[IO.Path]::GetFullPath($ReplayBrowserAuthoringDirectory)
@@ -2664,6 +2682,7 @@ try{
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
     if($ReplayBrowser){$flag='-UEPReplayBrowserResult';$marker='UEP_REPLAY_BROWSER'}
+    if($ReplayRuntime){$flag='-UEPReplayRuntimeResult';$marker='UEP_REPLAY_RUNTIME'}
     if($UIExperienceMacroProbe){$flag='-UEPUIPreparationProbeResult';$marker='UEP_UI_PREPARATION_PROBE'}
     if($SessionEntry){$flag='-UEPSessionEntryResult';$marker='UEP_SESSION_ENTRY'}
     if($SessionBrowser){$flag='-UEPSessionBrowserResult';$marker='UEP_SESSION_BROWSER'}
@@ -2743,6 +2762,7 @@ try{
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
     if($ReplayBrowser){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPReplayBrowserProfile=$ReplayBrowserProfile","-UserDir=$output/User/")}
+    if($ReplayRuntime){$arguments+=@("-UEPReplayRuntimeProfile=$ReplayRuntimeProfile")}
     if($UIExperienceMacroProbe){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($SessionEntry){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($SessionBrowser){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
@@ -3116,6 +3136,7 @@ try{
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
         if($ReplayBrowser){$module='uep_lyra_hud.replay_browser_contract'}
+        if($ReplayRuntime){$module='uep_lyra_hud.replay_runtime_contract'}
         if($UIExperienceMacroProbe){$module='uep_lyra_hud.ui_preparation_probe_contract'}
         if($SessionBrowser){$module='uep_lyra_hud.session_browser_contract'}
         if($SessionButton){$module='uep_lyra_hud.session_button_contract'}
