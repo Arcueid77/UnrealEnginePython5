@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$SessionBrowser,[string]$SessionBrowserAuthoringDirectory,[string]$SessionBrowserSelectionDirectory,[string]$SessionBrowserListDirectory,[string]$SessionBrowserButtonDirectory,
       [switch]$SessionButton,[string]$SessionButtonAuthoringDirectory,
       [switch]$HostSession,[string]$HostSessionAuthoringDirectory,[string]$HostSessionListDirectory,[ValidateSet('life','host')][string]$HostSessionMode='life',[ValidateSet('Python','BlueprintFallback')][string]$HostSessionProfile='Python',
       [switch]$ExperienceScreen,[string]$ExperienceScreenAuthoringDirectory,[string]$ExperienceScreenListDirectory,[ValidateSet('life','quick')][string]$ExperienceScreenMode='life',[ValidateSet('Python','BlueprintFallback')][string]$ExperienceScreenProfile='Python',
@@ -113,6 +114,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SessionBrowser){
+    $sessionBrowserAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionBrowser','SessionBrowserAuthoringDirectory','SessionBrowserSelectionDirectory','SessionBrowserListDirectory','SessionBrowserButtonDirectory','ThreadedLoading')
+    if(!$SessionBrowserAuthoringDirectory -or !$SessionBrowserSelectionDirectory -or !$SessionBrowserListDirectory -or !$SessionBrowserButtonDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionBrowserAllowed}).Count){throw 'Session browser requires standalone native caller/login/push/NULL search and four current asset families'}
+    $AutoRespawnActivation=$true
+}
+if(($SessionBrowserAuthoringDirectory -or $SessionBrowserSelectionDirectory -or $SessionBrowserListDirectory -or $SessionBrowserButtonDirectory) -and !$SessionBrowser){throw 'Session browser proof requires its explicit native fixture'}
 if($SessionButton){
     $sessionButtonAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionButton','SessionButtonAuthoringDirectory','ThreadedLoading')
     if(!$SessionButtonAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionButtonAllowed}).Count){throw 'Session button requires standalone native text/material/latent-click lifecycle and current asset proof'}
@@ -1228,6 +1235,19 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($SessionBrowser){
+        foreach($family in @(@{directory=$SessionBrowserAuthoringDirectory;kind='sessionbrowser';count=2},@{directory=$SessionBrowserSelectionDirectory;kind='experiencescreen';count=2},@{directory=$SessionBrowserListDirectory;kind='experiencelist';count=4},@{directory=$SessionBrowserButtonDirectory;kind='sessionbutton';count=2})){
+            $familyRoot=[IO.Path]::GetFullPath($family.directory)
+            if(!$familyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned browser/caller revisions required'}
+            $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
+            if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current browser/caller native authoring proofs required'}
+            if($family.kind -eq 'sessionbrowser' -and (!$familyProof.original_native_do_once_lock_shared_across_profiles_and_reset_preserved -or !$familyProof.original_create_store_bind_find_order_and_weak_completion_delegate_preserved -or !$familyProof.original_failed_search_ftext_system_message_before_results_gate_preserved -or $familyProof.original_graph_nodes -ne 62 -or $familyProof.transport_nodes -ne 27 -or $familyProof.interface_nodes -ne 5 -or $familyProof.method_counts.Python -ne 6 -or $familyProof.method_counts.BlueprintFallback -ne 6)){throw 'Native browser lock/opaque completion and complete Profile proof required'}
+            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Browser/caller asset changed'};Add-JumpInput $path}}
+            Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
+        }
+        foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Content/UI/Menu/Experiences/W_SessionBrowserEntry.uasset','Content/UI/Menu/Experiences/UIExperienceMacros.uasset','Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')){Add-JumpInput (Join-Path $stage $relative)}
     }
     if($SessionButton){
         $sessionButtonRoot=[IO.Path]::GetFullPath($SessionButtonAuthoringDirectory)
@@ -2583,6 +2603,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SessionBrowser){$flag='-UEPSessionBrowserResult';$marker='UEP_SESSION_BROWSER'}
     if($SessionButton){$flag='-UEPSessionButtonResult';$marker='UEP_SESSION_BUTTON'}
     if($HostSession){$flag='-UEPHostSessionResult';$marker='UEP_HOST_SESSION'}
     if($ExperienceScreen){$flag='-UEPExperienceScreenResult';$marker='UEP_EXPERIENCE_SCREEN'}
@@ -2658,6 +2679,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($SessionBrowser){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($HostSession){$arguments+=@("-UEPHostSessionMode=$HostSessionMode","-UEPHostSessionProfile=$HostSessionProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($ExperienceScreen){$arguments+=@("-UEPExperienceScreenMode=$ExperienceScreenMode","-UEPExperienceScreenProfile=$ExperienceScreenProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($MenuTravel){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=3?UEPMenuTravelSentinel=before';$arguments+=@("-UEPMenuTravelProfile=$MenuTravelProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
@@ -3023,6 +3045,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($SessionBrowser){$module='uep_lyra_hud.session_browser_contract'}
         if($SessionButton){$module='uep_lyra_hud.session_button_contract'}
         if($HostSession){$module='uep_lyra_hud.host_session_contract'}
         if($ExperienceScreen){$module='uep_lyra_hud.experience_screen_contract'}
