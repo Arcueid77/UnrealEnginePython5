@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerState,[string]$ExplorerStateAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerStateProfile='Python',
       [switch]$EditorExperiences,[string]$EditorExperiencesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$EditorExperiencesProfile='Python',
       [switch]$LobbyBackground,[string]$LobbyBackgroundAuthoringDirectory,
       [switch]$ReplayRuntime,[string]$ReplayRuntimeAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayRuntimeProfile='Python',
@@ -120,6 +121,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerState){
+    $explorerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerState','ExplorerStateAuthoringDirectory','ExplorerStateProfile','ThreadedLoading')
+    if(!$ExplorerStateAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $explorerAllowed}).Count){throw 'Explorer StateTree requires original compiled tree/native latent fixture and current asset proof'}
+    $AutoRespawnActivation=$true
+}
+if(($ExplorerStateAuthoringDirectory -or $PSBoundParameters.ContainsKey('ExplorerStateProfile')) -and !$ExplorerState){throw 'Explorer proof/Profile requires explicit native fixture'}
 if($EditorExperiences){
     $editorExperiencesAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EditorExperiences','EditorExperiencesAuthoringDirectory','EditorExperiencesProfile','ThreadedLoading')
     if(!$EditorExperiencesAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $editorExperiencesAllowed}).Count){throw 'Editor experiences requires native catalog/layout/exposed spawn/local overlap/offline travel and current proofs'}
@@ -1280,6 +1287,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerState){
+        $explorerRoot=[IO.Path]::GetFullPath($ExplorerStateAuthoringDirectory)
+        if(!$explorerRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer StateTree authoring proof required'}
+        $explorerSummary=Join-Path $explorerRoot 'summary.json';$explorerProofPath=Join-Path $explorerRoot 'assets.json'
+        $explorerAuthor=Get-Content -LiteralPath $explorerSummary -Raw|ConvertFrom-Json -Depth 80;$explorerProof=Get-Content -LiteralPath $explorerProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($explorerAuthor.status -ne 'passed' -or $explorerProof.status -ne 'passed' -or $explorerAuthor.kind -ne 'explorerstate' -or $explorerProof.kind -ne 'explorerstate' -or @($explorerAuthor.assets).Count -ne 10 -or !$explorerProof.original_native_statetree_event_transition_abi_preserved -or !$explorerProof.original_native_ai_move_options_and_result_callback_order_preserved -or !$explorerProof.original_native_two_delay_nodes_and_completion_flags_preserved -or !$explorerProof.original_get_player_index_zero_and_null_location_diagnostic_preserved){throw 'Complete native Explorer StateTree proof required'}
+        foreach($asset in $explorerAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer StateTree asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $explorerSummary;Add-JumpInput $explorerProofPath
+        $treeRelative='Plugins/GameFeatures/ShooterExplorer/Content/AI/StateTrees/Trees/L_STT_FollowPlayer.uasset'
+        $official=Split-Path ((Get-Content -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json') -Raw|ConvertFrom-Json).source) -Parent
+        if((Get-FileHash -LiteralPath (Join-Path $stage $treeRelative)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $official $treeRelative)).Hash){throw 'Original compiled StateTree must remain byte-identical'}
+        Add-JumpInput (Join-Path $stage $treeRelative);Add-JumpInput (Join-Path $official $treeRelative)
+        foreach($relative in @('Engine/Plugins/Runtime/GameplayStateTree/Source/GameplayStateTreeModule/Private/Components/StateTreeComponent.cpp','Engine/Plugins/Runtime/GameplayStateTree/Source/GameplayStateTreeModule/Private/Components/StateTreeComponentSchema.cpp','Engine/Plugins/Runtime/StateTree/Source/StateTreeModule/Private/Blueprint/StateTreeTaskBlueprintBase.cpp','Engine/Plugins/Runtime/StateTree/Source/StateTreeModule/Private/Blueprint/StateTreeEvaluatorBlueprintBase.cpp','Engine/Plugins/Runtime/StateTree/Source/StateTreeModule/Private/Blueprint/StateTreeNodeBlueprintBase.cpp','Engine/Source/Runtime/AIModule/Private/Tasks/AITask_MoveTo.cpp','Engine/Source/Runtime/AIModule/Private/AIController.cpp','Engine/Source/Runtime/AIModule/Private/Navigation/PathFollowingComponent.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($EditorExperiences){
         $editorRoot=[IO.Path]::GetFullPath($EditorExperiencesAuthoringDirectory)
@@ -2715,6 +2736,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerState){$flag='-UEPExplorerStateResult';$marker='UEP_EXPLORER_STATE'}
     if($EditorExperiences){$flag='-UEPEditorExperienceResult';$marker='UEP_EDITOR_EXPERIENCE'}
     if($LobbyBackground){$flag='-UEPLobbyBackgroundResult';$marker='UEP_LOBBY_BACKGROUND'}
     if($ReplayBrowser){$flag='-UEPReplayBrowserResult';$marker='UEP_REPLAY_BROWSER'}
@@ -2797,6 +2819,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerState){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerStateProfile=$ExplorerStateProfile")}
     if($EditorExperiences){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPEditorExperienceProfile=$EditorExperiencesProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($LobbyBackground){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments=@($arguments|Where-Object {$_ -ne '-NoLoadingScreen'})}
     if($ReplayBrowser){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPReplayBrowserProfile=$ReplayBrowserProfile","-UserDir=$output/User/")}
@@ -3173,6 +3196,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerState){$module='uep_lyra_world.explorer_state_contract'}
         if($EditorExperiences){$module='uep_lyra_hud.editor_experience_contract'}
         if($LobbyBackground){$module='uep_lyra_hud.lobby_background_contract'}
         if($ReplayBrowser){$module='uep_lyra_hud.replay_browser_contract'}
