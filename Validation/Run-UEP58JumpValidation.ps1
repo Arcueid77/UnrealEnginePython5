@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$MacroClosure,[string]$MacroClosureAuthoringDirectory,
       [switch]$ShooterEQS,[string]$ShooterEQSAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterEQSProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterEQSMode='tdm',
       [switch]$ShooterAI,[string]$ShooterAIAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterAIProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterAIMode='tdm',
       [switch]$GamePhases,[string]$GamePhasesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$GamePhasesProfile='Python',
@@ -94,6 +95,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($MacroClosure){
+    $macroAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MacroClosure','MacroClosureAuthoringDirectory','ThreadedLoading')
+    if(!$MacroClosureAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $macroAllowed}).Count){throw 'Macro closure requires its standalone exact-macro probe lane and current closure proof'}
+    $AutoRespawnActivation=$true
+}
+if($MacroClosureAuthoringDirectory -and !$MacroClosure){throw 'Macro closure proof requires its explicit native fixture'}
+
 if($ShooterEQS){
     $eqsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ShooterEQS','ShooterEQSAuthoringDirectory','ShooterEQSProfile','ShooterEQSMode','ThreadedLoading')
     if(!$ShooterEQSAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $eqsAllowed}).Count){throw 'Shooter EQS requires its standalone live-query lane and current family proof'}
@@ -1078,6 +1086,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($MacroClosure){
+        $macroRoot=[IO.Path]::GetFullPath($MacroClosureAuthoringDirectory)
+        if(!$macroRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned macro closure revision required'}
+        $macroSummary=Join-Path $macroRoot 'summary.json';$macroProofPath=Join-Path $macroRoot 'assets.json';$macroAuthor=Get-Content -LiteralPath $macroSummary -Raw|ConvertFrom-Json -Depth 80;$macroProof=Get-Content -LiteralPath $macroProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($macroAuthor.status -ne 'passed' -or $macroProof.status -ne 'passed' -or $macroAuthor.kind -ne 'macroclosure' -or $macroProof.kind -ne 'macroclosure' -or !$macroProof.original_macro_definition_assets_and_graphs_unchanged -or !$macroProof.original_macro_callsite_census_matches -or @($macroProof.callsites).Count -ne 9 -or @($macroAuthor.assets).Count -ne 0){throw 'Current macro definition/caller closure proof required'}
+        foreach($library in $macroProof.libraries.PSObject.Properties){$file=Join-Path $stage $library.Value.relative;if((Get-FileHash -LiteralPath $file).Hash -ne $library.Value.sha256){throw 'Original macro definition changed'};Add-JumpInput $file}
+        foreach($consumer in $macroProof.current_consumers.PSObject.Properties){$file=Join-Path $stage $consumer.Value.relative;$overlayFile=Join-Path $repo ('Demos/UEPLyraIntegration/Overlay/'+$consumer.Value.relative);foreach($path in @($file,$overlayFile)){if((Get-FileHash -LiteralPath $path).Hash -ne $consumer.Value.sha256){throw 'Macro caller revision changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $macroProof.fixture.asset).Hash -ne $macroProof.fixture.sha256){throw 'Native macro expansion probe changed'}
+        Add-JumpInput $macroProof.fixture.asset;Add-JumpInput $macroSummary;Add-JumpInput $macroProofPath
+    }
+
     if($ShooterEQS){
         $eqsRoot=[IO.Path]::GetFullPath($ShooterEQSAuthoringDirectory)
         if(!$eqsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned shooter EQS revision required'}
@@ -2194,6 +2213,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($MacroClosure){$flag='-UEPMacroClosureResult';$marker='UEP_MACRO_CLOSURE'}
     if($ShooterEQS){$flag='-UEPShooterEQSResult';$marker='UEP_SHOOTER_EQS'}
     if($ShooterAI){$flag='-UEPShooterAIResult';$marker='UEP_SHOOTER_AI'}
     if($GamePhases){$flag='-UEPGamePhasesResult';$marker='UEP_GAME_PHASES'}
@@ -2603,6 +2623,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($MacroClosure){$module='uep_lyra_weapons.macro_closure_contract'}
         if($ShooterEQS){$module='uep_lyra_world.shooter_eqs_contract'}
         if($ShooterAI){$module='uep_lyra_world.shooter_ai_contract'}
         if($GamePhases){$module='uep_lyra_weapons.game_phases_contract'}
