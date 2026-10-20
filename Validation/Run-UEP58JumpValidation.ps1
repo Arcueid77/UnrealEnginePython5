@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$EliminationScore,[string]$EliminationScoreAuthoringDirectory,
       [switch]$ControlPointWidgets,[string]$ControlPointWidgetsAuthoringDirectory,
       [switch]$ScoreboardStyle,[string]$ScoreboardStyleAuthoringDirectory,[ValidateSet('tdm','cp')][string]$ScoreboardStyleMode='tdm',
       [switch]$ScoreboardList,[string]$ScoreboardListAuthoringDirectory,
@@ -90,6 +91,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($EliminationScore){
+    $tdmHudAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EliminationScore','EliminationScoreAuthoringDirectory','ThreadedLoading')
+    if(!$EliminationScoreAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $tdmHudAllowed}).Count){throw 'TDM score widget requires its standalone native UMG/delegate/audio lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($EliminationScoreAuthoringDirectory -and !$EliminationScore){throw 'TDM HUD proof requires its explicit native fixture'}
+
 if($ControlPointWidgets){
     $cpWidgetsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ControlPointWidgets','ControlPointWidgetsAuthoringDirectory','ThreadedLoading')
     if(!$ControlPointWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $cpWidgetsAllowed}).Count){throw 'CP widgets require their standalone native UMG/material/audio lane and current proof'}
@@ -1046,6 +1054,16 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($EliminationScore){
+        $tdmHudRoot=[IO.Path]::GetFullPath($EliminationScoreAuthoringDirectory)
+        if(!$tdmHudRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned TDM HUD revision required'}
+        $tdmHudSummary=Join-Path $tdmHudRoot 'summary.json';$tdmHudProofPath=Join-Path $tdmHudRoot 'assets.json';$tdmHudAuthor=Get-Content -LiteralPath $tdmHudSummary -Raw|ConvertFrom-Json -Depth 80;$tdmHudProof=Get-Content -LiteralPath $tdmHudProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($tdmHudAuthor.status -ne 'passed' -or $tdmHudProof.status -ne 'passed' -or $tdmHudAuthor.kind -ne 'eliminationscore' -or $tdmHudProof.kind -ne 'eliminationscore' -or !$tdmHudProof.original_trees_animations_async_delegate_bindings_delay_and_graphs_preserved -or !$tdmHudProof.original_localized_clock_nodes_moved_intact -or $tdmHudProof.localized_text_roundtripped -or $tdmHudProof.method_counts.Python -ne 8 -or $tdmHudProof.method_counts.BlueprintFallback -ne 8 -or $tdmHudProof.new_business_nodes -ne 0 -or @($tdmHudAuthor.assets).Count -ne 2){throw 'Current native TDM HUD/clock/delegate proof incomplete'}
+        foreach($asset in $tdmHudAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'TDM HUD asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $tdmHudSummary;Add-JumpInput $tdmHudProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        foreach($dependency in @('Plugins/GameFeatures/ShooterCore/Content/Elimination/B_TeamDeathMatchScoring.uasset','Content/Audio/MetaSounds/sfx_EndOfRound-LowScore_nl_meta.uasset','Content/Audio/MetaSounds/sfx_EndOfRound-Tick_nl_meta.uasset')){Add-JumpInput (Join-Path $stage $dependency)}
+    }
+
     if($ControlPointWidgets){
         $cpWidgetRoot=[IO.Path]::GetFullPath($ControlPointWidgetsAuthoringDirectory)
         if(!$cpWidgetRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned CP widget revision required'}
@@ -2116,6 +2134,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($EliminationScore){$flag='-UEPEliminationScoreResult';$marker='UEP_ELIMINATION_SCORE'}
     if($ControlPointWidgets){$flag='-UEPControlPointWidgetsResult';$marker='UEP_CONTROL_POINT_WIDGETS'}
     if($ScoreboardStyle){$flag='-UEPScoreboardStyleResult';$marker='UEP_SCOREBOARD_STYLE'}
     if($ScoreboardList){$flag='-UEPScoreboardListResult';$marker='UEP_SCOREBOARD_LIST'}
@@ -2165,6 +2184,7 @@ try{
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($AccoladeWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointFeedback){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MusicControls){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2517,6 +2537,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($EliminationScore){$module='uep_lyra_hud.elimination_score_contract'}
         if($ControlPointWidgets){$module='uep_lyra_hud.control_point_widgets_contract'}
         if($ScoreboardStyle){$module='uep_lyra_hud.scoreboard_style_contract'}
         if($ScoreboardList){$module='uep_lyra_hud.scoreboard_list_contract'}
@@ -2569,6 +2590,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($EliminationScore -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'TDM score/countdown audio requires the native offline renderer'}
         if($ControlPointWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'CP widget countdown requires the actual offline native audio renderer'}
         if($ControlPointFeedback -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Point feedback requires the actual offline native audio renderer'}
         if($AccoladeWidgets -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Accolade widgets require the native offline audio renderer'}
