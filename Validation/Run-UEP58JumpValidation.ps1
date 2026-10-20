@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$StartupLogin,[string]$StartupLoginAuthoringDirectory,
       [switch]$FrontendMenu,[string]$FrontendMenuAuthoringDirectory,[ValidateSet('life','quit')][string]$FrontendMenuMode='life',[ValidateSet('Python','BlueprintFallback')][string]$FrontendMenuProfile='Python',
       [switch]$MenuLayers,[string]$MenuLayersAuthoringDirectory,[ValidateSet('life','quit')][string]$MenuLayerMode='life',[ValidateSet('Python','BlueprintFallback')][string]$MenuLayerProfile='Python',
       [switch]$CreditsWidgets,[string]$CreditsWidgetsAuthoringDirectory,
@@ -106,6 +107,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($StartupLogin){
+    $startupLoginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','StartupLogin','StartupLoginAuthoringDirectory','ThreadedLoading')
+    if(!$StartupLoginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $startupLoginAllowed}).Count){throw 'Startup/login requires its standalone native NULL-backend local player lifecycle and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($StartupLoginAuthoringDirectory -and !$StartupLogin){throw 'Startup/login proof requires its explicit native fixture'}
+
 if($FrontendMenu){
     $frontendAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FrontendMenu','FrontendMenuAuthoringDirectory','FrontendMenuMode','FrontendMenuProfile','ThreadedLoading')
     if(!$FrontendMenuAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $frontendAllowed}).Count -or ($FrontendMenuMode -eq 'life' -and $PSBoundParameters.ContainsKey('FrontendMenuProfile'))){throw 'Frontend requires standalone native menu/prompts or confirmed-quit lane and current proof'}
@@ -1174,6 +1182,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($StartupLogin){
+        $startupLoginRoot=[IO.Path]::GetFullPath($StartupLoginAuthoringDirectory)
+        if(!$startupLoginRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned startup/login revision required'}
+        $startupLoginSummary=Join-Path $startupLoginRoot 'summary.json';$startupLoginProofPath=Join-Path $startupLoginRoot 'assets.json';$startupLoginAuthor=Get-Content -LiteralPath $startupLoginSummary -Raw|ConvertFrom-Json -Depth 80;$startupLoginProof=Get-Content -LiteralPath $startupLoginProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($startupLoginAuthor.status -ne 'passed' -or $startupLoginProof.status -ne 'passed' -or $startupLoginAuthor.kind -ne 'startuplogin' -or $startupLoginProof.kind -ne 'startuplogin' -or !$startupLoginProof.original_cdos_trees_public_signatures_guids_and_graph_partitions_preserved -or !$startupLoginProof.original_native_key_arrays_local_defaults_and_delegate_payloads_preserved -or !$startupLoginProof.original_localized_login_text_and_callback_binding_name_guid_preserved -or @($startupLoginAuthor.assets).Count -ne 4){throw 'Current native startup/login key/delegate/localized-text proof required'}
+        foreach($asset in $startupLoginAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Startup/login asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $startupLoginSummary;Add-JumpInput $startupLoginProofPath
+        foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll','Source/LyraGame/Player/LyraLocalPlayer.cpp','Source/LyraGame/UI/LyraActivatableWidget.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($FrontendMenu){
         $frontendRoot=[IO.Path]::GetFullPath($FrontendMenuAuthoringDirectory)
         if(!$frontendRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned frontend revision required'}
@@ -2434,6 +2453,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($StartupLogin){$flag='-UEPStartupLoginResult';$marker='UEP_STARTUP_LOGIN'}
     if($FrontendMenu){$flag='-UEPFrontendMenuResult';$marker='UEP_FRONTEND_MENU'}
     if($MenuLayers){$flag='-UEPMenuLayersResult';$marker='UEP_MENU_LAYERS'}
     if($CreditsWidgets){$flag='-UEPCreditsWidgetsResult';$marker='UEP_CREDITS_WIDGETS'}
@@ -2502,6 +2522,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($StartupLogin){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($FrontendMenu){$arguments+=@("-UEPFrontendMenuMode=$FrontendMenuMode","-UEPFrontendMenuProfile=$FrontendMenuProfile")}
     if($MenuLayers){$arguments+=@("-UEPMenuLayerMode=$MenuLayerMode","-UEPMenuLayerProfile=$MenuLayerProfile")}
     if($SettingsEditors){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2862,6 +2883,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($StartupLogin){$module='uep_lyra_hud.startup_login_contract'}
         if($FrontendMenu){$module='uep_lyra_hud.frontend_menu_contract'}
         if($MenuLayers){$module='uep_lyra_hud.menu_layers_contract'}
         if($CreditsWidgets){$module='uep_lyra_hud.credits_widgets_contract'}
