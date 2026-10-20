@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$SessionButton,[string]$SessionButtonAuthoringDirectory,
       [switch]$HostSession,[string]$HostSessionAuthoringDirectory,[string]$HostSessionListDirectory,[ValidateSet('life','host')][string]$HostSessionMode='life',[ValidateSet('Python','BlueprintFallback')][string]$HostSessionProfile='Python',
       [switch]$ExperienceScreen,[string]$ExperienceScreenAuthoringDirectory,[string]$ExperienceScreenListDirectory,[ValidateSet('life','quick')][string]$ExperienceScreenMode='life',[ValidateSet('Python','BlueprintFallback')][string]$ExperienceScreenProfile='Python',
       [switch]$ExperienceList,[string]$ExperienceListAuthoringDirectory,
@@ -112,6 +113,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SessionButton){
+    $sessionButtonAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionButton','SessionButtonAuthoringDirectory','ThreadedLoading')
+    if(!$SessionButtonAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionButtonAllowed}).Count){throw 'Session button requires standalone native text/material/latent-click lifecycle and current asset proof'}
+    $AutoRespawnActivation=$true
+}
+if($SessionButtonAuthoringDirectory -and !$SessionButton){throw 'Session button proof requires its explicit native fixture'}
 if($HostSession){
     $hostSessionAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HostSession','HostSessionAuthoringDirectory','HostSessionListDirectory','HostSessionMode','HostSessionProfile','ThreadedLoading')
     if(!$HostSessionAuthoringDirectory -or !$HostSessionListDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $hostSessionAllowed}).Count -or ($HostSessionMode -eq 'life' -and $PSBoundParameters.ContainsKey('HostSessionProfile'))){throw 'Host session requires standalone native choices/payload lifecycle or owned NULL hosting and current host/list proofs'}
@@ -1221,6 +1228,19 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($SessionButton){
+        $sessionButtonRoot=[IO.Path]::GetFullPath($SessionButtonAuthoringDirectory)
+        if(!$sessionButtonRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned session button revision required'}
+        $sessionButtonSummaryPath=Join-Path $sessionButtonRoot 'summary.json';$sessionButtonProofPath=Join-Path $sessionButtonRoot 'assets.json'
+        $sessionButtonAuthor=Get-Content -LiteralPath $sessionButtonSummaryPath -Raw|ConvertFrom-Json -Depth 80;$sessionButtonProof=Get-Content -LiteralPath $sessionButtonProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($sessionButtonAuthor.status -ne 'passed' -or $sessionButtonProof.status -ne 'passed' -or $sessionButtonAuthor.kind -ne 'sessionbutton' -or $sessionButtonProof.kind -ne 'sessionbutton' -or @($sessionButtonAuthor.assets).Count -ne 2 -or !$sessionButtonProof.original_class_defaults_signature_graphs_preserved -or !$sessionButtonProof.original_five_ftext_setter_graph_entirely_native_and_unmixed -or !$sessionButtonProof.original_native_latent_click_clock_start_time_then_sound_and_finished_preserved -or !$sessionButtonProof.original_six_target_material_reset_and_unused_label_getter_order_preserved -or $sessionButtonProof.original_graph_nodes -ne 89 -or $sessionButtonProof.transport_nodes -ne 53 -or $sessionButtonProof.interface_nodes -ne 5 -or $sessionButtonProof.method_counts.Python -ne 13 -or $sessionButtonProof.method_counts.BlueprintFallback -ne 13){throw 'Complete session button native IO and Profile proof required'}
+        foreach($asset in $sessionButtonAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Session button asset changed'};Add-JumpInput $path}}
+        $sessionButtonProbe=Join-Path $stage 'Content/UEPValidation/BP_SessionButtonTextProbe.uasset'
+        if([IO.Path]::GetFullPath($sessionButtonProof.native_text_probe.asset) -ne [IO.Path]::GetFullPath($sessionButtonProbe) -or (Get-FileHash -LiteralPath $sessionButtonProbe).Hash -ne $sessionButtonProof.native_text_probe.sha256){throw 'Current stage-only native five-FText probe required'}
+        Add-JumpInput $sessionButtonSummaryPath;Add-JumpInput $sessionButtonProofPath;Add-JumpInput $sessionButtonProbe
+        foreach($relative in @('Content/UI/Menu/Experiences/W_SessionBrowserEntry.uasset','Content/UI/Menu/Experiences/W_NonInteractiveSpinner.uasset','Source/LyraGame/UI/Foundation/LyraButtonBase.cpp','Source/LyraGame/UI/Foundation/LyraButtonBase.h')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Plugins/Runtime/CommonUI/Source/CommonUI/Private/CommonButtonBase.cpp','Engine/Source/Runtime/UMG/Private/UserWidget.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($HostSession){
         foreach($family in @(@{directory=$HostSessionAuthoringDirectory;kind='hostsession';count=2},@{directory=$HostSessionListDirectory;kind='experiencelist';count=4})){
@@ -2563,6 +2583,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SessionButton){$flag='-UEPSessionButtonResult';$marker='UEP_SESSION_BUTTON'}
     if($HostSession){$flag='-UEPHostSessionResult';$marker='UEP_HOST_SESSION'}
     if($ExperienceScreen){$flag='-UEPExperienceScreenResult';$marker='UEP_EXPERIENCE_SCREEN'}
     if($ExperienceList){$flag='-UEPExperienceListResult';$marker='UEP_EXPERIENCE_LIST'}
@@ -3002,6 +3023,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($SessionButton){$module='uep_lyra_hud.session_button_contract'}
         if($HostSession){$module='uep_lyra_hud.host_session_contract'}
         if($ExperienceScreen){$module='uep_lyra_hud.experience_screen_contract'}
         if($ExperienceList){$module='uep_lyra_hud.experience_list_contract'}
