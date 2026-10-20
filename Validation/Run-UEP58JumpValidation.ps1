@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ShooterAI,[string]$ShooterAIAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterAIProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterAIMode='tdm',
       [switch]$GamePhases,[string]$GamePhasesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$GamePhasesProfile='Python',
       [switch]$EliminationScore,[string]$EliminationScoreAuthoringDirectory,
       [switch]$ControlPointWidgets,[string]$ControlPointWidgetsAuthoringDirectory,
@@ -92,6 +93,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ShooterAI){
+    $aiAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ShooterAI','ShooterAIAuthoringDirectory','ShooterAIProfile','ShooterAIMode','ThreadedLoading')
+    if(!$ShooterAIAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $aiAllowed}).Count){throw 'Shooter AI requires its standalone native BT/GAS/controller lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if(($ShooterAIAuthoringDirectory -or $PSBoundParameters.ContainsKey('ShooterAIProfile') -or $PSBoundParameters.ContainsKey('ShooterAIMode')) -and !$ShooterAI){throw 'AI proof/Profile requires its explicit native fixture'}
+
 if($GamePhases){
     $phaseAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GamePhases','GamePhasesAuthoringDirectory','GamePhasesProfile','ThreadedLoading')
     if(!$GamePhasesAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $phaseAllowed}).Count){throw 'Game phases require their standalone native GAS/latent/travel lane and current family proof'}
@@ -1062,6 +1070,19 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ShooterAI){
+        $aiRoot=[IO.Path]::GetFullPath($ShooterAIAuthoringDirectory)
+        if(!$aiRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned shooter AI revision required'}
+        $aiSummary=Join-Path $aiRoot 'summary.json';$aiProofPath=Join-Path $aiRoot 'assets.json';$aiAuthor=Get-Content -LiteralPath $aiSummary -Raw|ConvertFrom-Json -Depth 80;$aiProof=Get-Content -LiteralPath $aiProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($aiAuthor.status -ne 'passed' -or $aiProof.status -ne 'passed' -or $aiAuthor.kind -ne 'shooterai' -or $aiProof.kind -ne 'shooterai' -or !$aiProof.original_cdos_templates_scoped_variables_node_guids_bt_schedules_async_factories_health_delegates_parent_calls_and_graphs_preserved -or !$aiProof.passive_empty_overrides_and_cp_parent_forwarder_retained -or @($aiAuthor.assets).Count -ne 12){throw 'Current shooter AI controller/service/inheritance proof required'}
+        foreach($asset in $aiAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'AI asset changed'};Add-JumpInput $path}}
+        foreach($fixture in $aiProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256){throw 'AI fixture changed'};Add-JumpInput $fixture.asset}
+        foreach($child in $aiProof.children.PSObject.Properties){$path=Join-Path $stage $child.Value.relative;if((Get-FileHash -LiteralPath $path).Hash -ne $child.Value.sha256){throw 'AI child config changed'};Add-JumpInput $path}
+        Add-JumpInput $aiSummary;Add-JumpInput $aiProofPath
+        foreach($relative in @('Player/LyraPlayerBotController.cpp','Player/LyraPlayerBotController.h')){Add-JumpInput (Join-Path $stage "Source/LyraGame/$relative")}
+        foreach($relative in @('Engine/Source/Runtime/AIModule/Private/BehaviorTree/BTFunctionLibrary.cpp','Engine/Source/Runtime/AIModule/Private/BehaviorTree/Services/BTService_BlueprintBase.cpp','Engine/Source/Runtime/AIModule/Private/BehaviorTree/BehaviorTreeComponent.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
+    }
+
     if($GamePhases){
         $phaseRoot=[IO.Path]::GetFullPath($GamePhasesAuthoringDirectory)
         if(!$phaseRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned game phase revision required'}
@@ -2153,6 +2174,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ShooterAI){$flag='-UEPShooterAIResult';$marker='UEP_SHOOTER_AI'}
     if($GamePhases){$flag='-UEPGamePhasesResult';$marker='UEP_GAME_PHASES'}
     if($EliminationScore){$flag='-UEPEliminationScoreResult';$marker='UEP_ELIMINATION_SCORE'}
     if($ControlPointWidgets){$flag='-UEPControlPointWidgetsResult';$marker='UEP_CONTROL_POINT_WIDGETS'}
@@ -2204,6 +2226,7 @@ try{
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($AccoladeWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2558,6 +2581,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ShooterAI){$module='uep_lyra_world.shooter_ai_contract'}
         if($GamePhases){$module='uep_lyra_weapons.game_phases_contract'}
         if($EliminationScore){$module='uep_lyra_hud.elimination_score_contract'}
         if($ControlPointWidgets){$module='uep_lyra_hud.control_point_widgets_contract'}
