@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$CreditsWidgets,[string]$CreditsWidgetsAuthoringDirectory,
       [switch]$DiagnosticWidgets,[string]$DiagnosticWidgetsAuthoringDirectory,
       [switch]$SettingsScreens,[string]$SettingsScreensAuthoringDirectory,
       [switch]$SettingsEditors,[string]$SettingsEditorsAuthoringDirectory,
@@ -103,6 +104,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CreditsWidgets){
+    $creditsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CreditsWidgets','CreditsWidgetsAuthoringDirectory','ThreadedLoading')
+    if(!$CreditsWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $creditsAllowed}).Count){throw 'Credits widgets require their standalone native Delay/TimerManager/scroll lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($CreditsWidgetsAuthoringDirectory -and !$CreditsWidgets){throw 'Credits widget proof requires its explicit native fixture'}
+
 if($DiagnosticWidgets){
     $diagnosticAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','DiagnosticWidgets','DiagnosticWidgetsAuthoringDirectory','ThreadedLoading')
     if(!$DiagnosticWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $diagnosticAllowed}).Count){throw 'Diagnostic widgets require their standalone native sampling/format/user lane and current proof'}
@@ -1150,6 +1158,16 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($CreditsWidgets){
+        $creditsRoot=[IO.Path]::GetFullPath($CreditsWidgetsAuthoringDirectory)
+        if(!$creditsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned credits widget revision required'}
+        $creditsSummary=Join-Path $creditsRoot 'summary.json';$creditsProofPath=Join-Path $creditsRoot 'assets.json';$creditsAuthor=Get-Content -LiteralPath $creditsSummary -Raw|ConvertFrom-Json -Depth 80;$creditsProof=Get-Content -LiteralPath $creditsProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($creditsAuthor.status -ne 'passed' -or $creditsProof.status -ne 'passed' -or $creditsAuthor.kind -ne 'creditswidgets' -or $creditsProof.kind -ne 'creditswidgets' -or !$creditsProof.original_cdos_widget_trees_animations_public_signatures_node_guids_and_partitions_preserved -or !$creditsProof.original_one_second_delay_and_point01_looping_timer_delegate_handle_clear_nodes_retained -or !$creditsProof.original_timer_max_once_per_frame_false -or !$creditsProof.original_rich_string_templates_and_native_string_to_text_setter_preserved -or !$creditsProof.original_no_deactivation_or_destruct_timer_cleanup_added -or !$creditsProof.source_visibility_compares_only_collapsed_and_const_null_focus_preserved -or @($creditsAuthor.assets).Count -ne 4){throw 'Current credits native delay/timer/rich-string/visibility proof required'}
+        foreach($asset in $creditsAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Credits widget asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $creditsSummary;Add-JumpInput $creditsProofPath
+        foreach($relative in @('Source/LyraGame/UI/LyraActivatableWidget.cpp','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($DiagnosticWidgets){
         $diagnosticRoot=[IO.Path]::GetFullPath($DiagnosticWidgetsAuthoringDirectory)
         if(!$diagnosticRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned diagnostic widget revision required'}
@@ -2378,6 +2396,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($CreditsWidgets){$flag='-UEPCreditsWidgetsResult';$marker='UEP_CREDITS_WIDGETS'}
     if($DiagnosticWidgets){$flag='-UEPDiagnosticWidgetsResult';$marker='UEP_DIAGNOSTIC_WIDGETS'}
     if($SettingsScreens){$flag='-UEPSettingsScreensResult';$marker='UEP_SETTINGS_SCREENS'}
     if($SettingsEditors){$flag='-UEPSettingsEditorsResult';$marker='UEP_SETTINGS_EDITORS'}
@@ -2801,6 +2820,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($CreditsWidgets){$module='uep_lyra_hud.credits_widgets_contract'}
         if($DiagnosticWidgets){$module='uep_lyra_hud.diagnostic_widgets_contract'}
         if($SettingsScreens){$module='uep_lyra_hud.settings_screens_contract'}
         if($SettingsEditors){$module='uep_lyra_hud.settings_editors_contract'}
