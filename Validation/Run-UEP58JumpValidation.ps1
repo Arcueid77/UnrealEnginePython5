@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$LobbyBackground,[string]$LobbyBackgroundAuthoringDirectory,
       [switch]$ReplayRuntime,[string]$ReplayRuntimeAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayRuntimeProfile='Python',
       [switch]$ReplayBrowser,[string]$ReplayBrowserAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayBrowserProfile='Python',
       [string]$UIExperienceMacroDirectory,[switch]$UIExperienceMacroProbe,[string]$UIExperienceMacroProbeDirectory,
@@ -118,6 +119,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($LobbyBackground){
+    $lobbyBackgroundAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','LobbyBackground','LobbyBackgroundAuthoringDirectory','ThreadedLoading')
+    if(!$LobbyBackgroundAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $lobbyBackgroundAllowed}).Count){throw 'Lobby background requires standalone native catalog/level streaming/task delay and current asset proof'}
+    $AutoRespawnActivation=$true
+}
+if($LobbyBackgroundAuthoringDirectory -and !$LobbyBackground){throw 'Lobby background proof requires its explicit native fixture'}
 if($ReplayRuntime){
     $replayRuntimeAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ReplayRuntime','ReplayRuntimeAuthoringDirectory','ReplayRuntimeProfile','ReplayBrowserAuthoringDirectory','ThreadedLoading')
     if(!$ReplayRuntimeAuthoringDirectory -or !$ReplayBrowserAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $replayRuntimeAllowed}).Count){throw 'Replay runtime requires isolated natural component/HUD/tick/native-pointer playback and both asset proofs'}
@@ -1266,6 +1273,16 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($LobbyBackground){
+        $lobbyRoot=[IO.Path]::GetFullPath($LobbyBackgroundAuthoringDirectory)
+        if(!$lobbyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned lobby background revision required'}
+        $lobbySummaryPath=Join-Path $lobbyRoot 'summary.json';$lobbyProofPath=Join-Path $lobbyRoot 'assets.json';$lobbyAuthor=Get-Content -LiteralPath $lobbySummaryPath -Raw|ConvertFrom-Json -Depth 80;$lobbyProof=Get-Content -LiteralPath $lobbyProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($lobbyAuthor.status -ne 'passed' -or $lobbyProof.status -ne 'passed' -or $lobbyAuthor.kind -ne 'lobbybackground' -or $lobbyProof.kind -ne 'lobbybackground' -or @($lobbyAuthor.assets).Count -ne 2 -or !$lobbyProof.original_native_primary_async_soft_level_transform_and_weak_delegates_preserved -or !$lobbyProof.original_native_half_second_delay_then_current_task_unregister_preserved -or !$lobbyProof.original_cdo_scs_templates_public_signatures_guids_graphs_preserved -or $lobbyProof.original_graph_nodes -ne 42 -or $lobbyProof.transport_nodes -ne 46 -or $lobbyProof.method_counts.Python -ne 10 -or $lobbyProof.method_counts.BlueprintFallback -ne 10){throw 'Complete native lobby actor/task/delay and Profile proof required'}
+        foreach($asset in $lobbyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Lobby background asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $lobbySummaryPath;Add-JumpInput $lobbyProofPath
+        foreach($relative in @('Source/LyraGame/UI/Frontend/LyraLobbyBackground.h','Source/LyraGame/UI/Frontend/LyraLobbyBackground.cpp','Source/LyraGame/System/LyraDevelopmentStatics.h','Source/LyraGame/System/LyraDevelopmentStatics.cpp','Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Public/LoadingProcessTask.h','Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Public/LoadingProcessTask.cpp','Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Private/LoadingScreenManager.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Source/Runtime/Engine/Classes/Engine/LevelStreaming.h','Engine/Source/Runtime/Engine/Private/KismetArrayLibrary.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ReplayRuntime){
         $runtimeRoot=[IO.Path]::GetFullPath($ReplayRuntimeAuthoringDirectory)
@@ -2681,6 +2698,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($LobbyBackground){$flag='-UEPLobbyBackgroundResult';$marker='UEP_LOBBY_BACKGROUND'}
     if($ReplayBrowser){$flag='-UEPReplayBrowserResult';$marker='UEP_REPLAY_BROWSER'}
     if($ReplayRuntime){$flag='-UEPReplayRuntimeResult';$marker='UEP_REPLAY_RUNTIME'}
     if($UIExperienceMacroProbe){$flag='-UEPUIPreparationProbeResult';$marker='UEP_UI_PREPARATION_PROBE'}
@@ -2761,6 +2779,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($LobbyBackground){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments=@($arguments|Where-Object {$_ -ne '-NoLoadingScreen'})}
     if($ReplayBrowser){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPReplayBrowserProfile=$ReplayBrowserProfile","-UserDir=$output/User/")}
     if($ReplayRuntime){$arguments+=@("-UEPReplayRuntimeProfile=$ReplayRuntimeProfile")}
     if($UIExperienceMacroProbe){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
@@ -3135,6 +3154,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($LobbyBackground){$module='uep_lyra_hud.lobby_background_contract'}
         if($ReplayBrowser){$module='uep_lyra_hud.replay_browser_contract'}
         if($ReplayRuntime){$module='uep_lyra_hud.replay_runtime_contract'}
         if($UIExperienceMacroProbe){$module='uep_lyra_hud.ui_preparation_probe_contract'}
