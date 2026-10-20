@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$EliminationWidgets,[string]$EliminationWidgetsAuthoringDirectory,[string]$EliminationWidgetsRelayAuthoringDirectory,
       [switch]$AccoladeWidgets,[string]$AccoladeWidgetsAuthoringDirectory,[string]$AccoladeWidgetsRelayAuthoringDirectory,
       [switch]$NotificationRelaysNetwork,[string]$RelayEliminationAuthoringDirectory,[string]$RelayAccoladeAuthoringDirectory,
       [switch]$AccoladeRelay,[string]$AccoladeRelayAuthoringDirectory,
@@ -85,6 +86,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($EliminationWidgets){
+    $eliminationWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EliminationWidgets','EliminationWidgetsAuthoringDirectory','EliminationWidgetsRelayAuthoringDirectory','ThreadedLoading')
+    if(!$EliminationWidgetsAuthoringDirectory -or !$EliminationWidgetsRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $eliminationWidgetAllowed}).Count){throw 'Elimination widgets require their standalone native list/UMG/native-expiry lane and current widget/relay proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($EliminationWidgetsAuthoringDirectory -or $EliminationWidgetsRelayAuthoringDirectory) -and !$EliminationWidgets){throw 'Elimination widget proofs require their explicit native fixture'}
 if($AccoladeWidgets){
     $accoladeWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','AccoladeWidgets','AccoladeWidgetsAuthoringDirectory','AccoladeWidgetsRelayAuthoringDirectory','ThreadedLoading')
     if(!$AccoladeWidgetsAuthoringDirectory -or !$AccoladeWidgetsRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $accoladeWidgetAllowed}).Count){throw 'Accolade widgets require their standalone native registry/queue/UMG/offline-audio lane and current widget/relay proofs'}
@@ -1008,6 +1015,19 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($EliminationWidgets){
+        $widgetRoot=[IO.Path]::GetFullPath($EliminationWidgetsAuthoringDirectory);$messageRoot=[IO.Path]::GetFullPath($EliminationWidgetsRelayAuthoringDirectory)
+        if(!$widgetRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$messageRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned accolade widget/relay revisions required'}
+        $widgetSummary=Join-Path $widgetRoot 'summary.json';$widgetProofPath=Join-Path $widgetRoot 'assets.json';$widgetAuthor=Get-Content -LiteralPath $widgetSummary -Raw|ConvertFrom-Json -Depth 80;$widgetProof=Get-Content -LiteralPath $widgetProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($widgetAuthor.status -ne 'passed' -or $widgetProof.status -ne 'passed' -or $widgetAuthor.kind -ne 'eliminationwidgets' -or $widgetProof.kind -ne 'eliminationwidgets' -or !$widgetProof.original_widget_trees_animations_exact_listener_list_binding_timer_delegate_and_graphs_preserved -or $widgetProof.native_expiry_seconds -ne 6 -or !$widgetProof.expiry_uses_current_list_item -or !$widgetProof.unconnected_construct_set_colors_stays_unreachable -or $widgetProof.new_business_nodes -ne 0 -or @($widgetAuthor.assets).Count -ne 4 -or $widgetProof.widgets.feed.method_counts.Python -ne 3 -or $widgetProof.widgets.feed.method_counts.BlueprintFallback -ne 3 -or $widgetProof.widgets.entry.method_counts.Python -ne 4 -or $widgetProof.widgets.entry.method_counts.BlueprintFallback -ne 4 -or $widgetProof.widgets.feed.transport_nodes -ne 12 -or $widgetProof.widgets.entry.transport_nodes -ne 19){throw 'Current typed widget-return/native tree/animation/queue proof incomplete'}
+        foreach($asset in $widgetAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Accolade widget asset changed'};Add-JumpInput $path}}
+        foreach($dependency in $widgetProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'Native accolade queue/data dependency changed'};Add-JumpInput $path}
+        $messageSummary=Join-Path $messageRoot 'summary.json';$messageProofPath=Join-Path $messageRoot 'assets.json';$messageAuthor=Get-Content -LiteralPath $messageSummary -Raw|ConvertFrom-Json -Depth 80;$messageProof=Get-Content -LiteralPath $messageProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($messageAuthor.status -ne 'passed' -or $messageProof.status -ne 'passed' -or $messageAuthor.kind -ne 'eliminationfeedrelay' -or $messageProof.kind -ne 'eliminationfeedrelay' -or !$messageProof.fixture.stage_only){throw 'Current native accolade message producer proof required'}
+        foreach($asset in $messageAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Accolade message producer asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $messageProof.fixture.asset).Hash -ne $messageProof.fixture.sha256){throw 'Native accolade message probe changed'}
+        Add-JumpInput $messageProof.fixture.asset;Add-JumpInput $widgetSummary;Add-JumpInput $widgetProofPath;Add-JumpInput $messageSummary;Add-JumpInput $messageProofPath
     }
     if($AccoladeWidgets){
         $widgetRoot=[IO.Path]::GetFullPath($AccoladeWidgetsAuthoringDirectory);$messageRoot=[IO.Path]::GetFullPath($AccoladeWidgetsRelayAuthoringDirectory)
@@ -2030,6 +2050,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($EliminationWidgets){$flag='-UEPEliminationWidgetsResult';$marker='UEP_ELIMINATION_WIDGETS'}
     if($AccoladeWidgets){$flag='-UEPAccoladeWidgetsResult';$marker='UEP_ACCOLADE_WIDGETS'}
     if($AccoladeRelay){$flag='-UEPAccoladeRelayResult';$marker='UEP_ACCOLADE_RELAY'}
     if($EliminationFeedRelay){$flag='-UEPEliminationFeedRelayResult';$marker='UEP_ELIMINATION_FEED_RELAY'}
@@ -2423,6 +2444,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($EliminationWidgets){$module='uep_lyra_hud.elimination_widgets_contract'}
         if($AccoladeWidgets){$module='uep_lyra_hud.accolade_widgets_contract'}
         if($AccoladeRelay){$module='uep_lyra_hud.accolade_relay_contract'}
         if($EliminationFeedRelay){$module='uep_lyra_hud.elimination_feed_relay_contract'}
