@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$FoundationWidgets,[string]$FoundationWidgetsAuthoringDirectory,
       [switch]$BoundAction,[string]$BoundActionAuthoringDirectory,
       [switch]$ExperienceTile,[string]$ExperienceTileAuthoringDirectory,
       [switch]$MenuButtons,[string]$MenuButtonsAuthoringDirectory,
@@ -99,6 +100,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($FoundationWidgets){
+    $foundationWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FoundationWidgets','FoundationWidgetsAuthoringDirectory','ThreadedLoading')
+    if(!$FoundationWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $foundationWidgetAllowed}).Count){throw 'Foundation widgets require their standalone native activation/tick/loading/layout lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($FoundationWidgetsAuthoringDirectory -and !$FoundationWidgets){throw 'Foundation widget proof requires its explicit native fixture'}
+
 if($BoundAction){
     $boundAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','BoundAction','BoundActionAuthoringDirectory','ThreadedLoading')
     if(!$BoundActionAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $boundAllowed}).Count){throw 'Bound action requires its standalone native input/UMG/latent lane and current proof'}
@@ -1118,6 +1126,16 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($FoundationWidgets){
+        $foundationWidgetRoot=[IO.Path]::GetFullPath($FoundationWidgetsAuthoringDirectory)
+        if(!$foundationWidgetRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned foundation widget revision required'}
+        $foundationWidgetSummary=Join-Path $foundationWidgetRoot 'summary.json';$foundationWidgetProofPath=Join-Path $foundationWidgetRoot 'assets.json';$foundationWidgetAuthor=Get-Content -LiteralPath $foundationWidgetSummary -Raw|ConvertFrom-Json -Depth 80;$foundationWidgetProof=Get-Content -LiteralPath $foundationWidgetProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($foundationWidgetAuthor.status -ne 'passed' -or $foundationWidgetProof.status -ne 'passed' -or $foundationWidgetAuthor.kind -ne 'foundationwidgets' -or $foundationWidgetProof.kind -ne 'foundationwidgets' -or !$foundationWidgetProof.original_cdos_widget_trees_animations_signatures_guids_and_graphs_preserved -or !$foundationWidgetProof.native_localized_reason_format_and_setter_preserved_without_ftext_marshalling -or !$foundationWidgetProof.loading_construct_factory_delegate_and_original_absence_of_destruct_unbind_preserved -or @($foundationWidgetAuthor.assets).Count -ne 10){throw 'Current five-widget reason/loading/layout proof required'}
+        foreach($asset in $foundationWidgetAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Foundation widget asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $foundationWidgetSummary;Add-JumpInput $foundationWidgetProofPath
+        foreach($relative in @('Content/UI/Foundation/LoadingScreen/W_LoadingScreen_DefaultContent.uasset','Content/UI/Menu/Art/T_UI_TileArt_Quickplay.uasset','Source/LyraGame/UI/Foundation/LyraLoadingScreenSubsystem.cpp','Source/LyraGame/UI/Foundation/LyraConfirmationScreen.cpp','Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Public/LoadingScreenManager.h','Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Private/LoadingScreenManager.cpp','Plugins/CommonLoadingScreen/Binaries/Win64/UnrealEditor-CommonLoadingScreen.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($BoundAction){
         $boundRoot=[IO.Path]::GetFullPath($BoundActionAuthoringDirectory)
         if(!$boundRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned bound-action revision required'}
@@ -2295,6 +2313,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($FoundationWidgets){$flag='-UEPFoundationWidgetsResult';$marker='UEP_FOUNDATION_WIDGETS'}
     if($BoundAction){$flag='-UEPBoundActionResult';$marker='UEP_BOUND_ACTION'}
     if($ExperienceTile){$flag='-UEPExperienceTileResult';$marker='UEP_EXPERIENCE_TILE'}
     if($MenuButtons){$flag='-UEPMenuButtonsResult';$marker='UEP_MENU_BUTTONS'}
@@ -2713,6 +2732,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($FoundationWidgets){$module='uep_lyra_hud.foundation_widgets_contract'}
         if($BoundAction){$module='uep_lyra_hud.bound_action_contract'}
         if($ExperienceTile){$module='uep_lyra_hud.experience_tile_contract'}
         if($MenuButtons){$module='uep_lyra_hud.menu_buttons_contract'}
