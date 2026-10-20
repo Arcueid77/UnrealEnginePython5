@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$FrontendMenu,[string]$FrontendMenuAuthoringDirectory,[ValidateSet('life','quit')][string]$FrontendMenuMode='life',[ValidateSet('Python','BlueprintFallback')][string]$FrontendMenuProfile='Python',
       [switch]$MenuLayers,[string]$MenuLayersAuthoringDirectory,[ValidateSet('life','quit')][string]$MenuLayerMode='life',[ValidateSet('Python','BlueprintFallback')][string]$MenuLayerProfile='Python',
       [switch]$CreditsWidgets,[string]$CreditsWidgetsAuthoringDirectory,
       [switch]$DiagnosticWidgets,[string]$DiagnosticWidgetsAuthoringDirectory,
@@ -105,6 +106,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($FrontendMenu){
+    $frontendAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FrontendMenu','FrontendMenuAuthoringDirectory','FrontendMenuMode','FrontendMenuProfile','ThreadedLoading')
+    if(!$FrontendMenuAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $frontendAllowed}).Count -or ($FrontendMenuMode -eq 'life' -and $PSBoundParameters.ContainsKey('FrontendMenuProfile'))){throw 'Frontend requires standalone native menu/prompts or confirmed-quit lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if(($FrontendMenuAuthoringDirectory -or $PSBoundParameters.ContainsKey('FrontendMenuMode') -or $PSBoundParameters.ContainsKey('FrontendMenuProfile')) -and !$FrontendMenu){throw 'Frontend proof/mode/profile requires its explicit native fixture'}
+
 if($MenuLayers){
     $menuLayerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuLayers','MenuLayersAuthoringDirectory','MenuLayerMode','MenuLayerProfile','ThreadedLoading')
     if(!$MenuLayersAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuLayerAllowed}).Count -or ($MenuLayerMode -eq 'life' -and $PSBoundParameters.ContainsKey('MenuLayerProfile'))){throw 'Menu layers require standalone native layer/menu/confirmation or owned-quit lane and current proof'}
@@ -1166,6 +1174,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($FrontendMenu){
+        $frontendRoot=[IO.Path]::GetFullPath($FrontendMenuAuthoringDirectory)
+        if(!$frontendRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned frontend revision required'}
+        $frontendSummary=Join-Path $frontendRoot 'summary.json';$frontendProofPath=Join-Path $frontendRoot 'assets.json';$frontendAuthor=Get-Content -LiteralPath $frontendSummary -Raw|ConvertFrom-Json -Depth 80;$frontendProof=Get-Content -LiteralPath $frontendProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($frontendAuthor.status -ne 'passed' -or $frontendProof.status -ne 'passed' -or $frontendAuthor.kind -ne 'frontendmenu' -or $frontendProof.kind -ne 'frontendmenu' -or !$frontendProof.original_cdo_tree_animations_public_signatures_const_focus_guids_and_graphs_preserved -or !$frontendProof.original_four_async_menu_classes_layer_tags_input_suspension_and_native_prompts_preserved -or !$frontendProof.original_confirmed_quit_and_logout_destroy_session_success_order_payloads_preserved -or $frontendProof.method_counts.Python -ne 11 -or $frontendProof.method_counts.BlueprintFallback -ne 11 -or @($frontendAuthor.assets).Count -ne 2){throw 'Current native frontend/UI/prompt/session/quit proof required'}
+        foreach($asset in $frontendAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Frontend asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $frontendSummary;Add-JumpInput $frontendProofPath
+        foreach($folder in @('Plugins/CommonGame/Source','Plugins/CommonUser/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Source/LyraGame/UI/LyraActivatableWidget.cpp','Source/LyraGame/UI/Foundation/LyraConfirmationScreen.cpp','Content/UI/Foundation/Dialogs/W_ConfirmationDialog.uasset','Content/UI/Menu/W_LyraStartup.uasset','Content/UI/Menu/W_UserLoginButton.uasset','Content/UI/Settings/W_LyraSettingScreen.uasset','Content/UI/Credits/W_Credits.uasset','Content/UI/Menu/Experiences/W_ExperienceSelectionScreen.uasset','Content/UI/Menu/Replays/W_ReplayBrowserScreen.uasset','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll','Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($MenuLayers){
         $menuLayerRoot=[IO.Path]::GetFullPath($MenuLayersAuthoringDirectory)
         if(!$menuLayerRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned menu/layer revision required'}
@@ -2415,6 +2434,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($FrontendMenu){$flag='-UEPFrontendMenuResult';$marker='UEP_FRONTEND_MENU'}
     if($MenuLayers){$flag='-UEPMenuLayersResult';$marker='UEP_MENU_LAYERS'}
     if($CreditsWidgets){$flag='-UEPCreditsWidgetsResult';$marker='UEP_CREDITS_WIDGETS'}
     if($DiagnosticWidgets){$flag='-UEPDiagnosticWidgetsResult';$marker='UEP_DIAGNOSTIC_WIDGETS'}
@@ -2482,6 +2502,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($FrontendMenu){$arguments+=@("-UEPFrontendMenuMode=$FrontendMenuMode","-UEPFrontendMenuProfile=$FrontendMenuProfile")}
     if($MenuLayers){$arguments+=@("-UEPMenuLayerMode=$MenuLayerMode","-UEPMenuLayerProfile=$MenuLayerProfile")}
     if($SettingsEditors){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($BoundAction){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2841,6 +2862,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($FrontendMenu){$module='uep_lyra_hud.frontend_menu_contract'}
         if($MenuLayers){$module='uep_lyra_hud.menu_layers_contract'}
         if($CreditsWidgets){$module='uep_lyra_hud.credits_widgets_contract'}
         if($DiagnosticWidgets){$module='uep_lyra_hud.diagnostic_widgets_contract'}
