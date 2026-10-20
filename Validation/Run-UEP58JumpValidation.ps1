@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerCallbacks,[string]$ExplorerCallbacksAuthoringDirectory,[string]$ExplorerCallbacksHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerCallbacksProfile='Python',
       [switch]$ExplorerStyle,[string]$ExplorerStyleAuthoringDirectory,[string]$ExplorerStyleHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerStyleProfile='Python',
       [switch]$ExplorerHelpers,[string]$ExplorerHelpersAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerHelpersProfile='Python',
       [switch]$ExplorerState,[string]$ExplorerStateAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerStateProfile='Python',
@@ -123,6 +124,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerCallbacks){
+    $callbacksAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerCallbacks','ExplorerCallbacksAuthoringDirectory','ExplorerCallbacksHelperBaseline','ExplorerCallbacksProfile','ThreadedLoading')
+    if(!$ExplorerCallbacksAuthoringDirectory -or !$ExplorerCallbacksHelperBaseline -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $callbacksAllowed}).Count){throw 'Explorer callbacks requires original callback and native helper caller proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($ExplorerCallbacksAuthoringDirectory -or $ExplorerCallbacksHelperBaseline -or $PSBoundParameters.ContainsKey('ExplorerCallbacksProfile')) -and !$ExplorerCallbacks){throw 'Explorer callback proof/Profile requires explicit native fixture'}
 if($ExplorerStyle){
     $styleAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerStyle','ExplorerStyleAuthoringDirectory','ExplorerStyleHelperBaseline','ExplorerStyleProfile','ThreadedLoading')
     if(!$ExplorerStyleAuthoringDirectory -or !$ExplorerStyleHelperBaseline -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $styleAllowed}).Count){throw 'Explorer style requires original style and helper native caller proofs'}
@@ -1301,6 +1308,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerCallbacks){
+        $callbacksRoot=[IO.Path]::GetFullPath($ExplorerCallbacksAuthoringDirectory);$helperRoot=[IO.Path]::GetFullPath($ExplorerCallbacksHelperBaseline)
+        if(!$callbacksRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$helperRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer callback/helper proofs required'}
+        $callbacksSummary=Join-Path $callbacksRoot 'summary.json';$callbacksProofPath=Join-Path $callbacksRoot 'assets.json';$callbacksAuthor=Get-Content -LiteralPath $callbacksSummary -Raw|ConvertFrom-Json -Depth 100;$callbacksProof=Get-Content -LiteralPath $callbacksProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($callbacksAuthor.status -ne 'passed' -or $callbacksProof.status -ne 'passed' -or $callbacksProof.kind -ne 'explorercallbacks' -or @($callbacksAuthor.assets).Count -ne 4 -or !$callbacksProof.original_all_graphs_and_native_unarmed_payload_unchanged -or !$callbacksProof.original_health_and_parts_component_event_abis_preserved -or $callbacksProof.whole_characters_migrated){throw 'Complete original Explorer twelve-method component ABI proof required'}
+        foreach($asset in $callbacksAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer callback asset changed'};Add-JumpInput $path}}
+        foreach($key in @('hero','pawn')){if($callbacksProof.characters.$key.method_counts.Python -ne 12 -or $callbacksProof.characters.$key.method_counts.BlueprintFallback -ne 12){throw 'Complete Explorer callback Profile family required'}}
+        $helperSummary=Join-Path $helperRoot 'summary.json';$helperProofPath=Join-Path $helperRoot 'assets.json';$helperProof=Get-Content -LiteralPath $helperProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($helperProof.status -ne 'passed' -or $helperProof.kind -ne 'explorercharacters' -or @($helperProof.fixtures).Count -ne 2){throw 'Original typed Explorer grant callers required'}
+        foreach($fixture in $helperProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256){throw 'Explorer typed grant caller changed'};Add-JumpInput $fixture.asset}
+        foreach($file in @($callbacksSummary,$callbacksProofPath,$helperSummary,$helperProofPath)){Add-JumpInput $file}
+        foreach($relative in @('Source/LyraGame/Character/LyraCharacter.cpp','Source/LyraGame/Character/LyraHealthComponent.cpp','Source/LyraGame/Cosmetics/LyraPawnComponent_CharacterParts.cpp','Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Reset.cpp','Source/LyraGame/GameModes/LyraBotCreationComponent.cpp','Content/GameplayEffects/Damage/GE_Damage_Basic_SetByCaller.uasset','Content/GameplayEffects/Heal/GE_Heal_SetByCaller.uasset')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Source/Runtime/AIModule/Private/Perception/AISense_Damage.cpp','Engine/Source/Runtime/AIModule/Private/Perception/AIPerceptionComponent.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ExplorerStyle){
         $styleRoot=[IO.Path]::GetFullPath($ExplorerStyleAuthoringDirectory);$helperRoot=[IO.Path]::GetFullPath($ExplorerStyleHelperBaseline)
@@ -2775,6 +2796,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerCallbacks){$flag='-UEPExplorerCallbacksResult';$marker='UEP_EXPLORER_CALLBACKS'}
     if($ExplorerStyle){$flag='-UEPExplorerStyleResult';$marker='UEP_EXPLORER_STYLE'}
     if($ExplorerHelpers){$flag='-UEPExplorerHelpersResult';$marker='UEP_EXPLORER_HELPERS'}
     if($ExplorerState){$flag='-UEPExplorerStateResult';$marker='UEP_EXPLORER_STATE'}
@@ -2860,6 +2882,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerCallbacks){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerCallbacksProfile=$ExplorerCallbacksProfile")}
     if($ExplorerStyle){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerStyleProfile=$ExplorerStyleProfile")}
     if($ExplorerHelpers){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerHelpersProfile=$ExplorerHelpersProfile")}
     if($ExplorerState){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerStateProfile=$ExplorerStateProfile")}
@@ -3239,6 +3262,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerCallbacks){$module='uep_lyra_characters.explorer_callbacks_contract'}
         if($ExplorerStyle){$module='uep_lyra_characters.explorer_style_contract'}
         if($ExplorerHelpers){$module='uep_lyra_characters.explorer_helpers_contract'}
         if($ExplorerState){$module='uep_lyra_world.explorer_state_contract'}
