@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$DiagnosticWidgets,[string]$DiagnosticWidgetsAuthoringDirectory,
       [switch]$SettingsScreens,[string]$SettingsScreensAuthoringDirectory,
       [switch]$SettingsEditors,[string]$SettingsEditorsAuthoringDirectory,
       [switch]$FoundationWidgets,[string]$FoundationWidgetsAuthoringDirectory,
@@ -102,6 +103,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($DiagnosticWidgets){
+    $diagnosticAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','DiagnosticWidgets','DiagnosticWidgetsAuthoringDirectory','ThreadedLoading')
+    if(!$DiagnosticWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $diagnosticAllowed}).Count){throw 'Diagnostic widgets require their standalone native sampling/format/user lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($DiagnosticWidgetsAuthoringDirectory -and !$DiagnosticWidgets){throw 'Diagnostic widget proof requires its explicit native fixture'}
+
 if($SettingsScreens){
     $settingsScreenAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SettingsScreens','SettingsScreensAuthoringDirectory','ThreadedLoading')
     if(!$SettingsScreensAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $settingsScreenAllowed}).Count){throw 'Settings screens require their standalone native tab/modal/calibration lane and current proof'}
@@ -1142,6 +1150,19 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($DiagnosticWidgets){
+        $diagnosticRoot=[IO.Path]::GetFullPath($DiagnosticWidgetsAuthoringDirectory)
+        if(!$diagnosticRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned diagnostic widget revision required'}
+        $diagnosticSummary=Join-Path $diagnosticRoot 'summary.json';$diagnosticProofPath=Join-Path $diagnosticRoot 'assets.json';$diagnosticAuthor=Get-Content -LiteralPath $diagnosticSummary -Raw|ConvertFrom-Json -Depth 80;$diagnosticProof=Get-Content -LiteralPath $diagnosticProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($diagnosticAuthor.status -ne 'passed' -or $diagnosticProof.status -ne 'passed' -or $diagnosticAuthor.kind -ne 'diagnosticwidgets' -or $diagnosticProof.kind -ne 'diagnosticwidgets' -or !$diagnosticProof.original_cdos_widget_trees_signatures_node_guids_and_native_format_node_partitions_preserved -or !$diagnosticProof.original_numeric_grouping_rounding_fractional_digits_and_ftext_formats_preserved -or !$diagnosticProof.original_missing_user_localized_status_and_name_format_preserved -or !$diagnosticProof.performance_graph_native_update_before_fetch_and_numeric_scale_preserved -or !$diagnosticProof.native_user_subsystem_getters_context_game_and_int32_player_display_number_preserved -or @($diagnosticAuthor.assets).Count -ne 8){throw 'Current diagnostic native sampling/format/user proof required'}
+        foreach($asset in $diagnosticAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Diagnostic widget asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $diagnosticSummary;Add-JumpInput $diagnosticProofPath
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Source/LyraGame/UI/PerformanceStats') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Source/LyraGame/Performance') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Plugins/CommonUser/Source') -Recurse -File){Add-JumpInput $file.FullName}
+        Add-JumpInput (Join-Path $stage 'Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')
+    }
+
     if($SettingsScreens){
         $settingsScreenRoot=[IO.Path]::GetFullPath($SettingsScreensAuthoringDirectory)
         if(!$settingsScreenRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned settings screen revision required'}
@@ -2357,6 +2378,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($DiagnosticWidgets){$flag='-UEPDiagnosticWidgetsResult';$marker='UEP_DIAGNOSTIC_WIDGETS'}
     if($SettingsScreens){$flag='-UEPSettingsScreensResult';$marker='UEP_SETTINGS_SCREENS'}
     if($SettingsEditors){$flag='-UEPSettingsEditorsResult';$marker='UEP_SETTINGS_EDITORS'}
     if($FoundationWidgets){$flag='-UEPFoundationWidgetsResult';$marker='UEP_FOUNDATION_WIDGETS'}
@@ -2779,6 +2801,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($DiagnosticWidgets){$module='uep_lyra_hud.diagnostic_widgets_contract'}
         if($SettingsScreens){$module='uep_lyra_hud.settings_screens_contract'}
         if($SettingsEditors){$module='uep_lyra_hud.settings_editors_contract'}
         if($FoundationWidgets){$module='uep_lyra_hud.foundation_widgets_contract'}
