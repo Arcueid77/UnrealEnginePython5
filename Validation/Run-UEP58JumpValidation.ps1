@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$GamePhases,[string]$GamePhasesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$GamePhasesProfile='Python',
       [switch]$EliminationScore,[string]$EliminationScoreAuthoringDirectory,
       [switch]$ControlPointWidgets,[string]$ControlPointWidgetsAuthoringDirectory,
       [switch]$ScoreboardStyle,[string]$ScoreboardStyleAuthoringDirectory,[ValidateSet('tdm','cp')][string]$ScoreboardStyleMode='tdm',
@@ -91,6 +92,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($GamePhases){
+    $phaseAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','GamePhases','GamePhasesAuthoringDirectory','GamePhasesProfile','ThreadedLoading')
+    if(!$GamePhasesAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $phaseAllowed}).Count){throw 'Game phases require their standalone native GAS/latent/travel lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if(($GamePhasesAuthoringDirectory -or $PSBoundParameters.ContainsKey('GamePhasesProfile')) -and !$GamePhases){throw 'Phase proof/Profile requires its explicit native fixture'}
+
 if($EliminationScore){
     $tdmHudAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EliminationScore','EliminationScoreAuthoringDirectory','ThreadedLoading')
     if(!$EliminationScoreAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $tdmHudAllowed}).Count){throw 'TDM score widget requires its standalone native UMG/delegate/audio lane and current proof'}
@@ -1054,6 +1062,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($GamePhases){
+        $phaseRoot=[IO.Path]::GetFullPath($GamePhasesAuthoringDirectory)
+        if(!$phaseRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned game phase revision required'}
+        $phaseSummary=Join-Path $phaseRoot 'summary.json';$phaseProofPath=Join-Path $phaseRoot 'assets.json';$phaseAuthor=Get-Content -LiteralPath $phaseSummary -Raw|ConvertFrom-Json -Depth 80;$phaseProof=Get-Content -LiteralPath $phaseProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($phaseAuthor.status -ne 'passed' -or $phaseProof.status -ne 'passed' -or $phaseAuthor.kind -ne 'gamephases' -or $phaseProof.kind -ne 'gamephases' -or !$phaseProof.original_cdos_gas_parent_tags_latent_uuids_multicast_cosmetic_and_custom_thunk_message_graphs_preserved -or !$phaseProof.original_default_durations_preserved -or $phaseProof.new_business_nodes -ne 0 -or @($phaseAuthor.assets).Count -ne 6){throw 'Current native phase/GAS/latent/message proof required'}
+        foreach($asset in $phaseAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Phase asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $phaseSummary;Add-JumpInput $phaseProofPath;Add-JumpInput $phaseProof.fixture.asset
+        foreach($dependency in @('Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/GE_PregameLobby.uasset','Plugins/GameFeatures/ShooterCore/Content/Experiences/Phases/GE_DamageImmunity_FromGameMode.uasset','Content/GameplayEffects/GE_BlockAbilityInput.uasset')){Add-JumpInput (Join-Path $stage $dependency)}
+        foreach($relative in @('AbilitySystem/Phases/LyraGamePhaseAbility.cpp','AbilitySystem/Phases/LyraGamePhaseAbility.h','AbilitySystem/Phases/LyraGamePhaseSubsystem.cpp','AbilitySystem/Phases/LyraGamePhaseSubsystem.h','AbilitySystem/LyraGlobalAbilitySystem.cpp','System/LyraSystemStatics.cpp','System/LyraDevelopmentStatics.cpp')){Add-JumpInput (Join-Path $stage "Source/LyraGame/$relative")}
+    }
+
     if($EliminationScore){
         $tdmHudRoot=[IO.Path]::GetFullPath($EliminationScoreAuthoringDirectory)
         if(!$tdmHudRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned TDM HUD revision required'}
@@ -2134,6 +2153,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($GamePhases){$flag='-UEPGamePhasesResult';$marker='UEP_GAME_PHASES'}
     if($EliminationScore){$flag='-UEPEliminationScoreResult';$marker='UEP_ELIMINATION_SCORE'}
     if($ControlPointWidgets){$flag='-UEPControlPointWidgetsResult';$marker='UEP_CONTROL_POINT_WIDGETS'}
     if($ScoreboardStyle){$flag='-UEPScoreboardStyleResult';$marker='UEP_SCOREBOARD_STYLE'}
@@ -2184,6 +2204,7 @@ try{
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($AccoladeWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ControlPointFeedback){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2537,6 +2558,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($GamePhases){$module='uep_lyra_weapons.game_phases_contract'}
         if($EliminationScore){$module='uep_lyra_hud.elimination_score_contract'}
         if($ControlPointWidgets){$module='uep_lyra_hud.control_point_widgets_contract'}
         if($ScoreboardStyle){$module='uep_lyra_hud.scoreboard_style_contract'}
