@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$NotificationRelaysNetwork,[string]$RelayEliminationAuthoringDirectory,[string]$RelayAccoladeAuthoringDirectory,
       [switch]$AccoladeRelay,[string]$AccoladeRelayAuthoringDirectory,
       [switch]$EliminationFeedRelay,[string]$EliminationFeedRelayAuthoringDirectory,
       [switch]$ControlPointFeedback,[string]$ControlPointFeedbackAuthoringDirectory,
@@ -83,6 +84,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($NotificationRelaysNetwork){
+    $relayNetworkAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NotificationRelaysNetwork','RelayEliminationAuthoringDirectory','RelayAccoladeAuthoringDirectory','Network','PawnWireIdentity','IdentityBuildDirectory','ServerPort','ThreadedLoading')
+    if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$RelayEliminationAuthoringDirectory -or !$RelayAccoladeAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $relayNetworkAllowed}).Count){throw 'Notification relays require their dedicated two-client network lane and both current asset/identity proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($RelayEliminationAuthoringDirectory -or $RelayAccoladeAuthoringDirectory) -and !$NotificationRelaysNetwork){throw 'Relay network proofs require their explicit network fixture'}
 if($AccoladeRelay){
     $relayAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','AccoladeRelay','AccoladeRelayAuthoringDirectory','ThreadedLoading')
     if(!$AccoladeRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $relayAllowed}).Count){throw 'Accolade relay requires its standalone exact-message/typed-payload/lifetime lane and current proof'}
@@ -392,7 +399,7 @@ if($GrenadeWidget){
     $AutoRespawnActivation=$true
 }
 if($GrenadeAuthoringDirectory -and !$GrenadeWidget -and !$GrenadeActivation){throw 'Grenade asset proof requires its dedicated fixture flag'}
-if($PawnWireIdentity -and ((!$GrenadeWidget -and !$GrenadeActivationNetwork -and !$GrenadeDetonateNetwork -and !$WeaponAbilityFireNetwork -and !$NetShooterNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires a two-owner gameplay lane and reviewed build proof'}
+if($PawnWireIdentity -and ((!$NotificationRelaysNetwork -and !$GrenadeWidget -and !$GrenadeActivationNetwork -and !$GrenadeDetonateNetwork -and !$WeaponAbilityFireNetwork -and !$NetShooterNetwork) -or !$Network -or !$IdentityBuildDirectory)){throw 'Native wire identity requires a two-owner gameplay lane and reviewed build proof'}
 if($IdentityBuildDirectory -and !$PawnWireIdentity){throw 'Identity build proof requires explicit wire-identity acceptance'}
 if($LazyPawnLifecycle -and (!$PawnWireIdentity -or $MeleeCharacterStartupProfile)){throw 'Lazy lifecycle requires native wire proof and no preloaded Character treatment'}
 if($JoinResetStress -and !$LazyPawnLifecycle){throw 'Native join Reset stress requires lazy lifecycle plus wire proof'}
@@ -994,6 +1001,17 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($NotificationRelaysNetwork){
+        foreach($spec in @(@{root=$RelayEliminationAuthoringDirectory;kind='eliminationfeedrelay';nodes=30;transport=8;preserved='original_full_cdo_exact_async_factory_authority_cosmetic_rpc_and_business_graphs_preserved'},@{root=$RelayAccoladeAuthoringDirectory;kind='accoladerelay';nodes=15;transport=7;preserved='original_full_cdo_partial_async_factory_sequence_authority_cosmetic_rpc_and_business_graphs_preserved'})){
+            $relayRoot=[IO.Path]::GetFullPath($spec.root)
+            if(!$relayRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned network relay authoring proof required'}
+            $summaryPath=Join-Path $relayRoot 'summary.json';$proofPath=Join-Path $relayRoot 'assets.json';$author=Get-Content -LiteralPath $summaryPath -Raw|ConvertFrom-Json -Depth 80;$proof=Get-Content -LiteralPath $proofPath -Raw|ConvertFrom-Json -Depth 80
+            if($author.status -ne 'passed' -or $proof.status -ne 'passed' -or $author.kind -ne $spec.kind -or $proof.kind -ne $spec.kind -or !$proof.($spec.preserved) -or $proof.original_graph_nodes -ne $spec.nodes -or $proof.transport_nodes -ne $spec.transport -or $proof.interface_nodes -ne 5 -or $proof.new_business_nodes -ne 0 -or $proof.actual_registered_profile_method_counts.Python -ne 1 -or $proof.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or @($author.assets).Count -ne 2 -or !$proof.fixture.stage_only){throw 'Current native relay listener/RPC/typed transport proof incomplete'}
+            foreach($asset in $author.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Network relay asset changed'};Add-JumpInput $path}}
+            if((Get-FileHash -LiteralPath $proof.fixture.asset).Hash -ne $proof.fixture.sha256){throw 'Network relay typed observer fixture changed'}
+            Add-JumpInput $proof.fixture.asset;Add-JumpInput $summaryPath;Add-JumpInput $proofPath
+        }
     }
     if($AccoladeRelay){
         $relayRoot=[IO.Path]::GetFullPath($AccoladeRelayAuthoringDirectory)
@@ -2156,6 +2174,7 @@ try{
             if($GrenadeFlightNetwork){$resultFlag='-UEPGrenadeFlightNetworkResult'}
             if($WeaponAbilityFireNetwork){$resultFlag='-UEPWeaponAbilityFireNetworkResult'}
             if($WeaponFireCueNetwork){$resultFlag='-UEPWeaponFireCueNetworkResult'}
+            if($NotificationRelaysNetwork){$resultFlag='-UEPNotificationRelaysNetworkResult'}
             if($NetShooterNetwork){$resultFlag='-UEPNetShooterNetworkResult'}
             if($NetShooterImpactNetwork){$resultFlag='-UEPNetShooterImpactNetworkResult'}
             if($DashRPCInput){$resultFlag='-UEPDashRPCInputNetworkResult'}
@@ -2240,6 +2259,7 @@ try{
             if($GrenadeFlightNetwork){$pass=if($peer -eq 'server'){'UEP_GRENADE_FLIGHT_NETWORK_PASSED'}else{'UEP_GRENADE_FLIGHT_NETWORK_SHUTDOWN_PASSED'}}
             if($WeaponAbilityFireNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_FIRE_NETWORK_PASSED'}else{'UEP_WEAPON_FIRE_NETWORK_SHUTDOWN_PASSED'}}
             if($WeaponFireCueNetwork){$pass=if($peer -eq 'server'){'UEP_WEAPON_CUE_NETWORK_PASSED'}else{'UEP_WEAPON_CUE_NETWORK_SHUTDOWN_PASSED'}}
+            if($NotificationRelaysNetwork){$pass=if($peer -eq 'server'){'UEP_NOTIFICATION_RELAYS_NETWORK_PASSED'}else{'UEP_NOTIFICATION_RELAYS_SHUTDOWN_PASSED'}}
             if($NetShooterNetwork){$pass=if($peer -eq 'server'){'UEP_NETSHOOTER_NETWORK_PASSED'}else{'UEP_NETSHOOTER_NETWORK_SHUTDOWN_PASSED'}}
             if($NetShooterImpactNetwork){
                 $pass=if($peer -eq 'server'){'UEP_NETSHOOTER_IMPACT_PASSED'}else{'UEP_NETSHOOTER_IMPACT_SHUTDOWN_PASSED'}
@@ -2305,6 +2325,7 @@ try{
         if($GrenadeFlightNetwork){$module='uep_lyra_weapons.grenade_flight_network_contract'}
         if($WeaponAbilityFireNetwork){$module='uep_lyra_weapons.weapon_ability_fire_network_contract'}
         if($WeaponFireCueNetwork){$module='uep_lyra_weapons.weapon_fire_cue_network_contract'}
+        if($NotificationRelaysNetwork){$module='uep_lyra_hud.notification_relays_network_contract'}
         if($WeaponAudioNetwork){$module='uep_lyra_weapons.weapon_audio_network_contract'}
         if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
         if($NetShooterImpactNetwork){$module='uep_lyra_weapons.netshooter_impact_network_contract'}
