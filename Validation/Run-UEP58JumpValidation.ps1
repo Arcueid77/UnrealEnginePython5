@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerInteract,[string]$ExplorerInteractAuthoringDirectory,
       [switch]$ExplorerItemList,[string]$ExplorerItemListAuthoringDirectory,[string]$ExplorerItemListToastBaseline,
       [switch]$ExplorerToast,[string]$ExplorerToastAuthoringDirectory,
       [switch]$ExplorerGrid,[string]$ExplorerGridAuthoringDirectory,
@@ -132,6 +133,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerInteract){
+    $interactAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerInteract','ExplorerInteractAuthoringDirectory','ThreadedLoading')
+    if(!$ExplorerInteractAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $interactAllowed}).Count){throw 'Explorer Interact requires exact native task/query and target event proofs'}
+    $AutoRespawnActivation=$true
+}
+if($ExplorerInteractAuthoringDirectory -and !$ExplorerInteract){throw 'Explorer Interact proof requires explicit native fixture'}
 if($ExplorerItemList){
     $itemListAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerItemList','ExplorerItemListAuthoringDirectory','ExplorerItemListToastBaseline','ThreadedLoading')
     if(!$ExplorerItemListAuthoringDirectory -or !$ExplorerItemListToastBaseline -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $itemListAllowed}).Count){throw 'Explorer item list requires exact native factory/listener and accepted toast proofs'}
@@ -1364,6 +1371,17 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerInteract){
+        $interactRoot=[IO.Path]::GetFullPath($ExplorerInteractAuthoringDirectory)
+        if(!$interactRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer Interact authoring proof required'}
+        $interactSummary=Join-Path $interactRoot 'summary.json';$interactProofPath=Join-Path $interactRoot 'assets.json';$interactAuthor=Get-Content -LiteralPath $interactSummary -Raw|ConvertFrom-Json -Depth 100;$interactProof=Get-Content -LiteralPath $interactProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($interactAuthor.status -ne 'passed' -or $interactProof.status -ne 'passed' -or $interactProof.kind -ne 'explorerinteract' -or @($interactAuthor.assets).Count -ne 2 -or !$interactProof.original_cdo_public_abis_node_guids_graphs_query_tasks_and_print_payloads_preserved -or !$interactProof.original_native_scan_range_200_rate_point_one_debug_profile_and_press_wait_defaults_preserved -or !$interactProof.unused_native_release_node_retained_unconnected -or $interactProof.method_counts.Python -ne 6 -or $interactProof.method_counts.BlueprintFallback -ne 6){throw 'Complete original Explorer Interact preservation proof required'}
+        foreach($asset in $interactAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer Interact asset changed'};Add-JumpInput $path}}
+        foreach($fixture in $interactProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256 -or !$fixture.stage_only){throw 'Explorer collectable/event witness changed'};Add-JumpInput $fixture.asset}
+        foreach($file in @($interactSummary,$interactProofPath)){Add-JumpInput $file}
+        foreach($relative in @('Source/LyraGame/Interaction/Abilities/LyraGameplayAbility_Interact.cpp','Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.cpp','Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.h','Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets.cpp','Source/LyraGame/Interaction/Tasks/AbilityTask_GrantNearbyInteraction.cpp','Source/LyraGame/AbilitySystem/LyraAbilitySystemComponent.cpp','Plugins/GameFeatures/ShooterCore/Source/ShooterCoreRuntime/Private/LyraWorldCollectable.cpp','Plugins/GameFeatures/ShooterCore/Binaries/Win64/UnrealEditor-ShooterCoreRuntime.dll')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/Tasks/AbilityTask_WaitInputPress.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/AbilitySystemComponent_Abilities.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/GameplayAbility.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ExplorerItemList){
         $itemListRoot=[IO.Path]::GetFullPath($ExplorerItemListAuthoringDirectory);$toastRoot=[IO.Path]::GetFullPath($ExplorerItemListToastBaseline)
@@ -2955,6 +2973,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerInteract){$flag='-UEPExplorerInteractResult';$marker='UEP_EXPLORER_INTERACT'}
     if($ExplorerItemList){$flag='-UEPExplorerItemListResult';$marker='UEP_EXPLORER_ITEM_LIST'}
     if($ExplorerToast){$flag='-UEPExplorerToastResult';$marker='UEP_EXPLORER_TOAST'}
     if($ExplorerGrid){$flag='-UEPExplorerGridResult';$marker='UEP_EXPLORER_GRID'}
@@ -3049,6 +3068,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerInteract){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerItemList){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerToast){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerGrid){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
@@ -3437,6 +3457,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerInteract){$module='uep_lyra_abilities.explorer_interact_contract'}
         if($ExplorerItemList){$module='uep_lyra_hud.explorer_item_list_contract'}
         if($ExplorerToast){$module='uep_lyra_hud.explorer_toast_contract'}
         if($ExplorerGrid){$module='uep_lyra_hud.explorer_grid_contract'}
