@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExperienceList,[string]$ExperienceListAuthoringDirectory,
       [switch]$MenuTravel,[string]$MenuTravelAuthoringDirectory,[string]$MenuTravelFrontendDirectory,[string]$MenuTravelStartupDirectory,[ValidateSet('Python','BlueprintFallback')][string]$MenuTravelProfile='Python',
       [switch]$FrontendLogout,[string]$FrontendLogoutMenuDirectory,[string]$FrontendLogoutStartupDirectory,
       [switch]$StartupLogin,[string]$StartupLoginAuthoringDirectory,
@@ -109,6 +110,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExperienceList){
+    $experienceListAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceList','ExperienceListAuthoringDirectory','ThreadedLoading')
+    if(!$ExperienceListAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $experienceListAllowed}).Count){throw 'Experience list requires standalone native catalog/filter/cache/text/focus/caller lifecycle and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ExperienceListAuthoringDirectory -and !$ExperienceList){throw 'Experience list proof requires its explicit native fixture'}
+
 if($MenuTravel){
     $menuTravelAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuTravel','MenuTravelAuthoringDirectory','MenuTravelFrontendDirectory','MenuTravelStartupDirectory','MenuTravelProfile','ThreadedLoading')
     if(!$MenuTravelAuthoringDirectory -or !$MenuTravelFrontendDirectory -or !$MenuTravelStartupDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuTravelAllowed}).Count){throw 'Menu travel requires standalone native confirmed soft-map travel and three current asset families'}
@@ -1198,6 +1206,16 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ExperienceList){
+        $experienceListRoot=[IO.Path]::GetFullPath($ExperienceListAuthoringDirectory)
+        if(!$experienceListRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned experience list revision required'}
+        $experienceListSummary=Join-Path $experienceListRoot 'summary.json';$experienceListProofPath=Join-Path $experienceListRoot 'assets.json';$experienceListAuthor=Get-Content -LiteralPath $experienceListSummary -Raw|ConvertFrom-Json -Depth 80;$experienceListProof=Get-Content -LiteralPath $experienceListProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($experienceListAuthor.status -ne 'passed' -or $experienceListProof.status -ne 'passed' -or $experienceListAuthor.kind -ne 'experiencelist' -or $experienceListProof.kind -ne 'experiencelist' -or !$experienceListProof.original_cdos_trees_public_signatures_guids_and_graph_partitions_preserved -or !$experienceListProof.original_native_text_focus_reply_delegates_and_async_load_payloads_preserved -or !$experienceListProof.original_default_prepend_filter_and_accumulating_widget_cache_semantics_preserved -or @($experienceListAuthor.assets).Count -ne 4){throw 'Current native experience list/entry opaque IO and source cache proof required'}
+        foreach($asset in $experienceListAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Experience list/entry asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $experienceListSummary;Add-JumpInput $experienceListProofPath
+        foreach($relative in @('Content/UI/Menu/Experiences/W_ExperienceSelectionScreen.uasset','Content/UI/Menu/W_LyraExperienceTileButton.uasset','Content/UI/Menu/Experiences/UIExperienceMacros.uasset','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.cpp','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.h','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($MenuTravel){
         foreach($family in @(@{directory=$MenuTravelAuthoringDirectory;kind='menulayers';count=8},@{directory=$MenuTravelFrontendDirectory;kind='frontendmenu';count=2},@{directory=$MenuTravelStartupDirectory;kind='startuplogin';count=4})){
             $familyRoot=[IO.Path]::GetFullPath($family.directory)
@@ -2501,6 +2519,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExperienceList){$flag='-UEPExperienceListResult';$marker='UEP_EXPERIENCE_LIST'}
     if($MenuTravel){$flag='-UEPMenuTravelResult';$marker='UEP_MENU_TRAVEL'}
     if($FrontendLogout){$flag='-UEPFrontendLogoutResult';$marker='UEP_FRONTEND_LOGOUT'}
     if($StartupLogin){$flag='-UEPStartupLoginResult';$marker='UEP_STARTUP_LOGIN'}
@@ -2935,6 +2954,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExperienceList){$module='uep_lyra_hud.experience_list_contract'}
         if($MenuTravel){$module='uep_lyra_hud.menu_travel_contract'}
         if($FrontendLogout){$module='uep_lyra_hud.frontend_logout_contract'}
         if($StartupLogin){$module='uep_lyra_hud.startup_login_contract'}
