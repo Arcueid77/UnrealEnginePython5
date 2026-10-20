@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExperienceTile,[string]$ExperienceTileAuthoringDirectory,
       [switch]$MenuButtons,[string]$MenuButtonsAuthoringDirectory,
       [switch]$FoundationButtons,[string]$FoundationButtonsAuthoringDirectory,
       [switch]$MacroClosure,[string]$MacroClosureAuthoringDirectory,
@@ -97,6 +98,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExperienceTile){
+    $experienceAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceTile','ExperienceTileAuthoringDirectory','ThreadedLoading')
+    if(!$ExperienceTileAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $experienceAllowed}).Count){throw 'Experience tile requires its standalone UMG/material/audio/native-latent lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($ExperienceTileAuthoringDirectory -and !$ExperienceTile){throw 'Experience tile proof requires its explicit native fixture'}
+
 if($MenuButtons){
     $menuAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','MenuButtons','MenuButtonsAuthoringDirectory','ThreadedLoading')
     if(!$MenuButtonsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $menuAllowed}).Count){throw 'Menu buttons require their standalone native UMG/material/latent lane and current family proof'}
@@ -1102,6 +1110,17 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ExperienceTile){
+        $experienceRoot=[IO.Path]::GetFullPath($ExperienceTileAuthoringDirectory)
+        if(!$experienceRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned experience tile revision required'}
+        $experienceSummary=Join-Path $experienceRoot 'summary.json';$experienceProofPath=Join-Path $experienceRoot 'assets.json';$experienceAuthor=Get-Content -LiteralPath $experienceSummary -Raw|ConvertFrom-Json -Depth 80;$experienceProof=Get-Content -LiteralPath $experienceProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($experienceAuthor.status -ne 'passed' -or $experienceProof.status -ne 'passed' -or $experienceAuthor.kind -ne 'experiencetile' -or $experienceProof.kind -ne 'experiencetile' -or !$experienceProof.original_cdos_widget_trees_animations_signatures_guids_and_graphs_preserved -or !$experienceProof.three_ftext_setter_graph_remains_entirely_native -or !$experienceProof.native_ftext_transport_preserved -or !$experienceProof.native_latent_play_time_range_and_finished_retained -or !$experienceProof.source_click_sound_return_unwired_and_game_instance_clear_preserved -or !$experienceProof.only_border_disable_parameter_preserved -or @($experienceAuthor.assets).Count -ne 2){throw 'Current experience tile source-asymmetry/native-latent proof required'}
+        foreach($asset in $experienceAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Experience tile asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $experienceProof.fixture.asset).Hash -ne $experienceProof.fixture.sha256){throw 'Native experience FText probe changed'};Add-JumpInput $experienceProof.fixture.asset
+        Add-JumpInput $experienceSummary;Add-JumpInput $experienceProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        foreach($relative in @('Content/B_LyraGameInstance.uasset','Content/UI/Menu/Art/T_UI_TileArt_Quickplay.uasset','Plugins/GameFeatures/ShooterCore/Content/UserInterface/ScoreBoard/W_SB_TeamStat.uasset','Content/Audio/Sounds/UI/sfx_UI_Lobby_Select_nl_meta_Preset.uasset','Content/Audio/Sounds/UI/sfx_UI_Lobby_Highlight_nl_meta_Preset.uasset','Source/LyraGame/UI/Foundation/LyraButtonBase.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($MenuButtons){
         $menuRoot=[IO.Path]::GetFullPath($MenuButtonsAuthoringDirectory)
         if(!$menuRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned menu button revision required'}
@@ -2258,6 +2277,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExperienceTile){$flag='-UEPExperienceTileResult';$marker='UEP_EXPERIENCE_TILE'}
     if($MenuButtons){$flag='-UEPMenuButtonsResult';$marker='UEP_MENU_BUTTONS'}
     if($FoundationButtons){$flag='-UEPFoundationButtonsResult';$marker='UEP_FOUNDATION_BUTTONS'}
     if($MacroClosure){$flag='-UEPMacroClosureResult';$marker='UEP_MACRO_CLOSURE'}
@@ -2317,6 +2337,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExperienceTile){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MenuButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($FoundationButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2672,6 +2693,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExperienceTile){$module='uep_lyra_hud.experience_tile_contract'}
         if($MenuButtons){$module='uep_lyra_hud.menu_buttons_contract'}
         if($FoundationButtons){$module='uep_lyra_hud.foundation_buttons_contract'}
         if($MacroClosure){$module='uep_lyra_weapons.macro_closure_contract'}
@@ -2731,6 +2753,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($ExperienceTile -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Experience tile requires the native offline audio renderer'}
         if($MenuButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Menu UI sound backend requires the native offline renderer'}
         if($FoundationButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Button UI sound backend requires the native offline renderer'}
         if($EliminationScore -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'TDM score/countdown audio requires the native offline renderer'}
