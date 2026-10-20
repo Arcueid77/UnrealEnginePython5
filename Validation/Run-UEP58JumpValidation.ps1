@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ShooterEQS,[string]$ShooterEQSAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterEQSProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterEQSMode='tdm',
       [switch]$ShooterAI,[string]$ShooterAIAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ShooterAIProfile='Python',[ValidateSet('tdm','cp')][string]$ShooterAIMode='tdm',
       [switch]$GamePhases,[string]$GamePhasesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$GamePhasesProfile='Python',
       [switch]$EliminationScore,[string]$EliminationScoreAuthoringDirectory,
@@ -93,6 +94,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ShooterEQS){
+    $eqsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ShooterEQS','ShooterEQSAuthoringDirectory','ShooterEQSProfile','ShooterEQSMode','ThreadedLoading')
+    if(!$ShooterEQSAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $eqsAllowed}).Count){throw 'Shooter EQS requires its standalone live-query lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if(($ShooterEQSAuthoringDirectory -or $PSBoundParameters.ContainsKey('ShooterEQSProfile') -or $PSBoundParameters.ContainsKey('ShooterEQSMode')) -and !$ShooterEQS){throw 'EQS proof/Profile/mode requires its explicit native fixture'}
+
 if($ShooterAI){
     $aiAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ShooterAI','ShooterAIAuthoringDirectory','ShooterAIProfile','ShooterAIMode','ThreadedLoading')
     if(!$ShooterAIAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $aiAllowed}).Count){throw 'Shooter AI requires its standalone native BT/GAS/controller lane and current family proof'}
@@ -1070,6 +1078,18 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ShooterEQS){
+        $eqsRoot=[IO.Path]::GetFullPath($ShooterEQSAuthoringDirectory)
+        if(!$eqsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned shooter EQS revision required'}
+        $eqsSummary=Join-Path $eqsRoot 'summary.json';$eqsProofPath=Join-Path $eqsRoot 'assets.json';$eqsAuthor=Get-Content -LiteralPath $eqsSummary -Raw|ConvertFrom-Json -Depth 80;$eqsProof=Get-Content -LiteralPath $eqsProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($eqsAuthor.status -ne 'passed' -or $eqsProof.status -ne 'passed' -or $eqsAuthor.kind -ne 'shootereqs' -or $eqsProof.kind -ne 'shootereqs' -or !$eqsProof.original_cdos_return_types_local_scopes_node_guids_world_queries_team_and_native_generator_graphs_preserved -or !$eqsProof.absent_target_leaves_location_out_parameter_unwritten -or $eqsProof.native_eqs_scheduler_replaced -or @($eqsAuthor.assets).Count -ne 8){throw 'Current shooter EQS context/return/native-generator proof required'}
+        foreach($asset in $eqsAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'EQS asset changed'};Add-JumpInput $path}}
+        foreach($fixture in $eqsProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256){throw 'EQS query fixture changed'};Add-JumpInput $fixture.asset}
+        Add-JumpInput $eqsSummary;Add-JumpInput $eqsProofPath
+        foreach($relative in @('Bot/BT/BT_Lyra_Shooter_Bot','ControlPoint/AI/BT_Lyra_Shooter_ControlPoint_Bot','Blueprint/B_WeaponSpawner','Blueprint/B_AbilitySpawner','Blueprint/B_ControlPointVolume')){Add-JumpInput (Join-Path $stage ('Plugins/GameFeatures/ShooterCore/Content/'+$relative+'.uasset'))}
+        foreach($relative in @('Engine/Source/Runtime/AIModule/Private/EnvironmentQuery/Generators/EnvQueryGenerator_BlueprintBase.cpp','Engine/Source/Runtime/AIModule/Private/EnvironmentQuery/Contexts/EnvQueryContext_BlueprintBase.cpp','Engine/Source/Runtime/AIModule/Private/EnvironmentQuery/EnvQueryManager.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
+    }
+
     if($ShooterAI){
         $aiRoot=[IO.Path]::GetFullPath($ShooterAIAuthoringDirectory)
         if(!$aiRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned shooter AI revision required'}
@@ -2174,6 +2194,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ShooterEQS){$flag='-UEPShooterEQSResult';$marker='UEP_SHOOTER_EQS'}
     if($ShooterAI){$flag='-UEPShooterAIResult';$marker='UEP_SHOOTER_AI'}
     if($GamePhases){$flag='-UEPGamePhasesResult';$marker='UEP_GAME_PHASES'}
     if($EliminationScore){$flag='-UEPEliminationScoreResult';$marker='UEP_ELIMINATION_SCORE'}
@@ -2226,6 +2247,7 @@ try{
     if($WeaponAudioEffect){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($SmallBurstCues){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($AccoladeWidgets){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
+    if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
     if($EliminationScore){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2581,6 +2603,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ShooterEQS){$module='uep_lyra_world.shooter_eqs_contract'}
         if($ShooterAI){$module='uep_lyra_world.shooter_ai_contract'}
         if($GamePhases){$module='uep_lyra_weapons.game_phases_contract'}
         if($EliminationScore){$module='uep_lyra_hud.elimination_score_contract'}
