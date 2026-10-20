@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$AccoladeRelay,[string]$AccoladeRelayAuthoringDirectory,
       [switch]$EliminationFeedRelay,[string]$EliminationFeedRelayAuthoringDirectory,
       [switch]$ControlPointFeedback,[string]$ControlPointFeedbackAuthoringDirectory,
       [switch]$ControlPointState,[string]$ControlPointStateAuthoringDirectory,
@@ -82,6 +83,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($AccoladeRelay){
+    $relayAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','AccoladeRelay','AccoladeRelayAuthoringDirectory','ThreadedLoading')
+    if(!$AccoladeRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $relayAllowed}).Count){throw 'Accolade relay requires its standalone exact-message/typed-payload/lifetime lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($AccoladeRelayAuthoringDirectory -and !$AccoladeRelay){throw 'Accolade relay proof requires its explicit native fixture'}
 if($EliminationFeedRelay){
     $relayAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EliminationFeedRelay','EliminationFeedRelayAuthoringDirectory','ThreadedLoading')
     if(!$EliminationFeedRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $relayAllowed}).Count){throw 'Elimination feed relay requires its standalone exact-message/typed-payload/lifetime lane and current proof'}
@@ -987,6 +994,20 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($AccoladeRelay){
+        $relayRoot=[IO.Path]::GetFullPath($AccoladeRelayAuthoringDirectory)
+        if(!$relayRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned elimination feed relay revision required'}
+        $relaySummaryPath=Join-Path $relayRoot 'summary.json';$relayProofPath=Join-Path $relayRoot 'assets.json'
+        $relayAuthor=Get-Content -LiteralPath $relaySummaryPath -Raw|ConvertFrom-Json -Depth 80;$relayProof=Get-Content -LiteralPath $relayProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($relayAuthor.status -ne 'passed' -or $relayProof.status -ne 'passed' -or $relayAuthor.kind -ne 'accoladerelay' -or $relayProof.kind -ne 'accoladerelay' -or
+            !$relayProof.original_full_cdo_partial_async_factory_sequence_authority_cosmetic_rpc_and_business_graphs_preserved -or !$relayProof.native_notification_struct_and_broadcast_custom_thunk -or
+            $relayProof.original_graph_nodes -ne 15 -or $relayProof.transport_nodes -ne 7 -or $relayProof.interface_nodes -ne 5 -or $relayProof.new_business_nodes -ne 0 -or
+            $relayProof.actual_registered_profile_method_counts.Python -ne 1 -or $relayProof.actual_registered_profile_method_counts.BlueprintFallback -ne 1 -or @($relayAuthor.assets).Count -ne 2 -or !$relayProof.fixture.stage_only){throw 'Current relay exact subscription/native RPC/typed payload proof incomplete'}
+        foreach($asset in $relayAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Accolade relay asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $relayProof.fixture.asset).Hash -ne $relayProof.fixture.sha256){throw 'Typed native feed observer fixture changed'}
+        foreach($dependency in $relayProof.dependency_hashes.PSObject.Properties){$path=Join-Path $stage $dependency.Name;if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.Value){throw 'Accepted elimination relay dependency changed'};Add-JumpInput $path}
+        Add-JumpInput $relayProof.fixture.asset;Add-JumpInput $relaySummaryPath;Add-JumpInput $relayProofPath
     }
     if($EliminationFeedRelay){
         $relayRoot=[IO.Path]::GetFullPath($EliminationFeedRelayAuthoringDirectory)
@@ -1970,6 +1991,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($AccoladeRelay){$flag='-UEPAccoladeRelayResult';$marker='UEP_ACCOLADE_RELAY'}
     if($EliminationFeedRelay){$flag='-UEPEliminationFeedRelayResult';$marker='UEP_ELIMINATION_FEED_RELAY'}
     if($ControlPointFeedback){$flag='-UEPControlPointFeedbackResult';$marker='UEP_CONTROL_POINT_FEEDBACK'}
     if($ControlPointState){$flag='-UEPControlPointStateResult';$marker='UEP_CONTROL_POINT_STATE'}
@@ -2357,6 +2379,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($AccoladeRelay){$module='uep_lyra_hud.accolade_relay_contract'}
         if($EliminationFeedRelay){$module='uep_lyra_hud.elimination_feed_relay_contract'}
         if($ControlPointFeedback){$module='uep_lyra_world.control_point_feedback_contract'}
         if($ControlPointState){$module='uep_lyra_world.control_point_state_contract'}
