@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExperienceScreen,[string]$ExperienceScreenAuthoringDirectory,[string]$ExperienceScreenListDirectory,[ValidateSet('life','quick')][string]$ExperienceScreenMode='life',[ValidateSet('Python','BlueprintFallback')][string]$ExperienceScreenProfile='Python',
       [switch]$ExperienceList,[string]$ExperienceListAuthoringDirectory,
       [switch]$MenuTravel,[string]$MenuTravelAuthoringDirectory,[string]$MenuTravelFrontendDirectory,[string]$MenuTravelStartupDirectory,[ValidateSet('Python','BlueprintFallback')][string]$MenuTravelProfile='Python',
       [switch]$FrontendLogout,[string]$FrontendLogoutMenuDirectory,[string]$FrontendLogoutStartupDirectory,
@@ -110,6 +111,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExperienceScreen){
+    $experienceScreenAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceScreen','ExperienceScreenAuthoringDirectory','ExperienceScreenListDirectory','ExperienceScreenMode','ExperienceScreenProfile','ThreadedLoading')
+    if(!$ExperienceScreenAuthoringDirectory -or !$ExperienceScreenListDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $experienceScreenAllowed}).Count -or ($ExperienceScreenMode -eq 'life' -and $PSBoundParameters.ContainsKey('ExperienceScreenProfile'))){throw 'Experience screen requires standalone native lifecycle or NULL quickplay and current selection/list proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($ExperienceScreenAuthoringDirectory -or $ExperienceScreenListDirectory -or $PSBoundParameters.ContainsKey('ExperienceScreenMode') -or $PSBoundParameters.ContainsKey('ExperienceScreenProfile')) -and !$ExperienceScreen){throw 'Experience screen proof/mode/profile requires its explicit native fixture'}
+
 if($ExperienceList){
     $experienceListAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExperienceList','ExperienceListAuthoringDirectory','ThreadedLoading')
     if(!$ExperienceListAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $experienceListAllowed}).Count){throw 'Experience list requires standalone native catalog/filter/cache/text/focus/caller lifecycle and current proof'}
@@ -1206,6 +1214,20 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($ExperienceScreen){
+        foreach($family in @(@{directory=$ExperienceScreenAuthoringDirectory;kind='experiencescreen';count=2},@{directory=$ExperienceScreenListDirectory;kind='experiencelist';count=4})){
+            $familyRoot=[IO.Path]::GetFullPath($family.directory)
+            if(!$familyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned selection/list revisions required'}
+            $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
+            if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current selection/list authoring proof required'}
+            if($family.kind -eq 'experiencescreen' -and (!$familyProof.original_async_preparation_macro_completed_before_request_and_submit_preserved -or !$familyProof.shared_macro_definition_unchanged -or $familyProof.method_counts.Python -ne 10 -or $familyProof.method_counts.BlueprintFallback -ne 10)){throw 'Native selection async preparation and complete Profile proof required'}
+            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Selection/list asset changed'};Add-JumpInput $path}}
+            Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
+        }
+        foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Content/UI/Menu/Experiences/UIExperienceMacros.uasset','Content/UI/Menu/Experiences/W_HostSessionScreen.uasset','Content/UI/Menu/Experiences/W_SessionBrowserScreen.uasset','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.cpp','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.h','Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')){Add-JumpInput (Join-Path $stage $relative)}
+    }
+
     if($ExperienceList){
         $experienceListRoot=[IO.Path]::GetFullPath($ExperienceListAuthoringDirectory)
         if(!$experienceListRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned experience list revision required'}
@@ -2519,6 +2541,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExperienceScreen){$flag='-UEPExperienceScreenResult';$marker='UEP_EXPERIENCE_SCREEN'}
     if($ExperienceList){$flag='-UEPExperienceListResult';$marker='UEP_EXPERIENCE_LIST'}
     if($MenuTravel){$flag='-UEPMenuTravelResult';$marker='UEP_MENU_TRAVEL'}
     if($FrontendLogout){$flag='-UEPFrontendLogoutResult';$marker='UEP_FRONTEND_LOGOUT'}
@@ -2591,6 +2614,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExperienceScreen){$arguments+=@("-UEPExperienceScreenMode=$ExperienceScreenMode","-UEPExperienceScreenProfile=$ExperienceScreenProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($MenuTravel){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=3?UEPMenuTravelSentinel=before';$arguments+=@("-UEPMenuTravelProfile=$MenuTravelProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($FrontendLogout){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($StartupLogin){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
@@ -2954,6 +2978,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExperienceScreen){$module='uep_lyra_hud.experience_screen_contract'}
         if($ExperienceList){$module='uep_lyra_hud.experience_list_contract'}
         if($MenuTravel){$module='uep_lyra_hud.menu_travel_contract'}
         if($FrontendLogout){$module='uep_lyra_hud.frontend_logout_contract'}
