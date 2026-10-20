@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$EditorExperiences,[string]$EditorExperiencesAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$EditorExperiencesProfile='Python',
       [switch]$LobbyBackground,[string]$LobbyBackgroundAuthoringDirectory,
       [switch]$ReplayRuntime,[string]$ReplayRuntimeAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayRuntimeProfile='Python',
       [switch]$ReplayBrowser,[string]$ReplayBrowserAuthoringDirectory,[ValidateSet('Python','BlueprintFallback')][string]$ReplayBrowserProfile='Python',
@@ -119,6 +120,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($EditorExperiences){
+    $editorExperiencesAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EditorExperiences','EditorExperiencesAuthoringDirectory','EditorExperiencesProfile','ThreadedLoading')
+    if(!$EditorExperiencesAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $editorExperiencesAllowed}).Count){throw 'Editor experiences requires native catalog/layout/exposed spawn/local overlap/offline travel and current proofs'}
+    $AutoRespawnActivation=$true
+}
+if(($EditorExperiencesAuthoringDirectory -or $PSBoundParameters.ContainsKey('EditorExperiencesProfile')) -and !$EditorExperiences){throw 'Editor experience proof/Profile requires its explicit native fixture'}
 if($LobbyBackground){
     $lobbyBackgroundAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','LobbyBackground','LobbyBackgroundAuthoringDirectory','ThreadedLoading')
     if(!$LobbyBackgroundAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $lobbyBackgroundAllowed}).Count){throw 'Lobby background requires standalone native catalog/level streaming/task delay and current asset proof'}
@@ -1273,6 +1280,16 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($EditorExperiences){
+        $editorRoot=[IO.Path]::GetFullPath($EditorExperiencesAuthoringDirectory)
+        if(!$editorRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned default-editor experience revision required'}
+        $editorSummaryPath=Join-Path $editorRoot 'summary.json';$editorProofPath=Join-Path $editorRoot 'assets.json';$editorAuthor=Get-Content -LiteralPath $editorSummaryPath -Raw|ConvertFrom-Json -Depth 80;$editorProof=Get-Content -LiteralPath $editorProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($editorAuthor.status -ne 'passed' -or $editorProof.status -ne 'passed' -or $editorAuthor.kind -ne 'editorexperiences' -or $editorProof.kind -ne 'editorexperiences' -or @($editorAuthor.assets).Count -ne 4 -or !$editorProof.original_native_empty_bundle_primary_async_and_expose_before_beginplay_spawn_preserved -or !$editorProof.original_additional_prepend_hidden_showall_and_accumulating_portal_cache_semantics_preserved -or !$editorProof.original_native_widget_delay_color_spinner_and_offline_request_payload_preserved -or !$editorProof.original_local_player_overlap_and_current_experience_afterpush_preserved -or $editorProof.widgets.list.method_counts.Python -ne 2 -or $editorProof.widgets.list.method_counts.BlueprintFallback -ne 2 -or $editorProof.widgets.portal.method_counts.Python -ne 5 -or $editorProof.widgets.portal.method_counts.BlueprintFallback -ne 5){throw 'Complete native default-editor actor and Profile proof required'}
+        foreach($asset in $editorAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Default-editor experience asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $editorSummaryPath;Add-JumpInput $editorProofPath
+        foreach($relative in @('Content/UI/Menu/Experiences/W_ExperienceTile.uasset','Content/UI/Menu/Experiences/W_NonInteractiveSpinner.uasset','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.cpp','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.h','Plugins/CommonUser/Source/CommonUser/Private/CommonSessionSubsystem.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Source/Runtime/UMG/Public/Components/WidgetComponent.h','Engine/Source/Runtime/Engine/Classes/Kismet/GameplayStatics.h','Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($LobbyBackground){
         $lobbyRoot=[IO.Path]::GetFullPath($LobbyBackgroundAuthoringDirectory)
@@ -2698,6 +2715,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($EditorExperiences){$flag='-UEPEditorExperienceResult';$marker='UEP_EDITOR_EXPERIENCE'}
     if($LobbyBackground){$flag='-UEPLobbyBackgroundResult';$marker='UEP_LOBBY_BACKGROUND'}
     if($ReplayBrowser){$flag='-UEPReplayBrowserResult';$marker='UEP_REPLAY_BROWSER'}
     if($ReplayRuntime){$flag='-UEPReplayRuntimeResult';$marker='UEP_REPLAY_RUNTIME'}
@@ -2779,6 +2797,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($EditorExperiences){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPEditorExperienceProfile=$EditorExperiencesProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($LobbyBackground){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments=@($arguments|Where-Object {$_ -ne '-NoLoadingScreen'})}
     if($ReplayBrowser){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPReplayBrowserProfile=$ReplayBrowserProfile","-UserDir=$output/User/")}
     if($ReplayRuntime){$arguments+=@("-UEPReplayRuntimeProfile=$ReplayRuntimeProfile")}
@@ -3154,6 +3173,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($EditorExperiences){$module='uep_lyra_hud.editor_experience_contract'}
         if($LobbyBackground){$module='uep_lyra_hud.lobby_background_contract'}
         if($ReplayBrowser){$module='uep_lyra_hud.replay_browser_contract'}
         if($ReplayRuntime){$module='uep_lyra_hud.replay_runtime_contract'}
