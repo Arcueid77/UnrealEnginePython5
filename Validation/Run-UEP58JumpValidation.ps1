@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerScreens,[string]$ExplorerScreensAuthoringDirectory,
       [switch]$ExplorerBehavior,[string]$ExplorerBehaviorAuthoringDirectory,[string]$ExplorerBehaviorHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerBehaviorProfile='Python',
       [switch]$ExplorerInput,[string]$ExplorerInputAuthoringDirectory,[string]$ExplorerInputHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerInputProfile='Python',
       [switch]$ExplorerBeginPlay,[string]$ExplorerBeginPlayAuthoringDirectory,[string]$ExplorerBeginPlayHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerBeginPlayProfile='Python',
@@ -128,6 +129,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerScreens){
+    $screenAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerScreens','ExplorerScreensAuthoringDirectory','ThreadedLoading')
+    if(!$ExplorerScreensAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $screenAllowed}).Count){throw 'Explorer screens require exact original widget/interface proofs'}
+    $AutoRespawnActivation=$true
+}
+if($ExplorerScreensAuthoringDirectory -and !$ExplorerScreens){throw 'Explorer screen proof requires explicit native fixture'}
 if($ExplorerBehavior){
     $behaviorAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerBehavior','ExplorerBehaviorAuthoringDirectory','ExplorerBehaviorHelperBaseline','ExplorerBehaviorProfile','ThreadedLoading')
     if(!$ExplorerBehaviorAuthoringDirectory -or !$ExplorerBehaviorHelperBaseline -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $behaviorAllowed}).Count){throw 'Explorer behavior requires exact localized constructor/native AI/Controller continuation proofs'}
@@ -1336,6 +1343,17 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerScreens){
+        $screenRoot=[IO.Path]::GetFullPath($ExplorerScreensAuthoringDirectory)
+        if(!$screenRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer screen authoring proof required'}
+        $screenSummary=Join-Path $screenRoot 'summary.json';$screenProofPath=Join-Path $screenRoot 'assets.json';$screenAuthor=Get-Content -LiteralPath $screenSummary -Raw|ConvertFrom-Json -Depth 100;$screenProof=Get-Content -LiteralPath $screenProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($screenAuthor.status -ne 'passed' -or $screenProof.status -ne 'passed' -or $screenProof.kind -ne 'explorerscreens' -or @($screenAuthor.assets).Count -ne 4 -or !$screenProof.original_cdos_widget_trees_animations_signatures_guids_and_all_graphs_preserved -or !$screenProof.only_five_native_mixin_interface_nodes_per_widget_added){throw 'Complete original Explorer screen preservation proof required'}
+        foreach($asset in $screenAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer screen asset changed'};Add-JumpInput $path}}
+        foreach($key in @('inventory','map')){if($screenProof.widgets.$key.method_counts.Python -ne 1 -or $screenProof.widgets.$key.method_counts.BlueprintFallback -ne 1){throw 'One original deactivation method per screen Profile required'}}
+        foreach($file in @($screenSummary,$screenProofPath)){Add-JumpInput $file}
+        foreach($relative in @('Plugins/CommonGame/Source/Private/CommonUIExtensions.cpp','Plugins/CommonGame/Source/Private/PrimaryGameLayout.cpp','Plugins/GameFeatures/ShooterExplorer/Content/UserInterface/W_InventoryGrid.uasset')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Plugins/Runtime/CommonUI/Source/CommonUI/Private/CommonActivatableWidget.cpp','Engine/Plugins/Runtime/CommonUI/Source/CommonUI/Private/Widgets/CommonActivatableWidgetContainer.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ExplorerBehavior){
         $behaviorRoot=[IO.Path]::GetFullPath($ExplorerBehaviorAuthoringDirectory);$helperRoot=[IO.Path]::GetFullPath($ExplorerBehaviorHelperBaseline)
@@ -2881,6 +2899,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerScreens){$flag='-UEPExplorerScreensResult';$marker='UEP_EXPLORER_SCREENS'}
     if($ExplorerBehavior){$flag='-UEPExplorerBehaviorResult';$marker='UEP_EXPLORER_BEHAVIOR'}
     if($ExplorerInput){$flag='-UEPExplorerInputResult';$marker='UEP_EXPLORER_INPUT'}
     if($ExplorerBeginPlay){$flag='-UEPExplorerBeginPlayResult';$marker='UEP_EXPLORER_BEGINPLAY'}
@@ -2971,6 +2990,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerScreens){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerBehavior){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerBehaviorProfile=$ExplorerBehaviorProfile")}
     if($ExplorerInput){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerInputProfile=$ExplorerInputProfile")}
     if($ExplorerBeginPlay){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerBeginPlayProfile=$ExplorerBeginPlayProfile")}
@@ -3355,6 +3375,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerScreens){$module='uep_lyra_hud.explorer_screens_contract'}
         if($ExplorerBehavior){$module='uep_lyra_characters.explorer_behavior_contract'}
         if($ExplorerInput){$module='uep_lyra_characters.explorer_input_contract'}
         if($ExplorerBeginPlay){$module='uep_lyra_characters.explorer_beginplay_contract'}
