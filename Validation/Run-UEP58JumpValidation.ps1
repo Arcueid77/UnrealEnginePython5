@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$SessionEntry,[string]$SessionEntryAuthoringDirectory,[string]$SessionEntryBrowserDirectory,[string]$SessionEntryHostDirectory,[string]$SessionEntrySelectionDirectory,[string]$SessionEntryListDirectory,[string]$SessionEntryButtonDirectory,
       [switch]$SessionBrowser,[string]$SessionBrowserAuthoringDirectory,[string]$SessionBrowserSelectionDirectory,[string]$SessionBrowserListDirectory,[string]$SessionBrowserButtonDirectory,
       [switch]$SessionButton,[string]$SessionButtonAuthoringDirectory,
       [switch]$HostSession,[string]$HostSessionAuthoringDirectory,[string]$HostSessionListDirectory,[ValidateSet('life','host')][string]$HostSessionMode='life',[ValidateSet('Python','BlueprintFallback')][string]$HostSessionProfile='Python',
@@ -114,6 +115,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SessionEntry){
+    $sessionEntryAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionEntry','SessionEntryAuthoringDirectory','SessionEntryBrowserDirectory','SessionEntryHostDirectory','SessionEntrySelectionDirectory','SessionEntryListDirectory','SessionEntryButtonDirectory','ServerPort','ThreadedLoading')
+    if(!$SessionEntryAuthoringDirectory -or !$SessionEntryBrowserDirectory -or !$SessionEntryHostDirectory -or !$SessionEntrySelectionDirectory -or !$SessionEntryListDirectory -or !$SessionEntryButtonDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionEntryAllowed}).Count){throw 'Session entry requires its owned LAN host/two UI clients and six current asset families'}
+    $AutoRespawnActivation=$true
+}
+if(($SessionEntryAuthoringDirectory -or $SessionEntryBrowserDirectory -or $SessionEntryHostDirectory -or $SessionEntrySelectionDirectory -or $SessionEntryListDirectory -or $SessionEntryButtonDirectory) -and !$SessionEntry){throw 'Session entry proofs require its explicit native fixture'}
 if($SessionBrowser){
     $sessionBrowserAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SessionBrowser','SessionBrowserAuthoringDirectory','SessionBrowserSelectionDirectory','SessionBrowserListDirectory','SessionBrowserButtonDirectory','ThreadedLoading')
     if(!$SessionBrowserAuthoringDirectory -or !$SessionBrowserSelectionDirectory -or !$SessionBrowserListDirectory -or !$SessionBrowserButtonDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $sessionBrowserAllowed}).Count){throw 'Session browser requires standalone native caller/login/push/NULL search and four current asset families'}
@@ -1235,6 +1242,21 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($SessionEntry){
+        foreach($family in @(@{directory=$SessionEntryAuthoringDirectory;kind='sessionentry';count=2},@{directory=$SessionEntryBrowserDirectory;kind='sessionbrowser';count=2},@{directory=$SessionEntryHostDirectory;kind='hostsession';count=2},@{directory=$SessionEntrySelectionDirectory;kind='experiencescreen';count=2},@{directory=$SessionEntryListDirectory;kind='experiencelist';count=4},@{directory=$SessionEntryButtonDirectory;kind='sessionbutton';count=2})){
+            $familyRoot=[IO.Path]::GetFullPath($family.directory)
+            if(!$familyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned session entry/caller revisions required'}
+            $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
+            if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current native entry/caller authoring proofs required'}
+            if($family.kind -eq 'sessionentry' -and (!$familyProof.original_native_five_text_payload_and_unwired_mapname_string_preserved -or !$familyProof.original_primary_load_and_spinner_loading_macro_order_preserved -or !$familyProof.original_join_binding_and_unbind_then_pop_before_bool_gate_preserved -or !$familyProof.original_failure_ftext_system_message_preserved -or !$familyProof.shared_macro_definition_unchanged -or $familyProof.original_graph_nodes -ne 62 -or $familyProof.transport_nodes -ne 38 -or $familyProof.interface_nodes -ne 5 -or $familyProof.method_counts.Python -ne 8 -or $familyProof.method_counts.BlueprintFallback -ne 8)){throw 'Complete entry native IO and Profile proof required'}
+            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Session entry/caller asset changed'};Add-JumpInput $path}}
+            Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
+        }
+        Add-JumpInput (Join-Path $PSScriptRoot 'UEPSessionEntryProcesses.ps1')
+        foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Content/UI/Menu/Experiences/UIExperienceMacros.uasset','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.cpp','Source/LyraGame/GameModes/LyraUserFacingExperienceDefinition.h','Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll')){Add-JumpInput (Join-Path $stage $relative)}
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Plugins/Online/OnlineSubsystemNull/Source/Private/OnlineSessionInterfaceNull.cpp')
     }
     if($SessionBrowser){
         foreach($family in @(@{directory=$SessionBrowserAuthoringDirectory;kind='sessionbrowser';count=2},@{directory=$SessionBrowserSelectionDirectory;kind='experiencescreen';count=2},@{directory=$SessionBrowserListDirectory;kind='experiencelist';count=4},@{directory=$SessionBrowserButtonDirectory;kind='sessionbutton';count=2})){
@@ -2603,6 +2625,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SessionEntry){$flag='-UEPSessionEntryResult';$marker='UEP_SESSION_ENTRY'}
     if($SessionBrowser){$flag='-UEPSessionBrowserResult';$marker='UEP_SESSION_BROWSER'}
     if($SessionButton){$flag='-UEPSessionButtonResult';$marker='UEP_SESSION_BUTTON'}
     if($HostSession){$flag='-UEPHostSessionResult';$marker='UEP_HOST_SESSION'}
@@ -2679,6 +2702,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($SessionEntry){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($SessionBrowser){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($HostSession){$arguments+=@("-UEPHostSessionMode=$HostSessionMode","-UEPHostSessionProfile=$HostSessionProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($ExperienceScreen){$arguments+=@("-UEPExperienceScreenMode=$ExperienceScreenMode","-UEPExperienceScreenProfile=$ExperienceScreenProfile",'-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
@@ -2731,7 +2755,11 @@ try{
     if($EquipmentIntegration){$arguments+=@('-UEPWeaponInstanceIntegration')}
     if($EquipmentBlueprintFallback){$arguments+=@('-UEPEquipmentProfile=BlueprintFallback')}
     if($ReloadMagazine){$arguments+=@("-UEPReloadWeapon=$ReloadWeapon")}
-    if($Network){
+    if($SessionEntry){
+        . (Join-Path $PSScriptRoot 'UEPSessionEntryProcesses.ps1')
+        $summary.processes=Invoke-UEPSessionEntryPeers (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage $output $ServerPort
+        $module='uep_lyra_hud.session_entry_contract';$gateArgs=@('--directory',$output)
+    }elseif($Network){
         $run=[guid]::NewGuid().ToString()
         foreach($peer in @('server','A','B0')){
             $peerArguments=@($arguments|Where-Object {$_ -ne '-game' -and $_ -notlike '-UEPSpawnEffectResult=*' -and $_ -notlike '-UEPReloadMagazineResult=*' -and $_ -notlike '-UEPDropWeaponResult=*' -and $_ -notlike '-UEPADSResult=*' -and $_ -notlike '-UEPHeroHealResult=*' -and $_ -notlike '-UEPAutoReloadResult=*' -and $_ -notlike '-UEPCosmeticResult=*' -and $_ -notlike '-UEPDeathAbilityResult=*' -and $_ -notlike '-UEPJumpAbilityResult=*' -and $_ -notlike '-UEPQuickslotResult=*' -and $_ -notlike '-abslog=*'})
