@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$FrontendLogout,[string]$FrontendLogoutMenuDirectory,[string]$FrontendLogoutStartupDirectory,
       [switch]$StartupLogin,[string]$StartupLoginAuthoringDirectory,
       [switch]$FrontendMenu,[string]$FrontendMenuAuthoringDirectory,[ValidateSet('life','quit')][string]$FrontendMenuMode='life',[ValidateSet('Python','BlueprintFallback')][string]$FrontendMenuProfile='Python',
       [switch]$MenuLayers,[string]$MenuLayersAuthoringDirectory,[ValidateSet('life','quit')][string]$MenuLayerMode='life',[ValidateSet('Python','BlueprintFallback')][string]$MenuLayerProfile='Python',
@@ -107,6 +108,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($FrontendLogout){
+    $frontendLogoutAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FrontendLogout','FrontendLogoutMenuDirectory','FrontendLogoutStartupDirectory','ThreadedLoading')
+    if(!$FrontendLogoutMenuDirectory -or !$FrontendLogoutStartupDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $frontendLogoutAllowed}).Count){throw 'Frontend logout requires standalone native NULL identity-logout confirmation/reset/startup proof and both current asset families'}
+    $AutoRespawnActivation=$true
+}
+if(($FrontendLogoutMenuDirectory -or $FrontendLogoutStartupDirectory) -and !$FrontendLogout){throw 'Frontend logout proof requires its explicit native fixture'}
+
 if($StartupLogin){
     $startupLoginAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','StartupLogin','StartupLoginAuthoringDirectory','ThreadedLoading')
     if(!$StartupLoginAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $startupLoginAllowed}).Count){throw 'Startup/login requires its standalone native NULL-backend local player lifecycle and current proof'}
@@ -1182,6 +1190,24 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($FrontendLogout){
+        foreach($family in @(@{directory=$FrontendLogoutMenuDirectory;kind='frontendmenu';count=2},@{directory=$FrontendLogoutStartupDirectory;kind='startuplogin';count=4})){
+            $familyRoot=[IO.Path]::GetFullPath($family.directory)
+            if(!$familyRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned frontend logout asset families required'}
+            $familySummary=Join-Path $familyRoot 'summary.json';$familyProofPath=Join-Path $familyRoot 'assets.json';$familyAuthor=Get-Content -LiteralPath $familySummary -Raw|ConvertFrom-Json -Depth 80;$familyProof=Get-Content -LiteralPath $familyProofPath -Raw|ConvertFrom-Json -Depth 80
+            if($familyAuthor.status -ne 'passed' -or $familyProof.status -ne 'passed' -or $familyAuthor.kind -ne $family.kind -or $familyProof.kind -ne $family.kind -or @($familyAuthor.assets).Count -ne $family.count -or !$familyProof.original_class_defaults_signature_graphs_preserved){throw 'Current frontend logout native asset proofs required'}
+            if($family.kind -eq 'frontendmenu' -and (!$familyProof.original_confirmed_quit_and_identity_logout_success_order_payloads_preserved -or $familyProof.original_identity_logout_proxy.factory -ne 'Logout' -or $familyProof.original_identity_logout_proxy.proxy_class -ne '/Script/OnlineSubsystemUtils.LogoutCallbackProxy' -or $familyProof.session_destruction_is_original_behavior -ne $false -or $familyProof.method_counts.Python -ne 11 -or $familyProof.method_counts.BlueprintFallback -ne 11)){throw 'Original frontend identity logout handlers required'}
+            if($family.kind -eq 'startuplogin' -and (!$familyProof.original_native_key_arrays_local_defaults_and_delegate_payloads_preserved -or !$familyProof.original_localized_login_text_and_callback_binding_name_guid_preserved)){throw 'Original startup native input and callback payloads required'}
+            foreach($asset in $familyAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Frontend logout asset family changed'};Add-JumpInput $path}}
+            Add-JumpInput $familySummary;Add-JumpInput $familyProofPath
+        }
+        foreach($folder in @('Plugins/CommonUser/Source','Plugins/CommonGame/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
+        foreach($relative in @('Plugins/CommonUser/Binaries/Win64/UnrealEditor-CommonUser.dll','Plugins/CommonGame/Binaries/Win64/UnrealEditor-CommonGame.dll','Source/LyraGame/UI/Foundation/LyraConfirmationScreen.cpp','Source/LyraGame/Player/LyraLocalPlayer.cpp')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($file in @('LogoutCallbackProxy.cpp','OnlineSubsystemBPCallHelper.h')){Add-JumpInput (Join-Path $EngineRoot "Engine/Plugins/Online/OnlineSubsystemUtils/Source/OnlineSubsystemUtils/Private/$file")}
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Plugins/Online/OnlineSubsystemUtils/Source/OnlineSubsystemUtils/Classes/LogoutCallbackProxy.h')
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Plugins/Online/OnlineSubsystemUtils/Binaries/Win64/UnrealEditor-OnlineSubsystemUtils.dll')
+    }
+
     if($StartupLogin){
         $startupLoginRoot=[IO.Path]::GetFullPath($StartupLoginAuthoringDirectory)
         if(!$startupLoginRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned startup/login revision required'}
@@ -1197,7 +1223,7 @@ try{
         $frontendRoot=[IO.Path]::GetFullPath($FrontendMenuAuthoringDirectory)
         if(!$frontendRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned frontend revision required'}
         $frontendSummary=Join-Path $frontendRoot 'summary.json';$frontendProofPath=Join-Path $frontendRoot 'assets.json';$frontendAuthor=Get-Content -LiteralPath $frontendSummary -Raw|ConvertFrom-Json -Depth 80;$frontendProof=Get-Content -LiteralPath $frontendProofPath -Raw|ConvertFrom-Json -Depth 80
-        if($frontendAuthor.status -ne 'passed' -or $frontendProof.status -ne 'passed' -or $frontendAuthor.kind -ne 'frontendmenu' -or $frontendProof.kind -ne 'frontendmenu' -or !$frontendProof.original_cdo_tree_animations_public_signatures_const_focus_guids_and_graphs_preserved -or !$frontendProof.original_four_async_menu_classes_layer_tags_input_suspension_and_native_prompts_preserved -or !$frontendProof.original_confirmed_quit_and_logout_destroy_session_success_order_payloads_preserved -or $frontendProof.method_counts.Python -ne 11 -or $frontendProof.method_counts.BlueprintFallback -ne 11 -or @($frontendAuthor.assets).Count -ne 2){throw 'Current native frontend/UI/prompt/session/quit proof required'}
+        if($frontendAuthor.status -ne 'passed' -or $frontendProof.status -ne 'passed' -or $frontendAuthor.kind -ne 'frontendmenu' -or $frontendProof.kind -ne 'frontendmenu' -or !$frontendProof.original_cdo_tree_animations_public_signatures_const_focus_guids_and_graphs_preserved -or !$frontendProof.original_four_async_menu_classes_layer_tags_input_suspension_and_native_prompts_preserved -or !$frontendProof.original_confirmed_quit_and_identity_logout_success_order_payloads_preserved -or $frontendProof.method_counts.Python -ne 11 -or $frontendProof.method_counts.BlueprintFallback -ne 11 -or @($frontendAuthor.assets).Count -ne 2){throw 'Current native frontend/UI/prompt/session/quit proof required'}
         foreach($asset in $frontendAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Frontend asset changed'};Add-JumpInput $path}}
         Add-JumpInput $frontendSummary;Add-JumpInput $frontendProofPath
         foreach($folder in @('Plugins/CommonGame/Source','Plugins/CommonUser/Source')){foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage $folder) -Recurse -File){Add-JumpInput $file.FullName}}
@@ -2453,6 +2479,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($FrontendLogout){$flag='-UEPFrontendLogoutResult';$marker='UEP_FRONTEND_LOGOUT'}
     if($StartupLogin){$flag='-UEPStartupLoginResult';$marker='UEP_STARTUP_LOGIN'}
     if($FrontendMenu){$flag='-UEPFrontendMenuResult';$marker='UEP_FRONTEND_MENU'}
     if($MenuLayers){$flag='-UEPMenuLayersResult';$marker='UEP_MENU_LAYERS'}
@@ -2522,6 +2549,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($FrontendLogout){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($StartupLogin){$arguments+=@('-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')}
     if($FrontendMenu){$arguments+=@("-UEPFrontendMenuMode=$FrontendMenuMode","-UEPFrontendMenuProfile=$FrontendMenuProfile")}
     if($MenuLayers){$arguments+=@("-UEPMenuLayerMode=$MenuLayerMode","-UEPMenuLayerProfile=$MenuLayerProfile")}
@@ -2883,6 +2911,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($FrontendLogout){$module='uep_lyra_hud.frontend_logout_contract'}
         if($StartupLogin){$module='uep_lyra_hud.startup_login_contract'}
         if($FrontendMenu){$module='uep_lyra_hud.frontend_menu_contract'}
         if($MenuLayers){$module='uep_lyra_hud.menu_layers_contract'}
@@ -2974,6 +3003,12 @@ try{
             $baselineArgs=@('-B','-m','uep_lyra_weapons.netshooter_actor_log_contract','--log',"$output/jump.log",'--clean-log',"$output/jump-baseline-audited.log",'--result',"$output/source-template-baseline.json")
             $summary['source_template_baseline_audit']=Invoke-UEPValidationProcess $baselinePython $baselineArgs (Join-Path $overlay 'Content/Scripts') (Join-Path $output 'source-template-audit') 'Original NetShooter template baseline audit' 30
             $log=Get-Content -LiteralPath "$output/jump-baseline-audited.log" -Raw
+        }
+        if($FrontendLogout){
+            $identityPython=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
+            $identityArgs=@('-B','-m','uep_lyra_hud.frontend_logout_log_contract','--log',"$output/jump.log",'--clean-log',"$output/jump-identity-audited.log",'--result',"$output/identity-logout-log-audit.json")
+            $summary['identity_logout_expected_log_audit']=Invoke-UEPValidationProcess $identityPython $identityArgs (Join-Path $overlay 'Content/Scripts') (Join-Path $output 'identity-log-audit') 'Exact native primary privilege-loss log audit' 30
+            $log=Get-Content -LiteralPath "$output/jump-identity-audited.log" -Raw
         }
         Assert-UEPFocusedLog $log ($marker+'_SHUTDOWN_PASSED') -RequirePythonExit
         if($GrenadeActivation -and $log -match '(?im)ImportText.*Missing opening parenthesis'){throw 'Grenade native parameter default import failed'}
