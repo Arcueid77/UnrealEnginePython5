@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ScoreboardRows,[string]$ScoreboardRowsAuthoringDirectory,
       [switch]$EliminationWidgets,[string]$EliminationWidgetsAuthoringDirectory,[string]$EliminationWidgetsRelayAuthoringDirectory,
       [switch]$AccoladeWidgets,[string]$AccoladeWidgetsAuthoringDirectory,[string]$AccoladeWidgetsRelayAuthoringDirectory,
       [switch]$NotificationRelaysNetwork,[string]$RelayEliminationAuthoringDirectory,[string]$RelayAccoladeAuthoringDirectory,
@@ -86,6 +87,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ScoreboardRows){
+    $scoreboardAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ScoreboardRows','ScoreboardRowsAuthoringDirectory','ThreadedLoading')
+    if(!$ScoreboardRowsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $scoreboardAllowed}).Count){throw 'Scoreboard rows require their standalone native parent/interface/stat-timer lane and current family proof'}
+    $AutoRespawnActivation=$true
+}
+if($ScoreboardRowsAuthoringDirectory -and !$ScoreboardRows){throw 'Scoreboard row proof requires its explicit native fixture'}
 if($EliminationWidgets){
     $eliminationWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','EliminationWidgets','EliminationWidgetsAuthoringDirectory','EliminationWidgetsRelayAuthoringDirectory','ThreadedLoading')
     if(!$EliminationWidgetsAuthoringDirectory -or !$EliminationWidgetsRelayAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $eliminationWidgetAllowed}).Count){throw 'Elimination widgets require their standalone native list/UMG/native-expiry lane and current widget/relay proofs'}
@@ -1015,6 +1022,15 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ScoreboardRows){
+        $rowRoot=[IO.Path]::GetFullPath($ScoreboardRowsAuthoringDirectory)
+        if(!$rowRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned scoreboard row proof required'}
+        $rowSummary=Join-Path $rowRoot 'summary.json';$rowProofPath=Join-Path $rowRoot 'assets.json';$rowAuthor=Get-Content -LiteralPath $rowSummary -Raw|ConvertFrom-Json -Depth 80;$rowProof=Get-Content -LiteralPath $rowProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($rowAuthor.status -ne 'passed' -or $rowProof.status -ne 'passed' -or $rowAuthor.kind -ne 'scoreboardrows' -or $rowProof.kind -ne 'scoreboardrows' -or !$rowProof.original_widget_trees_signatures_interface_parent_calls_empty_hooks_and_business_graphs_preserved -or $rowProof.native_stat_timer_seconds -ne 1 -or !$rowProof.native_stat_timer_looping -or !$rowProof.no_native_timer_or_destruct_cleanup_added -or $rowProof.new_business_nodes -ne 0 -or @($rowAuthor.assets).Count -ne 12){throw 'Current scoreboard native timer/parent/visual proof incomplete'}
+        foreach($name in @('base','name','icon','stat','cp','tdm')){if($rowProof.widgets.($name).interface_nodes -ne 5 -or $rowProof.widgets.($name).method_counts.Python -ne @{base=1;name=2;icon=1;stat=4;cp=5;tdm=5}[$name] -or $rowProof.widgets.($name).method_counts.BlueprintFallback -ne @{base=1;name=2;icon=1;stat=4;cp=5;tdm=5}[$name]){throw 'Complete scoreboard Profile family required'}}
+        foreach($asset in $rowAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Scoreboard row asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $rowSummary;Add-JumpInput $rowProofPath
     }
     if($EliminationWidgets){
         $widgetRoot=[IO.Path]::GetFullPath($EliminationWidgetsAuthoringDirectory);$messageRoot=[IO.Path]::GetFullPath($EliminationWidgetsRelayAuthoringDirectory)
@@ -2050,6 +2066,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ScoreboardRows){$flag='-UEPScoreboardRowsResult';$marker='UEP_SCOREBOARD_ROWS'}
     if($EliminationWidgets){$flag='-UEPEliminationWidgetsResult';$marker='UEP_ELIMINATION_WIDGETS'}
     if($AccoladeWidgets){$flag='-UEPAccoladeWidgetsResult';$marker='UEP_ACCOLADE_WIDGETS'}
     if($AccoladeRelay){$flag='-UEPAccoladeRelayResult';$marker='UEP_ACCOLADE_RELAY'}
@@ -2444,6 +2461,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ScoreboardRows){$module='uep_lyra_hud.scoreboard_rows_contract'}
         if($EliminationWidgets){$module='uep_lyra_hud.elimination_widgets_contract'}
         if($AccoladeWidgets){$module='uep_lyra_hud.accolade_widgets_contract'}
         if($AccoladeRelay){$module='uep_lyra_hud.accolade_relay_contract'}
