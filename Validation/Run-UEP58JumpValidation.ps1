@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$CollectCue,[string]$CollectCueAuthoringDirectory,
       [switch]$ExplorerActions,[string]$ExplorerActionsAuthoringDirectory,[string]$ExplorerActionsInteractBaseline,[string]$ExplorerActionsCueLifecycleDirectory,
       [switch]$ExplorerInteract,[string]$ExplorerInteractAuthoringDirectory,
       [switch]$ExplorerItemList,[string]$ExplorerItemListAuthoringDirectory,[string]$ExplorerItemListToastBaseline,
@@ -134,6 +135,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($CollectCue){
+    $collectAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CollectCue','CollectCueAuthoringDirectory','ThreadedLoading')
+    if(!$CollectCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $collectAllowed}).Count){throw 'Collect Cue requires original spline/template/curve and lifecycle proofs'}
+    $AutoRespawnActivation=$true
+}
+if($CollectCueAuthoringDirectory -and !$CollectCue){throw 'Collect Cue proof requires explicit native fixture'}
 if($ExplorerActions){
     $actionsAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerActions','ExplorerActionsAuthoringDirectory','ExplorerActionsInteractBaseline','ExplorerActionsCueLifecycleDirectory','ThreadedLoading')
     if(!$ExplorerActionsAuthoringDirectory -or !$ExplorerActionsInteractBaseline -or !$ExplorerActionsCueLifecycleDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $actionsAllowed}).Count){throw 'Explorer actions require exact original event/montage and accepted Interact proofs'}
@@ -1379,6 +1386,15 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($CollectCue){
+        $collectRoot=[IO.Path]::GetFullPath($CollectCueAuthoringDirectory)
+        if(!$collectRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned collect Cue authoring proof required'}
+        $collectSummary=Join-Path $collectRoot 'summary.json';$collectProofPath=Join-Path $collectRoot 'assets.json';$collectAuthor=Get-Content -LiteralPath $collectSummary -Raw|ConvertFrom-Json -Depth 100;$collectProof=Get-Content -LiteralPath $collectProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($collectAuthor.status -ne 'passed' -or $collectProof.kind -ne 'collectcue' -or @($collectAuthor.assets).Count -ne 2 -or !$collectProof.original_cdo_public_abis_guids_graph_partitions_native_spline_template_and_timeline_curves_preserved -or !$collectProof.native_timeline_clock_retained -or !$collectProof.whole_collect_cue_business_migrated -or $collectProof.method_counts.Python -ne 6 -or $collectProof.method_counts.BlueprintFallback -ne 6){throw 'Complete collect Cue original business preservation proof required'}
+        foreach($asset in $collectAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Collect Cue asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $collectSummary;Add-JumpInput $collectProofPath
+        foreach($relative in @('Engine/Source/Runtime/Engine/Private/Components/SplineComponent.cpp','Engine/Source/Runtime/Engine/Private/Timeline.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/GameplayCueNotify_Actor.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/GameplayCueManager.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
+    }
     if($ExplorerActions){
         $actionsRoot=[IO.Path]::GetFullPath($ExplorerActionsAuthoringDirectory);$interactRoot=[IO.Path]::GetFullPath($ExplorerActionsInteractBaseline)
         if(!$actionsRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$interactRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned interaction action and Interact proofs required'}
@@ -1390,7 +1406,7 @@ try{
         $cueRoot=[IO.Path]::GetFullPath($ExplorerActionsCueLifecycleDirectory)
         if(!$cueRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned collect Cue lifecycle proof required'}
         $cueSummary=Join-Path $cueRoot 'summary.json';$cueProofPath=Join-Path $cueRoot 'assets.json';$cueAuthor=Get-Content -LiteralPath $cueSummary -Raw|ConvertFrom-Json -Depth 100;$cueProof=Get-Content -LiteralPath $cueProofPath -Raw|ConvertFrom-Json -Depth 100
-        if($cueAuthor.status -ne 'passed' -or $cueProof.kind -ne 'collectcuelifecycle' -or !$cueProof.original_cdo_public_abis_all_original_nodes_guids_and_business_graphs_preserved -or $cueProof.whole_collect_cue_business_migrated -or $cueProof.method_counts.Python -ne 3 -or $cueProof.method_counts.BlueprintFallback -ne 3){throw 'Collect Cue native recycling compatibility proof required'}
+        if($cueAuthor.status -ne 'passed' -or !(($cueProof.kind -eq 'collectcuelifecycle' -and $cueProof.original_cdo_public_abis_all_original_nodes_guids_and_business_graphs_preserved -and !$cueProof.whole_collect_cue_business_migrated -and $cueProof.method_counts.Python -eq 3 -and $cueProof.method_counts.BlueprintFallback -eq 3) -or ($cueProof.kind -eq 'collectcue' -and $cueProof.original_cdo_public_abis_guids_graph_partitions_native_spline_template_and_timeline_curves_preserved -and $cueProof.whole_collect_cue_business_migrated -and $cueProof.method_counts.Python -eq 6 -and $cueProof.method_counts.BlueprintFallback -eq 6))){throw 'Collect Cue native recycling compatibility proof required'}
         foreach($asset in $cueAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Collect Cue lifecycle asset changed'};Add-JumpInput $path}}
         Add-JumpInput $cueSummary;Add-JumpInput $cueProofPath
         Add-JumpInput (Join-Path $EngineRoot 'Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/GameplayCueNotify_Actor.cpp')
@@ -3003,6 +3019,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($CollectCue){$flag='-UEPCollectCueResult';$marker='UEP_COLLECT_CUE'}
     if($ExplorerActions){$flag='-UEPExplorerActionsResult';$marker='UEP_EXPLORER_ACTIONS'}
     if($ExplorerInteract){$flag='-UEPExplorerInteractResult';$marker='UEP_EXPLORER_INTERACT'}
     if($ExplorerItemList){$flag='-UEPExplorerItemListResult';$marker='UEP_EXPLORER_ITEM_LIST'}
@@ -3099,6 +3116,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($CollectCue){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPCollectCueAuthoring='+[IO.Path]::GetFullPath($CollectCueAuthoringDirectory))}
     if($ExplorerActions){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerInteract){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerItemList){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
@@ -3489,6 +3507,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($CollectCue){$module='uep_lyra_weapons.collect_cue_contract'}
         if($ExplorerActions){$module='uep_lyra_abilities.explorer_actions_contract'}
         if($ExplorerInteract){$module='uep_lyra_abilities.explorer_interact_contract'}
         if($ExplorerItemList){$module='uep_lyra_hud.explorer_item_list_contract'}
