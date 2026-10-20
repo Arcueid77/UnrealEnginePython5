@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerToast,[string]$ExplorerToastAuthoringDirectory,
       [switch]$ExplorerGrid,[string]$ExplorerGridAuthoringDirectory,
       [switch]$ExplorerScreens,[string]$ExplorerScreensAuthoringDirectory,
       [switch]$ExplorerBehavior,[string]$ExplorerBehaviorAuthoringDirectory,[string]$ExplorerBehaviorHelperBaseline,[ValidateSet('Python','BlueprintFallback')][string]$ExplorerBehaviorProfile='Python',
@@ -130,6 +131,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerToast){
+    $toastAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerToast','ExplorerToastAuthoringDirectory','ThreadedLoading')
+    if(!$ExplorerToastAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $toastAllowed}).Count){throw 'Explorer toast requires exact original FText and native timer proofs'}
+    $AutoRespawnActivation=$true
+}
+if($ExplorerToastAuthoringDirectory -and !$ExplorerToast){throw 'Explorer toast proof requires explicit native fixture'}
 if($ExplorerGrid){
     $gridAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerGrid','ExplorerGridAuthoringDirectory','ThreadedLoading')
     if(!$ExplorerGridAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $gridAllowed}).Count){throw 'Explorer grid requires exact original native listener and typed payload proofs'}
@@ -1350,6 +1357,17 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerToast){
+        $toastRoot=[IO.Path]::GetFullPath($ExplorerToastAuthoringDirectory)
+        if(!$toastRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned Explorer toast authoring proof required'}
+        $toastSummary=Join-Path $toastRoot 'summary.json';$toastProofPath=Join-Path $toastRoot 'assets.json';$toastAuthor=Get-Content -LiteralPath $toastSummary -Raw|ConvertFrom-Json -Depth 100;$toastProof=Get-Content -LiteralPath $toastProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($toastAuthor.status -ne 'passed' -or $toastProof.status -ne 'passed' -or $toastProof.kind -ne 'explorertoast' -or @($toastAuthor.assets).Count -ne 2 -or !$toastProof.original_cdos_widget_tree_animations_public_signatures_node_guids_and_graph_partitions_preserved -or !$toastProof.original_native_ftext_property_to_textblock_path_preserved -or !$toastProof.original_timer_factory_delegate_name_guid_one_shot_and_defaults_preserved -or $toastProof.method_counts.Python -ne 3 -or $toastProof.method_counts.BlueprintFallback -ne 3){throw 'Complete original Explorer toast FText/timer preservation proof required'}
+        foreach($asset in $toastAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Explorer toast asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $toastProof.fixture.asset).Hash -ne $toastProof.fixture.sha256 -or !$toastProof.fixture.stage_only){throw 'Explorer native localized entry probe changed'}
+        foreach($file in @($toastSummary,$toastProofPath,$toastProof.fixture.asset)){Add-JumpInput $file}
+        foreach($relative in @('Plugins/GameFeatures/ShooterExplorer/Content/UserInterface/W_ItemAcquiredList.uasset','Plugins/GameFeatures/ShooterExplorer/Content/UserInterface/ItemAcquiredToastEntry.uasset','Plugins/GameFeatures/ShooterCore/Content/Weapons/Pistol/ID_Pistol.uasset')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($relative in @('Engine/Source/Runtime/Engine/Private/TimerManager.cpp','Engine/Source/Runtime/Engine/Private/KismetSystemLibrary.cpp','Engine/Source/Runtime/UMG/Private/Components/ListView.cpp','Engine/Source/Runtime/UMG/Private/Blueprint/IUserObjectListEntry.cpp','Engine/Source/Runtime/UMG/Private/Components/Image.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($ExplorerGrid){
         $gridRoot=[IO.Path]::GetFullPath($ExplorerGridAuthoringDirectory)
@@ -2917,6 +2935,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerToast){$flag='-UEPExplorerToastResult';$marker='UEP_EXPLORER_TOAST'}
     if($ExplorerGrid){$flag='-UEPExplorerGridResult';$marker='UEP_EXPLORER_GRID'}
     if($ExplorerScreens){$flag='-UEPExplorerScreensResult';$marker='UEP_EXPLORER_SCREENS'}
     if($ExplorerBehavior){$flag='-UEPExplorerBehaviorResult';$marker='UEP_EXPLORER_BEHAVIOR'}
@@ -3009,6 +3028,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerToast){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerGrid){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerScreens){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerBehavior){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@("-UEPExplorerBehaviorProfile=$ExplorerBehaviorProfile")}
@@ -3395,6 +3415,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerToast){$module='uep_lyra_hud.explorer_toast_contract'}
         if($ExplorerGrid){$module='uep_lyra_hud.explorer_grid_contract'}
         if($ExplorerScreens){$module='uep_lyra_hud.explorer_screens_contract'}
         if($ExplorerBehavior){$module='uep_lyra_characters.explorer_behavior_contract'}
