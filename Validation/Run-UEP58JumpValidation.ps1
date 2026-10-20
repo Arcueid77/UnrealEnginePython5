@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$SettingsEditors,[string]$SettingsEditorsAuthoringDirectory,
       [switch]$FoundationWidgets,[string]$FoundationWidgetsAuthoringDirectory,
       [switch]$BoundAction,[string]$BoundActionAuthoringDirectory,
       [switch]$ExperienceTile,[string]$ExperienceTileAuthoringDirectory,
@@ -100,6 +101,13 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($SettingsEditors){
+    $settingsEditorAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','SettingsEditors','SettingsEditorsAuthoringDirectory','ThreadedLoading')
+    if(!$SettingsEditorsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $settingsEditorAllowed}).Count){throw 'Settings editors require their standalone native model/presentation/localization lane and current proof'}
+    $AutoRespawnActivation=$true
+}
+if($SettingsEditorsAuthoringDirectory -and !$SettingsEditors){throw 'Settings editor proof requires its explicit native fixture'}
+
 if($FoundationWidgets){
     $foundationWidgetAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','FoundationWidgets','FoundationWidgetsAuthoringDirectory','ThreadedLoading')
     if(!$FoundationWidgetsAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $foundationWidgetAllowed}).Count){throw 'Foundation widgets require their standalone native activation/tick/loading/layout lane and current proof'}
@@ -1126,6 +1134,21 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($SettingsEditors){
+        $settingsEditorRoot=[IO.Path]::GetFullPath($SettingsEditorsAuthoringDirectory)
+        if(!$settingsEditorRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned settings editor revision required'}
+        $settingsEditorSummary=Join-Path $settingsEditorRoot 'summary.json';$settingsEditorProofPath=Join-Path $settingsEditorRoot 'assets.json';$settingsEditorAuthor=Get-Content -LiteralPath $settingsEditorSummary -Raw|ConvertFrom-Json -Depth 80;$settingsEditorProof=Get-Content -LiteralPath $settingsEditorProofPath -Raw|ConvertFrom-Json -Depth 80
+        if($settingsEditorAuthor.status -ne 'passed' -or $settingsEditorProof.status -ne 'passed' -or $settingsEditorAuthor.kind -ne 'settingseditors' -or $settingsEditorProof.kind -ne 'settingseditors' -or !$settingsEditorProof.original_cdos_widget_trees_animations_signatures_guids_and_graphs_preserved -or !$settingsEditorProof.native_action_collection_labels_and_details_text_before_boolean_gate_preserved -or !$settingsEditorProof.native_enum_count_index_and_localized_text_factory_adapters -or !$settingsEditorProof.rotator_count_remains_invocation_local -or !$settingsEditorProof.settings_value_read_write_cpp_unchanged -or @($settingsEditorAuthor.assets).Count -ne 20){throw 'Current ten-widget native settings/localization proof required'}
+        foreach($asset in $settingsEditorAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Settings editor asset changed'};Add-JumpInput $path}}
+        if((Get-FileHash -LiteralPath $settingsEditorProof.fixture.asset).Hash -ne $settingsEditorProof.fixture.sha256){throw 'Native settings text probe changed'};Add-JumpInput $settingsEditorProof.fixture.asset
+        Add-JumpInput $settingsEditorSummary;Add-JumpInput $settingsEditorProofPath;Add-JumpInput (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-NonRealtimeAudioRenderer.dll')
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Plugins/GameSettings/Source') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($file in Get-ChildItem -LiteralPath (Join-Path $stage 'Source/LyraGame/Settings') -Recurse -File){Add-JumpInput $file.FullName}
+        foreach($relative in @('Content/UI/Settings/W_LyraSettingScreen.uasset','Content/UI/Foundation/LoadingScreen/W_LoadingScreen_Host.uasset','Source/LyraGame/UI/LyraSettingScreen.cpp','Plugins/GameSettings/Binaries/Win64/UnrealEditor-GameSettings.dll','Plugins/GameFeatures/ShooterCore/Content/UserInterface/ScoreBoard/W_SB_TeamStat.uasset')){Add-JumpInput (Join-Path $stage $relative)}
+        foreach($name in @('MI_UI_SettingsRotator','MI_UI_SettingsRotator_SizeB','MI_UI_SettingsRotator_SizeC','MI_UI_SettingsRotator_SizeD')){Add-JumpInput (Join-Path $stage ('Content/UI/Menu/Art/'+$name+'.uasset'))}
+        foreach($name in @('sfx_UI_Lobby_Highlight_nl_meta_Preset','sfx_UI_SubMenu_Highlight_nl_meta_Preset','sfx_UI_SubMenu_Select_nl_meta_Preset')){Add-JumpInput (Join-Path $stage ('Content/Audio/Sounds/UI/'+$name+'.uasset'))}
+    }
+
     if($FoundationWidgets){
         $foundationWidgetRoot=[IO.Path]::GetFullPath($FoundationWidgetsAuthoringDirectory)
         if(!$foundationWidgetRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned foundation widget revision required'}
@@ -2313,6 +2336,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($SettingsEditors){$flag='-UEPSettingsEditorsResult';$marker='UEP_SETTINGS_EDITORS'}
     if($FoundationWidgets){$flag='-UEPFoundationWidgetsResult';$marker='UEP_FOUNDATION_WIDGETS'}
     if($BoundAction){$flag='-UEPBoundActionResult';$marker='UEP_BOUND_ACTION'}
     if($ExperienceTile){$flag='-UEPExperienceTileResult';$marker='UEP_EXPERIENCE_TILE'}
@@ -2375,6 +2399,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($SettingsEditors){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($BoundAction){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($ExperienceTile){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
     if($MenuButtons){$arguments=@($arguments|Where-Object {$_ -ne '-NoSound'});$arguments+=@('-DeterministicAudio')}
@@ -2732,6 +2757,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($SettingsEditors){$module='uep_lyra_hud.settings_editors_contract'}
         if($FoundationWidgets){$module='uep_lyra_hud.foundation_widgets_contract'}
         if($BoundAction){$module='uep_lyra_hud.bound_action_contract'}
         if($ExperienceTile){$module='uep_lyra_hud.experience_tile_contract'}
@@ -2794,6 +2820,7 @@ try{
             }
         }
         $log=Get-Content -LiteralPath "$output/jump.log" -Raw
+        if($SettingsEditors -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Settings editor UI sound requires native offline renderer'}
         if($BoundAction -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Bound-action requires native offline audio renderer'}
         if($ExperienceTile -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Experience tile requires the native offline audio renderer'}
         if($MenuButtons -and $log -notmatch 'Using Audio Hardware Device Non-realtime Renderer'){throw 'Menu UI sound backend requires the native offline renderer'}
