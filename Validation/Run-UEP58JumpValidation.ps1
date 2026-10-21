@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerMarker,[string]$ExplorerMarkerAuthoringDirectory,
       [switch]$CollectCue,[string]$CollectCueAuthoringDirectory,
       [switch]$ExplorerActions,[string]$ExplorerActionsAuthoringDirectory,[string]$ExplorerActionsInteractBaseline,[string]$ExplorerActionsCueLifecycleDirectory,
       [switch]$ExplorerInteract,[string]$ExplorerInteractAuthoringDirectory,
@@ -135,6 +136,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerMarker){
+    $markerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerMarker','ExplorerMarkerAuthoringDirectory','ThreadedLoading')
+    if(!$ExplorerMarkerAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $markerAllowed}).Count){throw 'Explorer marker requires exact native target-data/HasActor/sphere proofs'}
+    $AutoRespawnActivation=$true
+}
+if($ExplorerMarkerAuthoringDirectory -and !$ExplorerMarker){throw 'Explorer marker proof requires explicit native fixture'}
 if($CollectCue){
     $collectAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','CollectCue','CollectCueAuthoringDirectory','ThreadedLoading')
     if(!$CollectCueAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $collectAllowed}).Count){throw 'Collect Cue requires original spline/template/curve and lifecycle proofs'}
@@ -1385,6 +1392,15 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerMarker){
+        $markerRoot=[IO.Path]::GetFullPath($ExplorerMarkerAuthoringDirectory)
+        if(!$markerRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned marker native authoring proof required'}
+        $markerSummary=Join-Path $markerRoot 'summary.json';$markerProofPath=Join-Path $markerRoot 'assets.json';$markerAuthor=Get-Content -LiteralPath $markerSummary -Raw|ConvertFrom-Json -Depth 100;$markerProof=Get-Content -LiteralPath $markerProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($markerAuthor.status -ne 'passed' -or $markerProof.status -ne 'passed' -or $markerProof.kind -ne 'explorermarker' -or @($markerAuthor.assets).Count -ne 2 -or !$markerProof.original_cdo_public_abi_node_guids_task_start_transform_and_graph_partitions_preserved -or !$markerProof.original_has_actor_branch_and_no_actor_active_behavior_preserved -or !$markerProof.original_native_instant_single_line_target_actor_and_sphere_defaults_preserved -or $markerProof.method_counts.Python -ne 3 -or $markerProof.method_counts.BlueprintFallback -ne 3){throw 'Complete original marker target data and no-hit behavior proof required'}
+        foreach($asset in $markerAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Marker asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $markerSummary;Add-JumpInput $markerProofPath
+        foreach($relative in @('Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/Tasks/AbilityTask_WaitTargetData.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/GameplayAbilityTargetActor_SingleLineTrace.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/GameplayAbilityTargetActor_Trace.cpp','Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/AbilitySystemBlueprintLibrary.cpp','Engine/Source/Runtime/Engine/Private/KismetSystemLibrary.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
     }
     if($CollectCue){
         $collectRoot=[IO.Path]::GetFullPath($CollectCueAuthoringDirectory)
@@ -3019,6 +3035,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerMarker){$flag='-UEPExplorerMarkerResult';$marker='UEP_EXPLORER_MARKER'}
     if($CollectCue){$flag='-UEPCollectCueResult';$marker='UEP_COLLECT_CUE'}
     if($ExplorerActions){$flag='-UEPExplorerActionsResult';$marker='UEP_EXPLORER_ACTIONS'}
     if($ExplorerInteract){$flag='-UEPExplorerInteractResult';$marker='UEP_EXPLORER_INTERACT'}
@@ -3116,6 +3133,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerMarker){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($CollectCue){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPCollectCueAuthoring='+[IO.Path]::GetFullPath($CollectCueAuthoringDirectory))}
     if($ExplorerActions){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($ExplorerInteract){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
@@ -3507,6 +3525,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerMarker){$module='uep_lyra_abilities.explorer_marker_contract'}
         if($CollectCue){$module='uep_lyra_weapons.collect_cue_contract'}
         if($ExplorerActions){$module='uep_lyra_abilities.explorer_actions_contract'}
         if($ExplorerInteract){$module='uep_lyra_abilities.explorer_interact_contract'}
