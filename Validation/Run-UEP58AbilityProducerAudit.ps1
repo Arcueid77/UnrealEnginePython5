@@ -1,10 +1,11 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
-      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault)
+      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault,[switch]$HeroDefaultMotion,[string]$HeroDefaultBaseline)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-if(@(@([bool]$Coverage,[bool]$SparseMap,[bool]$Interaction,[bool]$ReloadFamily,[bool]$SpawnEffect,[bool]$DeviceColor,[bool]$Emote,[bool]$WidgetInput,[bool]$WidgetPressedContext,[bool]$AutoRespawnHelpers,[bool]$ExplorerShells,[bool]$HeroDefault)|Where-Object {$_}).Count -gt 1){throw 'Choose one native audit mode'}
+if([bool]$HeroDefaultMotion -ne [bool]$HeroDefaultBaseline){throw 'Motion audit requires its explicit accepted parent baseline'}
+if(@(@([bool]$Coverage,[bool]$SparseMap,[bool]$Interaction,[bool]$ReloadFamily,[bool]$SpawnEffect,[bool]$DeviceColor,[bool]$Emote,[bool]$WidgetInput,[bool]$WidgetPressedContext,[bool]$AutoRespawnHelpers,[bool]$ExplorerShells,[bool]$HeroDefault,[bool]$HeroDefaultMotion)|Where-Object {$_}).Count -gt 1){throw 'Choose one native audit mode'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 . (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
 $repo=Split-Path $PSScriptRoot -Parent
@@ -43,6 +44,7 @@ try{
     if($WidgetInput){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_widget_input_abilities.py'}
     if($WidgetPressedContext){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_widget_pressed_context.py'}
     if($HeroDefault){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_hero_default.py'}
+    if($HeroDefaultMotion){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_hero_default_motion.py';Add-ProducerHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py')}
     if($ExplorerShells){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_explorer_shells.py'}
     if($AutoRespawnHelpers){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_auto_respawn_helpers.py'}
     foreach($file in @($PSCommandPath,$module,$script,(Join-Path (Split-Path $script -Parent) 'stage_safety.py'),
@@ -58,15 +60,17 @@ try{
     if($WidgetInput){$stageFlag='-UEPWidgetInputStageRoot';$resultFlag='-UEPWidgetInputAuditResult';$marker='UEP_WIDGET_INPUT_AUDIT_PASSED'}
     if($WidgetPressedContext){$stageFlag='-UEPWidgetPressedStageRoot';$resultFlag='-UEPWidgetPressedAuditResult';$marker='UEP_WIDGET_PRESSED_CONTEXT_AUDIT_PASSED'}
     if($HeroDefault){$stageFlag='-UEPHeroDefaultStage';$resultFlag='-UEPHeroDefaultResult';$marker='UEP_HERO_DEFAULT_AUDIT_PASSED'}
+    if($HeroDefaultMotion){$stageFlag='-UEPHeroDefaultStage';$resultFlag='-UEPHeroDefaultResult';$marker='UEP_HERO_DEFAULT_MOTION_AUDIT_PASSED'}
     if($ExplorerShells){$stageFlag='-UEPExplorerShellStage';$resultFlag='-UEPExplorerShellResult';$marker='UEP_EXPLORER_SHELL_AUDIT_PASSED'}
     if($AutoRespawnHelpers){$stageFlag='-UEPAutoRespawnHelpersStageRoot';$resultFlag='-UEPAutoRespawnHelpersAuditResult';$marker='UEP_AUTO_RESPAWN_HELPERS_AUDIT_PASSED'}
     $arguments=@($project,'-run=Py',$script,'-NullRHI',"$stageFlag=$stage","$resultFlag=$output\audit.json",
         '-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup',"-abslog=$output\audit.log")
+    if($HeroDefaultMotion){$arguments+=@('-UEPHeroDefaultBaseline='+[IO.Path]::GetFullPath($HeroDefaultBaseline))}
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'audit') 'Native ability producer read-only audit' 180
     $report=Get-Content -Raw -LiteralPath (Join-Path $output 'audit.json')|ConvertFrom-Json -Depth 90
     if($report.status -ne 'passed' -or $report.runtime_acceptance){throw 'Native read-only audit incomplete'}
-    if($HeroDefault){
+    if($HeroDefault -or $HeroDefaultMotion){
         if($report.assets_modified -or $report.assets_saved_or_compiled -or $report.asset.package -ne '/Game/Characters/Heroes/B_Hero_Default.B_Hero_Default'){throw 'Original parent character source proof required'}
         $summary.mode='read-only-original-hero-default-parent';$summary.assets=1
     }elseif($ExplorerShells){

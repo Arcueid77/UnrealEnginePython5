@@ -1429,7 +1429,7 @@ try{
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
 function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
-    $counts=@{herodefaultstencil=1;herodefaultequipment=2;herodefaultragdoll=3;herodefaultdeath=5}
+    $counts=@{herodefaultstencil=1;herodefaultequipment=2;herodefaultragdoll=3;herodefaultdeath=5;herodefaultmotion=6}
     if($Author.status -ne 'passed' -or $Proof.status -ne 'passed' -or !$counts.ContainsKey([string]$Proof.kind) -or @($Author.assets).Count -ne 2 -or $Proof.whole_parent_business_migrated -or $Proof.selector -ne 'UEPHeroDefaultMixinProfile'){throw 'Complete parent family identity/scope proof required'}
     $expected=$counts[[string]$Proof.kind]
     if($expected -lt $MinimumMethods -or $Proof.method_counts.Python -ne $expected -or $Proof.method_counts.BlueprintFallback -ne $expected){throw 'Complete parent method family required'}
@@ -1440,6 +1440,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
     }else{
         if(!$Proof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -or !$Proof.only_parent_mixin_data_asset_changed -or !$Proof.original_parent_selector_and_stencil_method_preserved){throw 'Original parent bytes and existing methods preservation required'}
         if($Proof.kind -eq 'herodefaultragdoll' -and !$Proof.original_parent_selector_stencil_and_hide_methods_preserved){throw 'Parent equipment hiding retention required'}
+        if($Proof.kind -eq 'herodefaultmotion' -and !$Proof.original_parent_selector_stencil_hide_ragdoll_and_death_methods_preserved){throw 'Parent native death chain retention required'}
     }
 }
     if($HeroParentDeath){
