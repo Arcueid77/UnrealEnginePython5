@@ -5,10 +5,12 @@
 #include "UEPyModule.h"
 #include "Async/Async.h"
 #include "CoreGlobals.h"
+#include "Modules/ModuleManager.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectHash.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/UObjectIterator.h"
+#include <atomic>
 
 namespace
 {
@@ -127,6 +129,11 @@ namespace
 	uint64 GNextMixinRegistrationId = 1;
 	uint64 GNextMixinProfileGenerationId = 1;
 	FDelegateHandle GMixinPackageLoadedHandle;
+#if !WITH_EDITOR
+	FDelegateHandle GMixinClassModuleLoadedHandle;
+	TArray<UClass*> GMixinRuntimeAssetClasses;
+	std::atomic<uint64> GMixinRuntimeDiscoveryEpoch{0};
+#endif
 
 	class FScopedMixinMutation
 	{
@@ -1646,6 +1653,7 @@ namespace
 		return registered_count;
 	}
 
+#if WITH_EDITOR
 	void RegisterMixinInterfacesInPackage(UPackage* loaded_package)
 	{
 		if (!loaded_package)
@@ -1698,7 +1706,6 @@ namespace
 		RegisterMixinInterfacesInPackage(loaded_package);
 	}
 
-#if WITH_EDITOR
 	void OnMixinEndLoadPackage(const FEndLoadPackageContext& context)
 	{
 		// The async loader's old per-package completion delegate can expose an
@@ -1707,6 +1714,77 @@ namespace
 		for (UPackage* loaded_package : context.LoadedPackages)
 		{
 			OnMixinPackageLoadCompleted(loaded_package);
+		}
+	}
+#else
+	void RefreshRuntimeMixinAssetClasses()
+	{
+		TArray<UClass*> class_types;
+		GetDerivedClasses(UClass::StaticClass(), class_types, true);
+		class_types.Add(UClass::StaticClass());
+		for (UClass* class_type : class_types)
+		{
+			// These are native metaclasses (including WidgetBlueprintGeneratedClass),
+			// not the loaded Blueprint classes themselves. Registration is refcounted.
+			if (class_type->HasAnyClassFlags(CLASS_Native) && !GMixinRuntimeAssetClasses.Contains(class_type))
+			{
+				FCoreUObjectDelegates::RegisterHotfixableAssetClass(class_type);
+				GMixinRuntimeAssetClasses.Add(class_type);
+			}
+		}
+	}
+
+	void OnRuntimeMixinModulesChanged(FName, EModuleChangeReason reason)
+	{
+		if (reason != EModuleChangeReason::ModuleLoaded || !GMixinPackageLoadedHandle.IsValid())
+		{
+			return;
+		}
+		if (!IsInGameThread())
+		{
+			const uint64 epoch = GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed);
+			AsyncTask(ENamedThreads::GameThread, [epoch]()
+			{
+				if (GMixinPackageLoadedHandle.IsValid() && GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed) == epoch)
+				{
+					RefreshRuntimeMixinAssetClasses();
+				}
+			});
+			return;
+		}
+		RefreshRuntimeMixinAssetClasses();
+	}
+
+	void OnRuntimeMixinAssetLoaded(UObject* loaded_object)
+	{
+		if (IsRunningCookCommandlet() || !loaded_object || !Py_IsInitialized())
+		{
+			return;
+		}
+		if (!IsInGameThread() || FUEPyScopedMixinCallback::IsActive() || GMixinMutationDepth > 0)
+		{
+			const TWeakObjectPtr<UObject> weak_object(loaded_object);
+			const uint64 epoch = GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed);
+			AsyncTask(ENamedThreads::GameThread, [weak_object, epoch]()
+			{
+				if (GMixinPackageLoadedHandle.IsValid() && GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed) == epoch)
+				{
+					OnRuntimeMixinAssetLoaded(weak_object.Get());
+				}
+			});
+			return;
+		}
+		UClass* target_class = Cast<UClass>(loaded_object);
+		if (!IsDiscoverableMixinClass(target_class))
+		{
+			return;
+		}
+		FScopePythonGIL gil;
+		FScopedMixinMutation mutation_scope;
+		RegisterDeclaredMixinInternal(target_class, false);
+		if (PyErr_Occurred())
+		{
+			unreal_engine_py_log_error();
 		}
 	}
 #endif
@@ -2494,13 +2572,15 @@ void unreal_engine_python_enable_mixin_discovery()
 	}
 	if (!GMixinPackageLoadedHandle.IsValid())
 	{
-		// OnEndLoadPackage is not available in ordinary non-editor builds.
-		// Keep that existing runtime path separate until it has its own
-		// packaged discovery replacement and acceptance coverage.
 #if WITH_EDITOR
 		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnEndLoadPackage.AddStatic(&OnMixinEndLoadPackage);
 #else
-		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnPackageLoadCompleted.AddStatic(&OnMixinPackageLoadCompleted);
+		// Unlike the deprecated per-package callback, this is delivered after
+		// postload in both cooked async loading and synchronous EndLoad.
+		GMixinRuntimeDiscoveryEpoch.fetch_add(1, std::memory_order_relaxed);
+		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnHotfixableAssetLoaded.AddStatic(&OnRuntimeMixinAssetLoaded);
+		GMixinClassModuleLoadedHandle = FModuleManager::Get().OnModulesChanged().AddStatic(&OnRuntimeMixinModulesChanged);
+		RefreshRuntimeMixinAssetClasses();
 #endif
 	}
 	if (Py_IsInitialized() && !FUEPyScopedMixinCallback::IsActive() && GMixinMutationDepth == 0)
@@ -2518,7 +2598,15 @@ void unreal_engine_python_disable_mixin_discovery()
 #if WITH_EDITOR
 		FCoreUObjectDelegates::OnEndLoadPackage.Remove(GMixinPackageLoadedHandle);
 #else
-		FCoreUObjectDelegates::OnPackageLoadCompleted.Remove(GMixinPackageLoadedHandle);
+		GMixinRuntimeDiscoveryEpoch.fetch_add(1, std::memory_order_relaxed);
+		FCoreUObjectDelegates::OnHotfixableAssetLoaded.Remove(GMixinPackageLoadedHandle);
+		FModuleManager::Get().OnModulesChanged().Remove(GMixinClassModuleLoadedHandle);
+		GMixinClassModuleLoadedHandle.Reset();
+		for (UClass* class_type : GMixinRuntimeAssetClasses)
+		{
+			FCoreUObjectDelegates::UnregisterHotfixableAssetClass(class_type);
+		}
+		GMixinRuntimeAssetClasses.Empty();
 #endif
 		GMixinPackageLoadedHandle.Reset();
 	}
