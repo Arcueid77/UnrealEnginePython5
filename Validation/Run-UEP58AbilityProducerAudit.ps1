@@ -1,11 +1,11 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
-      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault,[switch]$HeroDefaultMotion,[string]$HeroDefaultBaseline)
+      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault,[switch]$HeroDefaultMotion,[string]$HeroDefaultBaseline,[switch]$ArenaRuntime)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 if([bool]$HeroDefaultMotion -ne [bool]$HeroDefaultBaseline){throw 'Motion audit requires its explicit accepted parent baseline'}
-if(@(@([bool]$Coverage,[bool]$SparseMap,[bool]$Interaction,[bool]$ReloadFamily,[bool]$SpawnEffect,[bool]$DeviceColor,[bool]$Emote,[bool]$WidgetInput,[bool]$WidgetPressedContext,[bool]$AutoRespawnHelpers,[bool]$ExplorerShells,[bool]$HeroDefault,[bool]$HeroDefaultMotion)|Where-Object {$_}).Count -gt 1){throw 'Choose one native audit mode'}
+if(@(@([bool]$Coverage,[bool]$SparseMap,[bool]$Interaction,[bool]$ReloadFamily,[bool]$SpawnEffect,[bool]$DeviceColor,[bool]$Emote,[bool]$WidgetInput,[bool]$WidgetPressedContext,[bool]$AutoRespawnHelpers,[bool]$ExplorerShells,[bool]$HeroDefault,[bool]$HeroDefaultMotion,[bool]$ArenaRuntime)|Where-Object {$_}).Count -gt 1){throw 'Choose one native audit mode'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 . (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
 $repo=Split-Path $PSScriptRoot -Parent
@@ -44,6 +44,7 @@ try{
     if($WidgetInput){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_widget_input_abilities.py'}
     if($WidgetPressedContext){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_widget_pressed_context.py'}
     if($HeroDefault){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_hero_default.py'}
+    if($ArenaRuntime){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_arena_runtime.py';Add-ProducerHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py')}
     if($HeroDefaultMotion){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_hero_default_motion.py';Add-ProducerHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py')}
     if($ExplorerShells){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_explorer_shells.py'}
     if($AutoRespawnHelpers){$script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/audit_auto_respawn_helpers.py'}
@@ -60,6 +61,7 @@ try{
     if($WidgetInput){$stageFlag='-UEPWidgetInputStageRoot';$resultFlag='-UEPWidgetInputAuditResult';$marker='UEP_WIDGET_INPUT_AUDIT_PASSED'}
     if($WidgetPressedContext){$stageFlag='-UEPWidgetPressedStageRoot';$resultFlag='-UEPWidgetPressedAuditResult';$marker='UEP_WIDGET_PRESSED_CONTEXT_AUDIT_PASSED'}
     if($HeroDefault){$stageFlag='-UEPHeroDefaultStage';$resultFlag='-UEPHeroDefaultResult';$marker='UEP_HERO_DEFAULT_AUDIT_PASSED'}
+    if($ArenaRuntime){$stageFlag='-UEPArenaStage';$resultFlag='-UEPArenaResult';$marker='UEP_ARENA_RUNTIME_AUDIT_PASSED'}
     if($HeroDefaultMotion){$stageFlag='-UEPHeroDefaultStage';$resultFlag='-UEPHeroDefaultResult';$marker='UEP_HERO_DEFAULT_MOTION_AUDIT_PASSED'}
     if($ExplorerShells){$stageFlag='-UEPExplorerShellStage';$resultFlag='-UEPExplorerShellResult';$marker='UEP_EXPLORER_SHELL_AUDIT_PASSED'}
     if($AutoRespawnHelpers){$stageFlag='-UEPAutoRespawnHelpersStageRoot';$resultFlag='-UEPAutoRespawnHelpersAuditResult';$marker='UEP_AUTO_RESPAWN_HELPERS_AUDIT_PASSED'}
@@ -70,7 +72,10 @@ try{
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'audit') 'Native ability producer read-only audit' 180
     $report=Get-Content -Raw -LiteralPath (Join-Path $output 'audit.json')|ConvertFrom-Json -Depth 90
     if($report.status -ne 'passed' -or $report.runtime_acceptance){throw 'Native read-only audit incomplete'}
-    if($HeroDefault -or $HeroDefaultMotion){
+    if($ArenaRuntime){
+        if($report.assets_modified -or $report.assets_saved_or_compiled -or !$report.original_candidate_paths_retained -or $report.remaining_arena_business_migrated -or @($report.assets.PSObject.Properties).Count -ne 20){throw 'Exact original20 Arena graph/CDO/ABI audit required'}
+        $summary.mode='read-only-original-arena-runtime-candidates';$summary.assets=20
+    }elseif($HeroDefault -or $HeroDefaultMotion){
         if($report.assets_modified -or $report.assets_saved_or_compiled -or $report.asset.package -ne '/Game/Characters/Heroes/B_Hero_Default.B_Hero_Default'){throw 'Original parent character source proof required'}
         $summary.mode='read-only-original-hero-default-parent';$summary.assets=1
     }elseif($ExplorerShells){
@@ -121,7 +126,7 @@ try{
     }
     foreach($input in $summary.hashes){if((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256){throw 'Native producer audit input changed'}}
     $summary.status='passed'
-    if(!$Coverage -and !$SparseMap -and !$Interaction -and !$ReloadFamily -and !$SpawnEffect -and !$DeviceColor -and !$Emote -and !$WidgetInput -and !$WidgetPressedContext -and !$AutoRespawnHelpers -and !$ExplorerShells -and !$HeroDefault){$summary.abilities=8}
+    if(!$Coverage -and !$SparseMap -and !$Interaction -and !$ReloadFamily -and !$SpawnEffect -and !$DeviceColor -and !$Emote -and !$WidgetInput -and !$WidgetPressedContext -and !$AutoRespawnHelpers -and !$ExplorerShells -and !$HeroDefault -and !$HeroDefaultMotion -and !$ArenaRuntime){$summary.abilities=8}
 }catch{$summary.error=$_.ToString();throw}
 finally{$summary|ConvertTo-Json -Depth 10|Set-Content -LiteralPath (Join-Path $output 'summary.json') -Encoding utf8}
 Write-Host "Native ability defaults audit: $($summary.status); $output"
