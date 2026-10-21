@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$ExplorerShells,[string]$ExplorerShellAuditDirectory,
       [switch]$ExplorerMarker,[string]$ExplorerMarkerAuthoringDirectory,
       [switch]$CollectCue,[string]$CollectCueAuthoringDirectory,
       [switch]$ExplorerActions,[string]$ExplorerActionsAuthoringDirectory,[string]$ExplorerActionsInteractBaseline,[string]$ExplorerActionsCueLifecycleDirectory,
@@ -136,6 +137,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($ExplorerShells){
+    $shellAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerShells','ExplorerShellAuditDirectory','ThreadedLoading')
+    if(!$ExplorerShellAuditDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $shellAllowed}).Count){throw 'Explorer shells require exact original no-business/forwarder audit'}
+    $AutoRespawnActivation=$true
+}
+if($ExplorerShellAuditDirectory -and !$ExplorerShells){throw 'Explorer shell audit requires explicit native fixture'}
 if($ExplorerMarker){
     $markerAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerMarker','ExplorerMarkerAuthoringDirectory','ThreadedLoading')
     if(!$ExplorerMarkerAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $markerAllowed}).Count){throw 'Explorer marker requires exact native target-data/HasActor/sphere proofs'}
@@ -1392,6 +1399,16 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($ExplorerShells){
+        $shellRoot=[IO.Path]::GetFullPath($ExplorerShellAuditDirectory)
+        if(!$shellRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned retained shell audit required'}
+        $shellSummary=Join-Path $shellRoot 'summary.json';$shellAuditPath=Join-Path $shellRoot 'audit.json';$shellSummaryData=Get-Content -LiteralPath $shellSummary -Raw|ConvertFrom-Json -Depth 100;$shellAudit=Get-Content -LiteralPath $shellAuditPath -Raw|ConvertFrom-Json -Depth 100
+        if($shellSummaryData.status -ne 'passed' -or $shellAudit.status -ne 'passed' -or $shellAudit.assets_modified -or $shellAudit.assets_saved_or_compiled -or $shellAudit.inherited_parent_business_migrated -or @($shellAudit.assets.PSObject.Properties).Count -ne 5){throw 'Original no-independent-business shell/prompt evidence required'}
+        foreach($hash in $shellAudit.reference_hashes.PSObject.Properties){if((Get-FileHash -LiteralPath $hash.Name).Hash.ToLowerInvariant() -ne $hash.Value){throw 'Retained original shell/prompt changed'};Add-JumpInput $hash.Name}
+        Add-JumpInput $shellSummary;Add-JumpInput $shellAuditPath
+        Add-JumpInput (Join-Path $stage 'Source/LyraGame/UI/IndicatorSystem/IndicatorDescriptor.h')
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Private/Actor.cpp')
     }
     if($ExplorerMarker){
         $markerRoot=[IO.Path]::GetFullPath($ExplorerMarkerAuthoringDirectory)
@@ -3035,6 +3052,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($ExplorerShells){$flag='-UEPExplorerShellsResult';$marker='UEP_EXPLORER_SHELLS'}
     if($ExplorerMarker){$flag='-UEPExplorerMarkerResult';$marker='UEP_EXPLORER_MARKER'}
     if($CollectCue){$flag='-UEPCollectCueResult';$marker='UEP_COLLECT_CUE'}
     if($ExplorerActions){$flag='-UEPExplorerActionsResult';$marker='UEP_EXPLORER_ACTIONS'}
@@ -3133,6 +3151,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($ExplorerShells){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPExplorerShellAudit='+[IO.Path]::GetFullPath($ExplorerShellAuditDirectory))}
     if($ExplorerMarker){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($CollectCue){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPCollectCueAuthoring='+[IO.Path]::GetFullPath($CollectCueAuthoringDirectory))}
     if($ExplorerActions){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
@@ -3525,6 +3544,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($ExplorerShells){$module='uep_lyra_characters.explorer_shells_contract'}
         if($ExplorerMarker){$module='uep_lyra_abilities.explorer_marker_contract'}
         if($CollectCue){$module='uep_lyra_weapons.collect_cue_contract'}
         if($ExplorerActions){$module='uep_lyra_abilities.explorer_actions_contract'}
