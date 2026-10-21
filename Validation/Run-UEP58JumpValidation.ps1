@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$HeroParentStencil,[string]$HeroParentStencilAuthoringDirectory,
       [switch]$ExplorerShells,[string]$ExplorerShellAuditDirectory,
       [switch]$ExplorerMarker,[string]$ExplorerMarkerAuthoringDirectory,
       [switch]$CollectCue,[string]$CollectCueAuthoringDirectory,
@@ -137,6 +138,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($HeroParentStencil){
+    $parentStencilAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HeroParentStencil','HeroParentStencilAuthoringDirectory','ThreadedLoading')
+    if(!$HeroParentStencilAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $parentStencilAllowed}).Count){throw 'Hero parent stencil requires original parent/unique-selector proof'}
+    $AutoRespawnActivation=$true
+}
+if($HeroParentStencilAuthoringDirectory -and !$HeroParentStencil){throw 'Parent stencil proof requires explicit native fixture'}
 if($ExplorerShells){
     $shellAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','ExplorerShells','ExplorerShellAuditDirectory','ThreadedLoading')
     if(!$ExplorerShellAuditDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $shellAllowed}).Count){throw 'Explorer shells require exact original no-business/forwarder audit'}
@@ -1399,6 +1406,19 @@ try{
             if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Weapon fire FX asset changed'};Add-JumpInput $path
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
+    }
+    if($HeroParentStencil){
+        $parentStencilRoot=[IO.Path]::GetFullPath($HeroParentStencilAuthoringDirectory)
+        if(!$parentStencilRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned parent stencil proof required'}
+        $parentStencilSummary=Join-Path $parentStencilRoot 'summary.json';$parentStencilProofPath=Join-Path $parentStencilRoot 'assets.json';$parentStencilAuthor=Get-Content -LiteralPath $parentStencilSummary -Raw|ConvertFrom-Json -Depth 100;$parentStencilProof=Get-Content -LiteralPath $parentStencilProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($parentStencilAuthor.status -ne 'passed' -or $parentStencilProof.kind -ne 'herodefaultstencil' -or @($parentStencilAuthor.assets).Count -ne 2 -or !$parentStencilProof.original_all_parent_cdo_properties_public_abis_nodes_guids_and_business_graphs_preserved -or $parentStencilProof.whole_parent_business_migrated -or $parentStencilProof.selector -ne 'UEPHeroDefaultMixinProfile' -or $parentStencilProof.method_counts.Python -ne 1 -or $parentStencilProof.method_counts.BlueprintFallback -ne 1){throw 'Complete parent stencil scope proof required'}
+        foreach($asset in $parentStencilAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Parent stencil asset changed'};Add-JumpInput $path}}
+        Add-JumpInput $parentStencilSummary;Add-JumpInput $parentStencilProofPath
+        Add-JumpInput (Join-Path $stage 'Source/LyraGame/System/LyraSystemStatics.cpp')
+        Add-JumpInput (Join-Path $EngineRoot 'Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp')
+        $descendantHashes=[ordered]@{}
+        foreach($relative in @('Content/Characters/Heroes/B_SimpleHeroPawn.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_SimpleFollowPawn.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_SimpleFollowPawn_Big.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_Hero_Explorer.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_Pawn_Explorer.uasset','Plugins/GameFeatures/ShooterCore/Content/Game/B_Hero_ShooterMannequin.uasset')){foreach($root in @($stage,$overlay)){$file=Join-Path $root $relative;if(Test-Path -LiteralPath $file){$descendantHashes[$file]=(Get-FileHash -LiteralPath $file).Hash;Add-JumpInput $file}}}
+        $descendantHashes|ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $output 'descendant-hashes.json') -Encoding utf8
     }
     if($ExplorerShells){
         $shellRoot=[IO.Path]::GetFullPath($ExplorerShellAuditDirectory)
@@ -3052,6 +3072,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($HeroParentStencil){$flag='-UEPHeroParentStencilResult';$marker='UEP_HERO_PARENT_STENCIL'}
     if($ExplorerShells){$flag='-UEPExplorerShellsResult';$marker='UEP_EXPLORER_SHELLS'}
     if($ExplorerMarker){$flag='-UEPExplorerMarkerResult';$marker='UEP_EXPLORER_MARKER'}
     if($CollectCue){$flag='-UEPCollectCueResult';$marker='UEP_COLLECT_CUE'}
@@ -3151,6 +3172,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($HeroParentStencil){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPHeroStencilDescendantHashes='+(Join-Path $output 'descendant-hashes.json'))}
     if($ExplorerShells){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPExplorerShellAudit='+[IO.Path]::GetFullPath($ExplorerShellAuditDirectory))}
     if($ExplorerMarker){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0'}
     if($CollectCue){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPCollectCueAuthoring='+[IO.Path]::GetFullPath($CollectCueAuthoringDirectory))}
@@ -3544,6 +3566,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($HeroParentStencil){$module='uep_lyra_characters.hero_default_stencil_contract'}
         if($ExplorerShells){$module='uep_lyra_characters.explorer_shells_contract'}
         if($ExplorerMarker){$module='uep_lyra_abilities.explorer_marker_contract'}
         if($CollectCue){$module='uep_lyra_weapons.collect_cue_contract'}
