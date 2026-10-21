@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
       [Parameter(Mandatory=$true)][string]$OutputDirectory,
@@ -52,6 +52,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$TDMScoring,[string]$TDMScoringAuthoringDirectory,
       [switch]$CPScoring,[string]$CPScoringAuthoringDirectory,
       [switch]$ControlPointHelpers,[string]$ControlPointHelpersAuthoringDirectory,
+      [switch]$HeroParentRagdoll,[string]$HeroParentRagdollAuthoringDirectory,
       [switch]$HeroParentEquipment,[string]$HeroParentEquipmentAuthoringDirectory,
       [switch]$HeroParentStencil,[string]$HeroParentStencilAuthoringDirectory,
       [switch]$ExplorerShells,[string]$ExplorerShellAuditDirectory,
@@ -139,6 +140,12 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($HeroParentRagdoll){
+    $ragdollAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HeroParentRagdoll','HeroParentRagdollAuthoringDirectory','ThreadedLoading')
+    if(!$HeroParentRagdollAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $ragdollAllowed}).Count){throw 'Parent Ragdoll requires exact parent graph and native control proof'}
+    $AutoRespawnActivation=$true
+}
+if($HeroParentRagdollAuthoringDirectory -and !$HeroParentRagdoll){throw 'Parent Ragdoll proof requires explicit fixture'}
 if($HeroParentEquipment){
     $parentEquipmentAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','HeroParentEquipment','HeroParentEquipmentAuthoringDirectory','ThreadedLoading')
     if(!$HeroParentEquipmentAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $parentEquipmentAllowed}).Count){throw 'Hero parent equipment requires original parent/stencil and native equipment proofs'}
@@ -1414,11 +1421,26 @@ try{
         }}
         Add-JumpInput $decalSummaryPath;Add-JumpInput $decalProofPath
     }
+    if($HeroParentRagdoll){
+        $parentRagdollRoot=[IO.Path]::GetFullPath($HeroParentRagdollAuthoringDirectory)
+        if(!$parentRagdollRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned parent equipment proof required'}
+        $parentRagdollSummary=Join-Path $parentRagdollRoot 'summary.json';$parentRagdollProofPath=Join-Path $parentRagdollRoot 'assets.json';$parentRagdollAuthor=Get-Content -LiteralPath $parentRagdollSummary -Raw|ConvertFrom-Json -Depth 100;$parentRagdollProof=Get-Content -LiteralPath $parentRagdollProofPath -Raw|ConvertFrom-Json -Depth 100
+        if($parentRagdollAuthor.status -ne 'passed' -or $parentRagdollProof.kind -ne 'herodefaultragdoll' -or @($parentRagdollAuthor.assets).Count -ne 2 -or !$parentRagdollProof.original_parent_selector_stencil_and_hide_methods_preserved -or !$parentRagdollProof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -or !$parentRagdollProof.only_parent_mixin_data_asset_changed -or $parentRagdollProof.whole_parent_business_migrated -or $parentRagdollProof.method_counts.Python -ne 3 -or $parentRagdollProof.method_counts.BlueprintFallback -ne 3){throw 'Complete parent Ragdoll family scope proof required'}
+        foreach($asset in $parentRagdollAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Parent equipment asset changed'};Add-JumpInput $path}}
+        foreach($fixture in @($parentRagdollProof.fixture,$parentRagdollProof.physics_control)+@($parentRagdollProof.fixtures)){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256 -or !$fixture.stage_only){throw 'Parent Ragdoll native fixture changed'};Add-JumpInput $fixture.asset}
+        foreach($entry in $parentRagdollProof.physics_control.source_hashes.PSObject.Properties){if((Get-FileHash -LiteralPath $entry.Name).Hash -ne $entry.Value){throw 'Original physics source changed'};Add-JumpInput $entry.Name}
+        $parentRagdollProof.physics_control.source_hashes|ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $output 'ragdoll-physics-hashes.json') -Encoding utf8
+        Add-JumpInput $parentRagdollSummary;Add-JumpInput $parentRagdollProofPath
+        foreach($relative in @('Engine/Source/Runtime/Engine/Private/SkeletalMeshComponentPhysics.cpp','Engine/Source/Runtime/Engine/Private/Components/CharacterMovementComponent.cpp')){Add-JumpInput (Join-Path $EngineRoot $relative)}
+        $descendantHashes=[ordered]@{}
+        foreach($relative in @('Content/Characters/Heroes/B_SimpleHeroPawn.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_SimpleFollowPawn.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_SimpleFollowPawn_Big.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_Hero_Explorer.uasset','Plugins/GameFeatures/ShooterExplorer/Content/Blueprint/B_Pawn_Explorer.uasset','Plugins/GameFeatures/ShooterCore/Content/Game/B_Hero_ShooterMannequin.uasset')){foreach($root in @($stage,$overlay)){$file=Join-Path $root $relative;if(Test-Path -LiteralPath $file){$descendantHashes[$file]=(Get-FileHash -LiteralPath $file).Hash;Add-JumpInput $file}}}
+        $descendantHashes|ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $output 'ragdoll-descendant-hashes.json') -Encoding utf8
+    }
     if($HeroParentEquipment){
         $parentEquipmentRoot=[IO.Path]::GetFullPath($HeroParentEquipmentAuthoringDirectory)
         if(!$parentEquipmentRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned parent equipment proof required'}
         $parentEquipmentSummary=Join-Path $parentEquipmentRoot 'summary.json';$parentEquipmentProofPath=Join-Path $parentEquipmentRoot 'assets.json';$parentEquipmentAuthor=Get-Content -LiteralPath $parentEquipmentSummary -Raw|ConvertFrom-Json -Depth 100;$parentEquipmentProof=Get-Content -LiteralPath $parentEquipmentProofPath -Raw|ConvertFrom-Json -Depth 100
-        if($parentEquipmentAuthor.status -ne 'passed' -or $parentEquipmentProof.kind -ne 'herodefaultequipment' -or @($parentEquipmentAuthor.assets).Count -ne 2 -or !$parentEquipmentProof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -or !$parentEquipmentProof.only_parent_mixin_data_asset_changed -or $parentEquipmentProof.whole_parent_business_migrated -or $parentEquipmentProof.method_counts.Python -ne 2 -or $parentEquipmentProof.method_counts.BlueprintFallback -ne 2){throw 'Complete parent equipment/stencil family scope proof required'}
+        if($parentEquipmentAuthor.status -ne 'passed' -or $parentEquipmentProof.kind -notin @('herodefaultequipment','herodefaultragdoll') -or @($parentEquipmentAuthor.assets).Count -ne 2 -or !$parentEquipmentProof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -or !$parentEquipmentProof.only_parent_mixin_data_asset_changed -or $parentEquipmentProof.whole_parent_business_migrated -or $parentEquipmentProof.method_counts.Python -ne $(if($parentEquipmentProof.kind -eq 'herodefaultragdoll'){3}else{2}) -or $parentEquipmentProof.method_counts.BlueprintFallback -ne $(if($parentEquipmentProof.kind -eq 'herodefaultragdoll'){3}else{2})){throw 'Complete parent equipment/stencil family scope proof required'}
         foreach($asset in $parentEquipmentAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Parent equipment asset changed'};Add-JumpInput $path}}
         foreach($fixture in $parentEquipmentProof.fixtures){if((Get-FileHash -LiteralPath $fixture.asset).Hash -ne $fixture.sha256 -or !$fixture.stage_only){throw 'Native parent equipment producer/caller changed'};Add-JumpInput $fixture.asset}
         Add-JumpInput $parentEquipmentSummary;Add-JumpInput $parentEquipmentProofPath
@@ -1431,7 +1453,7 @@ try{
         $parentStencilRoot=[IO.Path]::GetFullPath($HeroParentStencilAuthoringDirectory)
         if(!$parentStencilRoot.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Owned parent stencil proof required'}
         $parentStencilSummary=Join-Path $parentStencilRoot 'summary.json';$parentStencilProofPath=Join-Path $parentStencilRoot 'assets.json';$parentStencilAuthor=Get-Content -LiteralPath $parentStencilSummary -Raw|ConvertFrom-Json -Depth 100;$parentStencilProof=Get-Content -LiteralPath $parentStencilProofPath -Raw|ConvertFrom-Json -Depth 100
-        if($parentStencilAuthor.status -ne 'passed' -or @($parentStencilAuthor.assets).Count -ne 2 -or $parentStencilProof.whole_parent_business_migrated -or $parentStencilProof.selector -ne 'UEPHeroDefaultMixinProfile' -or !(($parentStencilProof.kind -eq 'herodefaultstencil' -and $parentStencilProof.original_all_parent_cdo_properties_public_abis_nodes_guids_and_business_graphs_preserved -and $parentStencilProof.method_counts.Python -eq 1 -and $parentStencilProof.method_counts.BlueprintFallback -eq 1) -or ($parentStencilProof.kind -eq 'herodefaultequipment' -and $parentStencilProof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -and $parentStencilProof.original_parent_selector_and_stencil_method_preserved -and $parentStencilProof.method_counts.Python -eq 2 -and $parentStencilProof.method_counts.BlueprintFallback -eq 2))){throw 'Complete parent stencil scope proof required'}
+        if($parentStencilAuthor.status -ne 'passed' -or @($parentStencilAuthor.assets).Count -ne 2 -or $parentStencilProof.whole_parent_business_migrated -or $parentStencilProof.selector -ne 'UEPHeroDefaultMixinProfile' -or !(($parentStencilProof.kind -eq 'herodefaultstencil' -and $parentStencilProof.original_all_parent_cdo_properties_public_abis_nodes_guids_and_business_graphs_preserved -and $parentStencilProof.method_counts.Python -eq 1 -and $parentStencilProof.method_counts.BlueprintFallback -eq 1) -or ($parentStencilProof.kind -in @('herodefaultequipment','herodefaultragdoll') -and $parentStencilProof.original_parent_bytes_cdo_public_abis_all_nodes_guids_and_business_graphs_preserved -and $parentStencilProof.original_parent_selector_and_stencil_method_preserved -and $parentStencilProof.method_counts.Python -eq $(if($parentStencilProof.kind -eq 'herodefaultragdoll'){3}else{2}) -and $parentStencilProof.method_counts.BlueprintFallback -eq $(if($parentStencilProof.kind -eq 'herodefaultragdoll'){3}else{2})))){throw 'Complete parent stencil scope proof required'}
         foreach($asset in $parentStencilAuthor.assets){foreach($path in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $path).Hash -ne $asset.sha256){throw 'Parent stencil asset changed'};Add-JumpInput $path}}
         Add-JumpInput $parentStencilSummary;Add-JumpInput $parentStencilProofPath
         Add-JumpInput (Join-Path $stage 'Source/LyraGame/System/LyraSystemStatics.cpp')
@@ -3092,6 +3114,7 @@ try{
     if($MessageWidgets){$flag='-UEPMessageWidgetResult';$marker='UEP_MESSAGE_WIDGET'}
     if($CharacterDamage){$flag='-UEPCharacterDamageResult';$marker='UEP_CHARACTER_DAMAGE'}
     if($HeroBurstCues){$flag='-UEPHeroBurstCueResult';$marker='UEP_HERO_BURST_CUE'}
+    if($HeroParentRagdoll){$flag='-UEPHeroParentRagdollResult';$marker='UEP_HERO_PARENT_RAGDOLL'}
     if($HeroParentEquipment){$flag='-UEPHeroParentEquipmentResult';$marker='UEP_HERO_PARENT_EQUIPMENT'}
     if($HeroParentStencil){$flag='-UEPHeroParentStencilResult';$marker='UEP_HERO_PARENT_STENCIL'}
     if($ExplorerShells){$flag='-UEPExplorerShellsResult';$marker='UEP_EXPLORER_SHELLS'}
@@ -3193,6 +3216,7 @@ try{
     if($ShooterEQS){$arguments+=@("-UEPShooterEQSProfile=$ShooterEQSProfile","-UEPShooterEQSMode=$ShooterEQSMode");if($ShooterEQSMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($ShooterAI){$arguments+=@("-UEPShooterAIProfile=$ShooterAIProfile","-UEPShooterAIMode=$ShooterAIMode");if($ShooterAIMode -eq 'cp'){$arguments[1]='/ShooterMaps/Maps/L_Convolution_Blockout?Experience=B_LyraShooterGame_ControlPoints?NumBots=3'}}
     if($GamePhases){$arguments+=@("-UEPGamePhasesProfile=$GamePhasesProfile")}
+    if($HeroParentRagdoll){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPHeroRagdollDescendantHashes='+(Join-Path $output 'ragdoll-descendant-hashes.json'));$arguments+=@('-UEPHeroRagdollPhysicsHashes='+(Join-Path $output 'ragdoll-physics-hashes.json'))}
     if($HeroParentEquipment){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPHeroEquipmentDescendantHashes='+(Join-Path $output 'equipment-descendant-hashes.json'))}
     if($HeroParentStencil){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPHeroStencilDescendantHashes='+(Join-Path $output 'descendant-hashes.json'))}
     if($ExplorerShells){$arguments[1]='/ShooterMaps/Maps/L_Expanse?NumBots=0';$arguments+=@('-UEPExplorerShellAudit='+[IO.Path]::GetFullPath($ExplorerShellAuditDirectory))}
@@ -3588,6 +3612,7 @@ try{
         if($MessageWidgets){$module='uep_lyra_hud.message_widget_contract'}
         if($CharacterDamage){$module='uep_lyra_weapons.character_damage_contract'}
         if($HeroBurstCues){$module='uep_lyra_weapons.hero_burst_cue_contract'}
+        if($HeroParentRagdoll){$module='uep_lyra_characters.hero_default_ragdoll_contract'}
         if($HeroParentEquipment){$module='uep_lyra_characters.hero_default_equipment_contract'}
         if($HeroParentStencil){$module='uep_lyra_characters.hero_default_stencil_contract'}
         if($ExplorerShells){$module='uep_lyra_characters.explorer_shells_contract'}
