@@ -21,6 +21,8 @@ param(
     [string]$NameplateTransportRevisionDirectory,
     [string]$PackagedExecutable,
     [switch]$PackagedClientsOnly,
+    [ValidateSet('Python','BlueprintFallback')][string]$GameplayProfile,
+    [string[]]$TestPattern=@(),[switch]$FullRegression,
     [ValidateRange(1024,65535)][int]$ServerPort=7788,
     [ValidateRange(60,900)][int]$RuntimeTimeoutSeconds=900
 )
@@ -42,6 +44,7 @@ if ($QuickBarSlots -and !$CombatHUD) { throw 'QuickBarSlots requires the opt-in 
 if ($Nameplates -and (!$CombatHUD -or !$NameplateAssetAuthoringDirectory)) { throw 'Nameplates requires CombatHUD and accepted component authoring' }
 if ($NameplateOriginalTrace -and !$Nameplates) { throw 'Original nameplate diagnostic requires Nameplates' }
 if ($HealthbarPublicEntries -and !$WeaponGameplay) { throw 'Public healthbar entries require the real-weapon restart lane' }
+if($GameplayProfile -and (!$WeaponGameplay -or $CombatHUD -or $PackagedExecutable)){throw 'Gameplay Profile comparison requires the focused Editor weapon lane'}
 . (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 . (Join-Path $PSScriptRoot 'UEPNameplateAssetProvenance.ps1')
@@ -80,6 +83,7 @@ $summary=[ordered]@{
     native_source_hashes=@(); input_hashes=@(); processes=@{}; hud_audit=$null; host_tests=$null; contract_tests=$null
     engine_build_id=$null; protocol_validation=$null; error=$null
     engine_version=$null; python_version=$null; asset_registry_primed=$false
+    gameplay_profile=$GameplayProfile;host_test_selection=$null
     packaged_runtime=$false; packaged_executable=$null
     packaged_server=$false; packaged_topology=$null
 }
@@ -126,6 +130,7 @@ function Assert-NetworkPeer {
     $log=Get-Content -LiteralPath (Join-Path $output ($Peer + '.log')) -Raw
     Assert-UEPFocusedLog $log 'UEP_LYRA_HUD_SHUTDOWN_PASSED' -RequirePythonExit
     Assert-LyraHUDShutdownLog $log
+    if($GameplayProfile){Assert-UEPFocusedLog $log 'UEP_INTEGRATED_GAMEPLAY_SHUTDOWN_PASSED' -RequirePythonExit}
     if ($report.mode -ne $mode -or $report.status -ne 'passed') { throw 'Peer did not pass after exit' }
 }
 
@@ -148,6 +153,7 @@ function Start-NetworkPeer {
     if($mode -eq 'server'){$arguments+=@('-server',"-port=$ServerPort",'-multihome=127.0.0.1')}else{$arguments+='-game'}
     if($WeaponGameplay) {
         $arguments+='-UEPLyraWeaponNetwork'
+        if($GameplayProfile){$arguments+="-UEPLyraGameplayProfile=$GameplayProfile"}
         if ($CombatHUD) { $arguments+='-UEPLyraCombatHUD' }
         if ($DebugSpread) { $arguments+='-UEPLyraDebugSpread' }
         if ($ProductionReticles) { $arguments+='-UEPLyraProductionReticles' }
@@ -315,10 +321,20 @@ try {
     $summary.python_version=(& $python -B -c 'import platform; print(platform.python_version())').Trim()
     if($LASTEXITCODE -ne 0 -or $summary.python_version -notlike '3.11.*'){throw 'Bundled CPython 3.11 is required'}
     Add-InputHash $python
-    $summary.host_tests=Invoke-UEPValidationProcess $python @('-B','-m','unittest','discover','-s',(Join-Path $repo 'Demos\UEPLyraIntegration\Tests'),'-p','test_*.py','-v') $repo (Join-Path $output 'host-tests') 'Python host tests' 60
+    $hostRunner=Join-Path $PSScriptRoot 'Run-UEPLyraHostTests.py'
+    Add-InputHash $hostRunner;Add-InputHash (Join-Path $PSScriptRoot 'uep_test_scope.py')
+    $hostArgs=@('-B',$hostRunner,'--result',(Join-Path $output 'host-tests.json'))
+    if($FullRegression){$hostArgs+='--all'}else{
+        $patterns=@('test_network_*.py','test_weapon_network_protocol.py','test_weapon_hud*.py')+$TestPattern
+        if($GameplayProfile){$patterns+=@('test_integrated_profile_contract.py','test_autoreload*.py','test_reload_magazine*.py','test_weapon_ability_fire*.py','test_quickslot*.py')}
+        foreach($pattern in @($patterns|Select-Object -Unique)){$hostArgs+=@('--test-pattern',$pattern)}
+    }
+    $hostEnvironment=@{PYTHONPATH=((Join-Path $overlay 'Content/Scripts')+';'+(Join-Path $repo 'Content/Scripts'))}
+    $summary.host_tests=Invoke-UEPValidationProcess $python $hostArgs $repo (Join-Path $output 'host-tests') 'Selected Python host tests' 120 $hostEnvironment
+    $summary.host_test_selection=(Read-NetworkJSON (Join-Path $output 'host-tests.json')).selection
     $summary.contract_tests=Invoke-UEPValidationProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $PSScriptRoot 'Tests\Test-LyraHUDContracts.ps1')) $repo (Join-Path $output 'contract-tests') 'PowerShell contract tests' 60
     $common=@('-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en',
-        '-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging',
+        '-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession',
         '-notraceserver','-trace=none','-stdout','-FullStdOutLogOutput','-ExecCmds=t.MaxFPS 60')
     $cache=Join-Path $stage 'Intermediate\CachedAssetRegistry'
     if (!(Test-Path -LiteralPath $cache) -or @(Get-ChildItem -LiteralPath $cache -Recurse -File).Count -eq 0) {
@@ -379,6 +395,7 @@ try {
     $validator=Join-Path $repo 'Demos\UEPLyraIntegration\Tools\validate_network_reports.py'
     if($WeaponGameplay){$validator=Join-Path $repo 'Demos\UEPLyraIntegration\Tools\validate_weapon_network_reports.py'}
     $validatorArguments = @('-B',$validator,'--directory',$output,'--run-id',$runId)
+    if($GameplayProfile){$validatorArguments+=@('--gameplay-profile',$GameplayProfile)}
     if ($CombatHUD) { $validatorArguments += '--combat-hud' }
     if ($DebugSpread) { $validatorArguments += '--debug-spread' }
     if ($ProductionReticles) { $validatorArguments += '--production-reticles' }
