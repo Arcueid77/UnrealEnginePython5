@@ -4,10 +4,12 @@ param(
     [Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [ValidateSet('Python','BlueprintFallback')][string]$Profile='Python',
-    [switch]$NaturalBomb
+    [switch]$NaturalBomb,
+    [switch]$VariableFrameTiming
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($VariableFrameTiming -and !$NaturalBomb){throw 'VariableFrameTiming requires NaturalBomb'}
 $repo=Split-Path $PSScriptRoot -Parent
 $project=[IO.Path]::GetFullPath($StageProject)
 $stage=Split-Path $project -Parent
@@ -66,7 +68,10 @@ try{
     $resultFlag=if($NaturalBomb){'UEPArenaNaturalResult'}else{'UEPArenaLocalInputResult'}
     $profileFlag=if($NaturalBomb){'UEPArenaNaturalProfile'}else{'UEPArenaLocalInputProfile'}
     $arguments=@($project,'/TopDownArena/Maps/L_TopDown_LocalMultiplayer?NumBots=0','-game','-RenderOffscreen','-windowed','-ResX=1280','-ResY=720','-unattended','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-ExecCmds=t.MaxFPS 60',"-UserDir=$output/user/","-$resultFlag=$output/result.json","-$profileFlag=$Profile","-abslog=$output/runtime.log")
-    if($NaturalBomb){$arguments+=@('-FixedSeed','-UseFixedTimeStep','-FPS=60')}
+    if($NaturalBomb){
+        $arguments+='-FixedSeed'
+        if($VariableFrameTiming){$arguments+='-UEPArenaNativeVariableTiming'}else{$arguments+=@('-UseFixedTimeStep','-FPS=60')}
+    }
     $summary.process=Invoke-UEPValidationProcess "$EngineRoot/Engine/Binaries/Win64/UnrealEditor.exe" $arguments $stage "$output/runtime" 'Arena local input ownership' 300
     $log=Get-Content -LiteralPath "$output/runtime.log" -Raw
     $marker=if($NaturalBomb){'UEP_ARENA_NATURAL'}else{'UEP_ARENA_LOCAL_INPUT'}
