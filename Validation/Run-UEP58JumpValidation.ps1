@@ -137,7 +137,8 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$DashTasksNetworkLifecycle,
       [ValidateSet('tdm','cp')][string]$WidgetHeldMode='tdm',
       [ValidateRange(1024,65535)][int]$ServerPort=7794,
-      [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol')
+      [ValidateSet('pistol','rifle','shotgun','netshooter')][string]$ReloadWeapon='pistol',
+      [ValidateSet('pistol','rifle','shotgun')][string]$AutoReloadWeapon='pistol')
 # Only existing binaries and already authored disposable assets. No build/cook.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -964,6 +965,7 @@ if($ADS -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal
 if($DropWeapon -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $WidgetLifecycle)){throw 'DropWeapon and other ability fixtures are separate lanes'}
 if($ReloadMagazine -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle)){throw 'ReloadMagazine and other fixtures are separate lanes'}
 if($ReloadWeapon -ne 'pistol' -and !$ReloadMagazine){throw 'Non-pistol reload requires its native weapon fixture lane'}
+if($AutoReloadWeapon -ne 'pistol' -and (!$AutoReload -or !$Network)){throw 'Non-pistol AutoReload requires its native two-owner equipment lane'}
 if($WeaponInstance -and ($Network -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Equipment-instance standalone is a separate native lane'}
 if($SpawnEffect -and ($WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'SpawnEffect is a separate native lane'}
 if($DeviceColor -and ($Network -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Device color is a standalone software lane'}
@@ -3334,6 +3336,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
     if($EquipmentIntegration){$arguments+=@('-UEPWeaponInstanceIntegration')}
     if($EquipmentBlueprintFallback){$arguments+=@('-UEPEquipmentProfile=BlueprintFallback')}
     if($ReloadMagazine){$arguments+=@("-UEPReloadWeapon=$ReloadWeapon")}
+    if($AutoReload){$arguments+=@("-UEPAutoReloadWeapon=$AutoReloadWeapon")}
     if($SessionEntry){
         . (Join-Path $PSScriptRoot 'UEPSessionEntryProcesses.ps1')
         $summary.processes=Invoke-UEPSessionEntryPeers (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage $output $ServerPort
