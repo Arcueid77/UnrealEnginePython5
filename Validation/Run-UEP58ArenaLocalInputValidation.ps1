@@ -3,7 +3,8 @@ param(
     [string]$EngineRoot='F:/UnrealEngine',
     [Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [ValidateSet('Python','BlueprintFallback')][string]$Profile='Python'
+    [ValidateSet('Python','BlueprintFallback')][string]$Profile='Python',
+    [switch]$NaturalBomb
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -18,6 +19,7 @@ if(!(Test-Path -LiteralPath "$stage/.uep-lyra-full-stage.json") -or (Test-Path -
 if(@(Get-CimInstance Win32_Process|Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|LyraGame|UnrealBuildTool|AutomationTool)\.exe$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool\.dll|AutomationTool\.dll')}).Count){throw 'Another native lane active'}
 New-Item -ItemType Directory -Path $output|Out-Null
 $summary=[ordered]@{schema_version=1;status='failed';scope='Actual Arena two-local-player native input/drop/cost/instigator ownership';profile=$Profile;full_acceptance=$false;network_acceptance=$false;packaged_runtime=$false;cpp_compile_executed=$false;cook_package_executed=$false;hashes=@();process=$null;external_gate=$null;error=$null}
+if($NaturalBomb){$summary.scope='Actual Arena original input/natural bomb self-death/native HUD with foreign local-player control'}
 function Add-InputHash([string]$Path){$summary.hashes+=@{path=[IO.Path]::GetFullPath($Path);sha256=(Get-FileHash -LiteralPath $Path).Hash}}
 try{
     $overlay="$repo/Demos/UEPLyraIntegration/Overlay"
@@ -34,6 +36,14 @@ try{
         if($value.status -ne 'passed' -or $proof.status -ne 'passed'){throw 'Accepted original Arena family authoring required'}
         foreach($asset in $value.assets){foreach($file in @($asset.stage,$asset.overlay)){if((Get-FileHash -LiteralPath $file).Hash -ne $asset.sha256){throw 'Accepted Arena asset changed'};Add-InputHash $file}}
         Add-InputHash "$root/summary.json";Add-InputHash "$root/assets.json"
+    }
+    if($NaturalBomb){
+        $arenaAssets=@(Get-ChildItem -LiteralPath "$overlay/Plugins/GameFeatures/TopDownArena/Content" -Recurse -File -Filter '*.uasset')+@(Get-ChildItem -LiteralPath "$overlay/Content/UEPMixins" -File -Filter 'DA_Arena*.uasset')
+        foreach($source in $arenaAssets){
+            $target=Join-Path $stage ([IO.Path]::GetRelativePath($overlay,$source.FullName))
+            if((Get-FileHash -LiteralPath $source.FullName).Hash -ne (Get-FileHash -LiteralPath $target).Hash){throw 'Arena family staged asset differs from checked source'}
+            Add-InputHash $source.FullName;Add-InputHash $target
+        }
     }
     $probeRoot="$repo/.build/LyraValidation/BlueprintPython/20261021-arena-bomb-base/Probe01"
     $probe=Get-Content -LiteralPath "$probeRoot/probe.json" -Raw|ConvertFrom-Json
@@ -53,12 +63,17 @@ try{
         Add-InputHash $file
     }
     foreach($file in @($PSCommandPath,"$PSScriptRoot/UEPValidationProcesses.ps1","$repo/Source/UnrealEnginePython/Private/UEPyMixin.cpp","$repo/Source/UnrealEnginePython/Private/UObject/UEPyInput.cpp","$stage/Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll","$stage/Plugins/UEPLyraBridge/Binaries/Win64/UnrealEditor-UEPLyraBridge.dll","$EngineRoot/Engine/Source/Runtime/Engine/Private/GameInstance.cpp","$EngineRoot/Engine/Source/Runtime/Slate/Private/Framework/Application/SlateApplication.cpp","$repo/Source/UnrealEnginePython/Private/SlateApplication/UEPyFSlateApplication.cpp","$repo/Source/UnrealEnginePython/Private/Slate/UEPyFCharacterEvent.cpp")){Add-InputHash $file}
-    $arguments=@($project,'/TopDownArena/Maps/L_TopDown_LocalMultiplayer?NumBots=0','-game','-RenderOffscreen','-windowed','-ResX=1280','-ResY=720','-unattended','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-ExecCmds=t.MaxFPS 60',"-UserDir=$output/user/","-UEPArenaLocalInputResult=$output/result.json","-UEPArenaLocalInputProfile=$Profile","-abslog=$output/runtime.log")
+    $resultFlag=if($NaturalBomb){'UEPArenaNaturalResult'}else{'UEPArenaLocalInputResult'}
+    $profileFlag=if($NaturalBomb){'UEPArenaNaturalProfile'}else{'UEPArenaLocalInputProfile'}
+    $arguments=@($project,'/TopDownArena/Maps/L_TopDown_LocalMultiplayer?NumBots=0','-game','-RenderOffscreen','-windowed','-ResX=1280','-ResY=720','-unattended','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-ExecCmds=t.MaxFPS 60',"-UserDir=$output/user/","-$resultFlag=$output/result.json","-$profileFlag=$Profile","-abslog=$output/runtime.log")
+    if($NaturalBomb){$arguments+=@('-FixedSeed','-UseFixedTimeStep','-FPS=60')}
     $summary.process=Invoke-UEPValidationProcess "$EngineRoot/Engine/Binaries/Win64/UnrealEditor.exe" $arguments $stage "$output/runtime" 'Arena local input ownership' 300
     $log=Get-Content -LiteralPath "$output/runtime.log" -Raw
-    if($log -match 'Traceback|Log\w+:\s*Error:|Ensure condition failed|Fatal error' -or !($log.IndexOf('UEP_ARENA_LOCAL_INPUT_DIFFERENTIAL_PASSED') -ge 0 -and $log.IndexOf('UEP_ARENA_LOCAL_INPUT_DIFFERENTIAL_PASSED') -lt $log.IndexOf('Goodbye Python') -and $log.IndexOf('Goodbye Python') -lt $log.IndexOf('UEP_ARENA_LOCAL_INPUT_SHUTDOWN_PASSED') -and $log.IndexOf('UEP_ARENA_LOCAL_INPUT_SHUTDOWN_PASSED') -lt $log.LastIndexOf('Log file closed'))){throw 'Arena native strict log/order gate failed'}
+    $marker=if($NaturalBomb){'UEP_ARENA_NATURAL'}else{'UEP_ARENA_LOCAL_INPUT'}
+    if($log -match 'Traceback|Log\w+:\s*Error:|Ensure condition failed|Fatal error' -or !($log.IndexOf($marker+'_DIFFERENTIAL_PASSED') -ge 0 -and $log.IndexOf($marker+'_DIFFERENTIAL_PASSED') -lt $log.IndexOf('Goodbye Python') -and $log.IndexOf('Goodbye Python') -lt $log.IndexOf($marker+'_SHUTDOWN_PASSED') -and $log.IndexOf($marker+'_SHUTDOWN_PASSED') -lt $log.LastIndexOf('Log file closed'))){throw 'Arena native strict log/order gate failed'}
     if($log -notmatch 'Slate User Registered\.  User Index 1' -or $log -notmatch 'Slate User Destroyed\.  User Index 1'){throw 'Owned synthetic Slate user lifetime incomplete'}
-    $summary.external_gate=Invoke-UEPValidationProcess "$EngineRoot/Engine/Binaries/ThirdParty/Python3/Win64/python.exe" @('-B','-m','uep_lyra_abilities.arena_local_input_contract','--report',"$output/result.json") "$overlay/Content/Scripts" "$output/gate" 'Independent Arena local-player semantic gate' 30
+    $contract=if($NaturalBomb){'uep_lyra_abilities.arena_natural_bomb_contract'}else{'uep_lyra_abilities.arena_local_input_contract'}
+    $summary.external_gate=Invoke-UEPValidationProcess "$EngineRoot/Engine/Binaries/ThirdParty/Python3/Win64/python.exe" @('-B','-m',$contract,'--report',"$output/result.json") "$overlay/Content/Scripts" "$output/gate" 'Independent Arena local-player semantic gate' 30
     foreach($row in $summary.hashes){if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256){throw 'Arena frozen native input changed'}}
     $summary.status='passed'
 }catch{$summary.error=$_.ToString();throw}
