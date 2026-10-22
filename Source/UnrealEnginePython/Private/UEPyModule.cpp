@@ -1,5 +1,7 @@
 #include "UEPyModule.h"
 #include "Misc/PackageName.h"
+#include "Misc/App.h"
+#include "Engine/World.h"
 #include "UObject/SoftObjectPath.h"
 
 #include "UEPyEngine.h"
@@ -1417,7 +1419,11 @@ static int ue_PyUObject_setattro(ue_PyUObject* self, PyObject* attr_name, PyObje
 			// can register partially-built components (notably UCameraComponent) and
 			// violate UObject constructor invariants. Native constructors likewise do
 			// not emit property-edit notifications for their initialization writes.
-			const bool notify_editor = FUObjectThreadContext::Get().TopInitializer() == nullptr;
+			// Live gameplay writes must not rerun construction or recreate components.
+			// Keep editor-world/CDO notifications outside native object construction.
+			const bool notify_editor = FUObjectThreadContext::Get().TopInitializer() == nullptr
+				&& GIsEditor && !FApp::IsGame()
+				&& (!self->ue_object->GetWorld() || !self->ue_object->GetWorld()->IsGameWorld());
 			if (notify_editor)
 			{
 				self->ue_object->PreEditChange(u_property);

@@ -51,7 +51,7 @@ try {
     }
     $fixture = Join-Path $PSScriptRoot 'UEP58Host\Tests\mixin_pie_validation.py'
     $summary.source_hashes += @{path=$fixture; sha256=(Get-FileHash -LiteralPath $fixture).Hash}
-    $arguments = @($StageProject, '-unattended', '-nop4', '-NullRHI', '-NoSound', '-NoSplash', '-UTF8Output',
+    $arguments = @($StageProject, '-unattended', '-nop4', '-NullRHI', '-NoSound', '-NoSplash', '-UTF8Output', '-culture=en',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging', '-notraceserver', '-trace=none',
         "-UEPPIEScript=$fixture", "-UEPPIEResult=$output\pie.json", "-abslog=$output\pie.log")
     $summary.process = Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.exe') $arguments $stage (Join-Path $output 'pie') 'repeated-PIE' 240
@@ -63,7 +63,10 @@ try {
     }
     $log = Get-Content -LiteralPath (Join-Path $output 'pie.log') -Raw
     Assert-UEPFocusedLog $log 'UEP_MIXIN_PIE_PASSED'
-    if ($log -notmatch '(?s)UEP_MIXIN_PIE_PASSED.*Goodbye Python.*Log file closed') { throw 'PIE completion/exit order is incomplete' }
+    # This fixture imports the native editor `unreal` module. PythonScriptPlugin
+    # owns/finalizes the shared VM before UEP's later module-shutdown message.
+    if ($log -notmatch 'Attaching UnrealEnginePython to the existing CPython interpreter' -or
+        $log -notmatch '(?s)UEP_MIXIN_PIE_PASSED.*Preparing to exit.*UEP_MIXIN_PIE_SHUTDOWN_PASSED.*Goodbye Python.*Log file closed') { throw 'Shared-VM PIE completion/exit order is incomplete' }
     foreach ($input in @($summary.source_hashes) + @($summary.binary_hashes)) {
         if ((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256) { throw "Input changed during PIE: $($input.path)" }
     }

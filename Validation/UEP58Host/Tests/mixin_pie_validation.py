@@ -4,6 +4,7 @@ Loaded by the validation host's opt-in ue_site hook. No asset is saved. Uses
 the native LevelEditorSubsystem to end PIE and native UE GC between sessions.
 """
 
+import atexit
 import gc
 import json
 from pathlib import Path
@@ -35,6 +36,18 @@ def valid(obj):
         return False
 
 
+def finalize(path):
+    report = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    check(report["status"] == "passed" and not report["error"], "PIE gameplay report failed")
+    check(len(report["sessions"]) == 3, "missing final PIE sessions")
+    for session in report["sessions"]:
+        check(session["editor_property_notification_observed"], "editor property notification absent")
+        check(session["pie_property_writes_without_reconstruction"] == 2, "PIE property writes reconstructed actors")
+        check(session["native_gc_collected"] and session["router_restored"] and session["closed_scopes"] == 2,
+              "PIE cleanup incomplete")
+    ue.log("UEP_MIXIN_PIE_SHUTDOWN_PASSED")
+
+
 class PIEValidation:
     def __init__(self):
         self.result = Path(argument("UEPPIEResult"))
@@ -53,6 +66,9 @@ class PIEValidation:
         self.registered = False
         self.subsystem = None
         self.finished = False
+        self.editor_property_notification_observed = False
+        self.pie_property_writes_without_reconstruction = 0
+        atexit.register(finalize, str(self.result))
 
     def transition(self, phase):
         self.phase = phase
@@ -116,6 +132,13 @@ class PIEValidation:
         self.cycle += 1
         ue.register_mixin_profile(self.cls, "Python", self.profile(), make_default=True)
         self.registered = True
+        before = len(self.events)
+        self.placed.Counter = self.cycle * 10
+        check(self.placed.Counter == self.cycle * 10, "editor property value was not written")
+        self.editor_property_notification_observed = any(
+            item["event"] == "construction" and item["world_type"] == 2 for item in self.events[before:])
+        check(self.editor_property_notification_observed, "editor property write did not notify reconstruction")
+        self.pie_property_writes_without_reconstruction = 0
         self.actors = []
         self.scopes = []
         ue.request_play_session(True, False)
@@ -145,6 +168,12 @@ class PIEValidation:
                     check(any(item["event"] == "construction" and item["actor"] == spawned for item in current),
                           "spawned Actor did not enter Python construction")
                     check(all(actor.get_class() == self.cls for actor in self.actors), "PIE changed routed Actor class")
+                    before = len(self.events)
+                    for index, actor in enumerate(self.actors):
+                        actor.Counter = self.cycle * 100 + index
+                        check(actor.Counter == self.cycle * 100 + index, "PIE property value was not written")
+                        check(len(self.events) == before, "PIE property assignment reran construction/lifecycle")
+                        self.pie_property_writes_without_reconstruction += 1
                     self.subsystem.call_function("EditorRequestEndPlay")
                     self.transition("end")
             elif self.phase == "end":
@@ -167,7 +196,9 @@ class PIEValidation:
                 self.sessions.append({"cycle": self.cycle, "placed_and_spawned": True,
                                       "construction": True, "begin_end_counts": [2, 2],
                                       "closed_scopes": len(self.scopes), "native_gc_collected": True,
-                                      "router_restored": True})
+                                      "router_restored": True,
+                                      "editor_property_notification_observed": self.editor_property_notification_observed,
+                                      "pie_property_writes_without_reconstruction": self.pie_property_writes_without_reconstruction})
                 if self.cycle < 3:
                     self.start_session()
                 else:

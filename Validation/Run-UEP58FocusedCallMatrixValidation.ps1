@@ -60,7 +60,7 @@ try {
         Add-CallMatrixInput $script
         $resultPath = Join-Path $output ($test.name + '.json')
         $logPath = Join-Path $output ($test.name + '.log')
-        $arguments = @($StageProject, '-unattended', '-nop4', '-NullRHI', '-NoSound', '-NoSplash', '-UTF8Output',
+        $arguments = @($StageProject, '-unattended', '-nop4', '-NullRHI', '-NoSound', '-NoSplash', '-UTF8Output', '-culture=en',
             '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging', '-notraceserver', '-trace=none',
             '-run=Py', $script, "-$($test.result)=$resultPath", "-abslog=$logPath")
         if ($test.name -ne 'signature-shared') { $arguments += '-DisablePython' }

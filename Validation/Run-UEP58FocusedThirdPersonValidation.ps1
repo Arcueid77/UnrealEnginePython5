@@ -21,13 +21,25 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $engineVersion = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.version'
 $summary = [ordered]@{schema_version=1; status='failed'; cpp_compile_executed=$false; cook_package_executed=$false
     native_binary_provenance='UEP Editor modules reused from source-matching Lyra stage; Third Person native host reused'
-    engine_version_hash=(Get-FileHash -LiteralPath $engineVersion).Hash; native_source_hashes=@(); variants=@(); error=$null}
+    engine_version_hash=(Get-FileHash -LiteralPath $engineVersion).Hash; native_source_hashes=@(); input_hashes=@(); variants=@(); error=$null}
+foreach ($path in @($PSCommandPath,(Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1'),(Join-Path $PSScriptRoot 'LyraHUDContracts.ps1'),(Join-Path $repo 'Demos/Run-UEPThirdPersonDemo.ps1'))) {
+    $summary.input_hashes += @{path=$path;sha256=(Get-FileHash -LiteralPath $path).Hash}
+}
+function Save-ThirdPersonInput([string]$Path,[string]$Lane) {
+    $relative=[IO.Path]::GetRelativePath($stage,$Path)
+    if ($relative.StartsWith('..') -or [IO.Path]::IsPathRooted($relative)) { throw 'Frozen input must be inside the owned demo stage' }
+    $frozen=Join-Path $Lane ('inputs/'+$relative)
+    New-Item -ItemType Directory -Path (Split-Path $frozen -Parent) -Force|Out-Null
+    Copy-Item -LiteralPath $Path -Destination $frozen
+    return @{path=$frozen;native_input_path=$Path;sha256=(Get-FileHash -LiteralPath $frozen).Hash}
+}
 try {
     foreach ($source in Get-ChildItem -LiteralPath (Join-Path $repo 'Source') -Recurse -File) {
         $relative = [IO.Path]::GetRelativePath((Join-Path $repo 'Source'), $source.FullName)
         $hash = (Get-FileHash -LiteralPath $source.FullName).Hash
         if ($hash -ne (Get-FileHash -LiteralPath (Join-Path $nativeStage "Plugins\UnrealEnginePython\Source\$relative")).Hash) { throw "Source binary stage differs: $relative" }
         $summary.native_source_hashes += @{path=$source.FullName; sha256=$hash}
+        $summary.input_hashes += @{path=$source.FullName;sha256=$hash}
     }
     foreach ($variant in $Variants) {
         $lane = Join-Path $output $variant
@@ -41,10 +53,10 @@ try {
         foreach ($binary in Get-ChildItem -LiteralPath (Join-Path $nativeStage 'Plugins\UnrealEnginePython\Binaries\Win64') -Filter 'UnrealEditor-*.dll') {
             $target = Join-Path $binaryRoot $binary.Name
             Copy-Item -LiteralPath $binary.FullName -Destination $target -Force
-            $binaries += @{path=$target; sha256=(Get-FileHash -LiteralPath $target).Hash}
+            $binaries += Save-ThirdPersonInput $target $lane
         }
         $hostDll = Join-Path $stage 'Binaries\Win64\UnrealEditor-UEPPythonThirdPerson.dll'
-        $binaries += @{path=$hostDll; sha256=(Get-FileHash -LiteralPath $hostDll).Hash}
+        $binaries += Save-ThirdPersonInput $hostDll $lane
         $metadataPath = Join-Path $stage 'Intermediate\Build\Win64\x64\UEPPythonThirdPersonEditor\Development\TargetMetadata.json'
         $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
         $prefix = $stage.TrimEnd('\') + '\'
@@ -56,6 +68,10 @@ try {
             '-Mode=WriteMetadata', "-Input=$metadataPath", '-Version=2')
         $null = Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe') $metadataArguments $stage (Join-Path $lane 'project-metadata') 'Refresh owned project metadata' 120
         if ((Get-FileHash -LiteralPath $engineVersion).Hash -ne $summary.engine_version_hash) { throw 'Engine version changed' }
+        foreach ($manifest in @((Join-Path $stage 'Binaries/Win64/UnrealEditor.modules'),(Join-Path $binaryRoot 'UnrealEditor.modules'))) {
+            if ((Get-Content -LiteralPath $manifest -Raw|ConvertFrom-Json).BuildId -ne (Get-Content -LiteralPath $engineVersion -Raw|ConvertFrom-Json).BuildId) { throw 'Third Person native module BuildId differs' }
+            $binaries += Save-ThirdPersonInput $manifest $lane
+        }
         $url = '/Game/ThirdPerson/Lvl_ThirdPerson'
         $smokeFlag = '-UEPMixinThirdPersonSmokeResult=' + (Join-Path $lane 'smoke.json')
         if ($variant -eq 'PythonFirst') {
@@ -65,12 +81,12 @@ try {
         $scripts = @()
         foreach ($root in @((Join-Path $stage 'Content\Scripts'), (Join-Path $stage 'Plugins\UnrealEnginePython\Content\Scripts'))) {
             foreach ($script in Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.py') {
-                $scripts += @{path=$script.FullName; sha256=(Get-FileHash -LiteralPath $script.FullName).Hash}
+                $scripts += Save-ThirdPersonInput $script.FullName $lane
             }
         }
         $arguments = @((Join-Path $stage 'UEPPythonThirdPerson.uproject'), $url, '-game', '-RenderOffscreen', '-windowed', '-ResX=1280', '-ResY=720',
-            '-unattended', '-nop4', '-NoSound', '-NoSplash', '-UTF8Output', '-DisablePython',
-            '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging', '-notraceserver', '-trace=none',
+            '-unattended', '-nop4', '-NoSound', '-NoSplash', '-UTF8Output', '-DisablePython', '-culture=en',
+            '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,ResonanceAudio', '-notraceserver', '-trace=none',
             $smokeFlag, "-UEPThirdPersonVisualDirectory=$lane", "-abslog=$lane\smoke.log")
         Write-Host "Rendered $variant gameplay regression"
         $process = Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.exe') $arguments $stage (Join-Path $lane 'smoke') $variant 300
@@ -86,12 +102,15 @@ try {
         if ($variant -eq 'PythonFirst') { $marker = 'UEP_PYTHON_THIRD_PERSON_SMOKE_PASSED' }
         $log = Get-Content -LiteralPath (Join-Path $lane 'smoke.log') -Raw
         Assert-UEPFocusedLog $log $marker
-        if ($log -notmatch ('(?s)' + [regex]::Escape($marker) + '.*Goodbye Python.*Log file closed')) { throw 'Gameplay completion/exit order is incomplete' }
+        if ($log -notmatch ('(?s)' + [regex]::Escape($marker) + '.*Goodbye Python.*UEP_THIRD_PERSON_VISIBLE_SHUTDOWN_PASSED.*Log file closed')) { throw 'Gameplay completion/exit order is incomplete' }
         foreach ($input in @($binaries) + @($scripts)) {
-            if ((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256) { throw "Input changed during $variant" }
+            if ((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256 -or (Get-FileHash -LiteralPath $input.native_input_path).Hash -ne $input.sha256) { throw "Input changed during $variant" }
         }
         $summary.variants += @{variant=$variant; status='passed'; process=$process; binary_hashes=$binaries; script_hashes=$scripts
             smoke=(Join-Path $lane 'smoke.json'); visible=(Join-Path $lane 'visible.json')}
+    }
+    foreach ($input in $summary.input_hashes) {
+        if ((Get-FileHash -LiteralPath $input.path).Hash -ne $input.sha256) { throw 'Third Person validation entrypoint changed' }
     }
     $summary.status = 'passed'
 }
