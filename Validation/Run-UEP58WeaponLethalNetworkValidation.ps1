@@ -3,6 +3,7 @@
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [ValidateSet('Python','BlueprintFallback')][string]$Profile='Python',
+    [ValidateSet('A','B0')][string]$AttackerPeer='A',
     [ValidateRange(1024,65535)][int]$ServerPort=18812)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -15,7 +16,7 @@ if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorActio
 $socket=[Net.Sockets.UdpClient]::new();try{$socket.Client.ExclusiveAddressUse=$true;$socket.Client.Bind([Net.IPEndPoint]::new([Net.IPAddress]::Loopback,$ServerPort))}finally{$socket.Dispose()}
 New-Item -ItemType Directory -Path $output|Out-Null
 $run=[guid]::NewGuid().ToString('N');$handles=@{}
-$summary=[ordered]@{schema_version=1;status='failed';profile=$Profile;run_id=$run;runtime_scope='Dedicated server and two actual clients; actual owner weapon input score/postgame/kill-feed pipeline';full_acceptance=$false;network_acceptance=$false;cpp_compile_executed=$false;cook_package_executed=$false;hashes=@();processes=@{};external_gate=$null;error=$null}
+$summary=[ordered]@{schema_version=1;status='failed';profile=$Profile;attacker_peer=$AttackerPeer;run_id=$run;runtime_scope='Dedicated Editor server and two actual Editor clients; selected owner weapon input score/postgame/kill-feed pipeline';full_acceptance=$false;network_acceptance=$false;cpp_compile_executed=$false;cook_package_executed=$false;hashes=@();processes=@{};external_gate=$null;error=$null}
 function Add-LethalHash([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
 function Read-LethalReport([string]$Path){
     $reader=$null
@@ -45,7 +46,7 @@ try{
     foreach($file in @($PSCommandPath,(Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1'),(Join-Path $PSScriptRoot 'LyraHUDContracts.ps1'),(Join-Path $stage 'Binaries/Win64/UnrealEditor-LyraGame.dll'),(Join-Path $stage 'Plugins/UnrealEnginePython/Binaries/Win64/UnrealEditor-UnrealEnginePython.dll'),(Join-Path $stage 'Plugins/UEPLyraBridge/Binaries/Win64/UnrealEditor-UEPLyraBridge.dll'))){Add-LethalHash $file}
     foreach($peer in @('server','A','B0')){
         $url=if($peer -eq 'server'){'/ShooterMaps/Maps/L_Expanse?NumBots=3'}else{"127.0.0.1:$ServerPort"}
-        $arguments=@($project,$url,'-unattended','-nop4','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-UEPRequireNetworkIdentity','-UEPAutoRespawnListeners','-UEPAutoRespawnEvents','-UEPAutoRespawnActivation',"-UEPTDMNetworkPeer=$peer","-UEPTDMNetworkRun=$run","-UEPTDMNetworkProfile=$Profile","-UEPWeaponLethalNetworkResult=$output/$peer.json","-abslog=$output/$peer.log","-UserDir=$output/$peer-user/")
+        $arguments=@($project,$url,'-unattended','-nop4','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-UEPRequireNetworkIdentity','-UEPAutoRespawnListeners','-UEPAutoRespawnEvents','-UEPAutoRespawnActivation',"-UEPTDMNetworkPeer=$peer","-UEPTDMNetworkRun=$run","-UEPTDMNetworkProfile=$Profile","-UEPWeaponLethalAttacker=$AttackerPeer","-UEPWeaponLethalNetworkResult=$output/$peer.json","-abslog=$output/$peer.log","-UserDir=$output/$peer-user/")
         if($peer -eq 'server'){$arguments+=@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1','-ExecCmds=t.MaxFPS 60');$exe=Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}else{$arguments+=@('-game','-RenderOffscreen','-windowed','-ResX=640','-ResY=360','-ExecCmds=t.MaxFPS 30,sg.ShadowQuality 0,sg.GlobalIlluminationQuality 0,sg.ReflectionQuality 0,r.Streaming.PoolSize 256');$exe=Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe'}
         $handles[$peer]=Start-UEPValidationProcess $exe $arguments $stage (Join-Path $output $peer) $peer
         if($peer -eq 'server'){
