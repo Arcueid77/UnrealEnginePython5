@@ -1750,10 +1750,18 @@ full initial inventory against actual references and accepted replacements.
 
 - [ ] Both Experiences pass original-BP/Python gameplay, presentation and
   applicable multi-client/local-player comparisons.
-- [ ] Every audited candidate is migrated, explicitly retained, unreachable
+- [x] Every audited candidate is migrated, explicitly retained, unreachable
   with checked references, or a named blocker; no silent coverage gaps remain.
 - [x] Configuration-only BP shells and animation/editor/test exclusions have
   documented reasons. Game-project C++ migration stays a separate phase.
+
+The [current candidate dispositions](Demos/UEPLyraIntegration/Migration/candidate_dispositions.json)
+reconcile all246 candidates and963 original entries with the hash-bound native
+class census,current declaration/dependency sources and explicit retained
+transports/shells. Original candidate paths/order/versions stay fixed. The named
+Pawn/ASC issue and original NetShooter component discrepancy remain visible.
+This completes the inventory disposition criterion,including named open issues;
+it does not accept all gameplay branches or any remaining version requirement.
 
 The [per-asset scope reasons](Demos/UEPLyraIntegration/Migration/static_scope_dispositions.json)
 record all182 configuration shells and63 retained assets. The source review
