@@ -39,6 +39,8 @@ signatures, build configurations or direct C++ invocation.
 | Live weapon profile Python -> BP -> Python | Tested supported in the weapon fixture | No Construct replay; teardown removes observation and first Python Tick resumes it once |
 | Controlled unregister -> module reload -> register -> NEW widget | Tested supported | Weapon fixture, three cycles; explicit native CollectGarbage and stale-wrapper checks |
 | Native UObject GC between PIE sessions | Tested supported | PIE Actors become invalid, subscription scopes close and original function identity is restored |
+| Blueprint `CollectGarbage` called from Python | Deferred request; wait across an engine frame | Explorer follow mode records distinct request/check frames before asserting old task/Actor release. The call itself is not a synchronous-GC guarantee |
+| Observing a Boolean gateway before original graph continuation | Preserve the returned Boolean and defer output sampling | The follow-map observer forwards the existing handler once; its next control frame reads the location updated by the original fallback graph |
 | Pawn replacement, two world travels, client exit/rejoin | Tested supported in real Lyra weapon lane | Dedicated server + two independent clients, 19 protocol phases, native inventory/GAS and per-player HUD comparisons |
 | Arbitrary live BP recompile, changed reflected signatures, generated-class replacement, automatic state migration | Unsupported | Unregister before controlled BP authoring. Restart for generated type/signature changes |
 
