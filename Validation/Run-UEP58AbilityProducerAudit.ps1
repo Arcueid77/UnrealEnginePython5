@@ -1,9 +1,10 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
-      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault,[switch]$HeroDefaultMotion,[string]$HeroDefaultBaseline,[switch]$ArenaRuntime)
+      [Parameter(Mandatory=$true)][string]$OutputDirectory,[switch]$Coverage,[switch]$AllCandidates,[switch]$SparseMap,[switch]$Interaction,[switch]$ReloadFamily,[switch]$SpawnEffect,[switch]$DeviceColor,[switch]$Emote,[switch]$WidgetInput,[switch]$WidgetPressedContext,[switch]$AutoRespawnHelpers,[switch]$ExplorerShells,[switch]$HeroDefault,[switch]$HeroDefaultMotion,[string]$HeroDefaultBaseline,[switch]$ArenaRuntime)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+if($AllCandidates -and !$Coverage){throw 'AllCandidates requires the explicit read-only Coverage audit'}
 if([bool]$HeroDefaultMotion -ne [bool]$HeroDefaultBaseline){throw 'Motion audit requires its explicit accepted parent baseline'}
 if(@(@([bool]$Coverage,[bool]$SparseMap,[bool]$Interaction,[bool]$ReloadFamily,[bool]$SpawnEffect,[bool]$DeviceColor,[bool]$Emote,[bool]$WidgetInput,[bool]$WidgetPressedContext,[bool]$AutoRespawnHelpers,[bool]$ExplorerShells,[bool]$HeroDefault,[bool]$HeroDefaultMotion,[bool]$ArenaRuntime)|Where-Object {$_}).Count -gt 1){throw 'Choose one native audit mode'}
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -69,6 +70,11 @@ try{
         '-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython',
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup',"-abslog=$output\audit.log")
     if($HeroDefaultMotion){$arguments+=@('-UEPHeroDefaultBaseline='+[IO.Path]::GetFullPath($HeroDefaultBaseline))}
+    if($AllCandidates){$arguments+='-UEPCoverageAllCandidates'}
+    if($Coverage){
+        Add-ProducerHash (Join-Path $repo 'Demos/UEPLyraIntegration/Migration/batches.json')
+        Add-ProducerHash (Join-Path $repo 'Demos/UEPLyraIntegration/Tools/blueprint_model.py')
+    }
     $summary.process=Invoke-UEPValidationProcess (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe') $arguments $stage (Join-Path $output 'audit') 'Native ability producer read-only audit' 180
     $report=Get-Content -Raw -LiteralPath (Join-Path $output 'audit.json')|ConvertFrom-Json -Depth 90
     if($report.status -ne 'passed' -or $report.runtime_acceptance){throw 'Native read-only audit incomplete'}
@@ -109,9 +115,10 @@ try{
         if($report.assets_modified -or @($report.cases).Count -ne 6 -or @($report.cases|Where-Object {!$_.passed -or !$_.native_bp_remove -or !$_.native_export_matches_expected}).Count){throw 'Sparse native TMap conversion differs'}
         $summary.mode='native-sparse-map-conversion';$summary.cases=6
     }elseif($Coverage){
+        $expectedCandidates=if($AllCandidates){246}else{37}
         if($report.full_acceptance -or $report.assets_saved_or_compiled -or !$report.coverage_is_registration_not_gameplay -or
-           @($report.assets).Count -ne 37){throw 'Read-only coverage inventory incomplete'}
-        $summary.mode='read-only-native-router-coverage';$summary.assets=37
+           @($report.assets).Count -ne $expectedCandidates -or ([bool]$report.all_original_candidates -ne [bool]$AllCandidates)){throw 'Read-only coverage inventory incomplete'}
+        $summary.mode='read-only-native-router-coverage';$summary.assets=$expectedCandidates
         $summary.unrouted_business_assets=@($report.unrouted_business_assets)
         $summary.partial_profile_assets=@($report.partial_profile_assets)
     }elseif($report.assets_modified -or @($report.abilities).Count -ne 8){throw 'Native producer audit incomplete'}
