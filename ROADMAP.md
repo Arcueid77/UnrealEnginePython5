@@ -1752,8 +1752,15 @@ full initial inventory against actual references and accepted replacements.
   applicable multi-client/local-player comparisons.
 - [ ] Every audited candidate is migrated, explicitly retained, unreachable
   with checked references, or a named blocker; no silent coverage gaps remain.
-- [ ] Configuration-only BP shells and animation/editor/test exclusions have
+- [x] Configuration-only BP shells and animation/editor/test exclusions have
   documented reasons. Game-project C++ migration stays a separate phase.
+
+The [per-asset scope reasons](Demos/UEPLyraIntegration/Migration/static_scope_dispositions.json)
+record all182 configuration shells and63 retained assets. The source review
+reconstructs the original491-asset classification and verifies all245 excluded
+stage files against the official reference. This completes the documentation
+criterion only;runtime candidates and both Experiences still need their
+remaining semantic/gameplay/presentation and applicable multiplayer evidence.
 
 ## 1.0.0-rc.N — Freeze and prove a release candidate
 
