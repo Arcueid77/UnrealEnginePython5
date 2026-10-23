@@ -3,7 +3,7 @@
 param([string]$EngineRoot='F:/UnrealEngine',
     [string]$StageProject='F:/UnrealEnginePython5/.build/LyraValidation/Full/Stage/Lyra/LyraStarterGame.uproject',
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [ValidateRange(1024,65535)][int]$ServerPort=54913)
+    [ValidateRange(1024,65535)][int]$ServerPort=54913,[switch]$CaptureNativeStacks)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -81,6 +81,7 @@ try{
         '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-AsyncLoadingThread','-UEPRequireNetworkIdentity','-UEPMeleeReadinessDiagnostic',
         '-LogCmds=LogLyra Verbose',"-UEPJumpRun=$run",'-UEPAutoRespawnListeners','-UEPAutoRespawnEvents','-UEPAutoRespawnActivation',
         '-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')
+    if($CaptureNativeStacks){$base+='-UEPReplicaNativeConstructionStacks'}
     foreach($peer in @('server','A','B0')){
         $arguments=@($base)
         if($peer -eq 'server'){$arguments+=@('-server','-NullRHI','-NoSound',"-port=$ServerPort",'-multihome=127.0.0.1');$exe='UnrealEditor-Cmd.exe'}
