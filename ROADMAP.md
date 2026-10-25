@@ -1721,7 +1721,7 @@ separate, including dedicated-server zero-UI behavior.
 
 - [ ] Effect/audio triggering, warmup/play/postgame, scoring and notifications
   match the original BP checkpoints under the same inputs.
-- [ ] AI task/service outcomes and cancellation are reproducible; long-running
+- [x] AI task/service outcomes and cancellation are reproducible; long-running
   tasks do not retain a destroyed Pawn or World.
 - [ ] Multi-client score/phase state, local notifications and cleanup agree.
 
