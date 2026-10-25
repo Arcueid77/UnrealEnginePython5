@@ -1734,7 +1734,7 @@ hosting and replay presentation. CommonUI, online/session and replay facilities
 remain native. Welcome-map and runtime diagnostic candidates receive explicit
 scope/reachability decisions; editor/test utilities remain excluded.
 
-- [ ] Navigation, focus/back behavior, settings persistence, session results
+- [x] Navigation, focus/back behavior, settings persistence, session results
   and replay controls pass original-BP/Python comparisons.
 - [x] Repeated screen open/close and travel restore subscriptions and state.
 - [x] Failures/cancellations are tested, not accepted only on the success path.
