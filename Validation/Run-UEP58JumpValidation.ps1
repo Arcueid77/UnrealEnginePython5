@@ -20,7 +20,7 @@ param([string]$EngineRoot='F:\UnrealEngine',[Parameter(Mandatory=$true)][string]
       [switch]$GrenadeFlightNetwork,[string]$GrenadeFlightAbilityAuthoringDirectory,
       [switch]$NetShooterActor,[string]$NetShooterActorAuthoringDirectory,
       [switch]$NetShooterAbility,[string]$NetShooterAbilityAuthoringDirectory,
-      [switch]$NetShooterNetwork,
+      [switch]$NetShooterNetwork,[switch]$NetShooterAmmoExhaustion,
       [switch]$NetShooterImpactNetwork,
       [switch]$WeaponActorHelpers,[string]$WeaponActorHelpersAuthoringDirectory,
       [switch]$WeaponActorFire,[string]$WeaponActorFireAuthoringDirectory,
@@ -695,12 +695,13 @@ if($WeaponFireCues){
 }
 if($WeaponFireCueAuthoringDirectory -and !$WeaponFireCues -and !$WeaponFireCueNetwork -and !$WeaponAudioCold){throw 'Firing Cue proof requires its explicit native fixture'}
 if($NetShooterImpactNetwork){$NetShooterNetwork=$true}
+if($NetShooterAmmoExhaustion -and ((!$NetShooterAbility -and !$NetShooterNetwork) -or $NetShooterImpactNetwork)){throw 'NetShooter ammo requires its explicit standalone or two-owner input lane'}
 if($NetShooterNetwork){
     if(!$Network -or !$PawnWireIdentity -or !$IdentityBuildDirectory -or !$NetShooterActorAuthoringDirectory){throw 'NetShooter network requires two actual clients and current native ability/Actor/identity proof'}
     $NetShooterAbility=$true
 }
 if($NetShooterAbility){
-    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading','NetShooterNetwork','NetShooterImpactNetwork','Network','PawnWireIdentity','IdentityBuildDirectory','NetShooterActorAuthoringDirectory','ServerPort')
+    $netAbilityAllowed=@('EngineRoot','StageProject','OutputDirectory','AssetAuthoringDirectory','NetShooterAbility','NetShooterAbilityAuthoringDirectory','ThreadedLoading','NetShooterNetwork','NetShooterImpactNetwork','NetShooterAmmoExhaustion','Network','PawnWireIdentity','IdentityBuildDirectory','NetShooterActorAuthoringDirectory','ServerPort')
     if(!$NetShooterAbilityAuthoringDirectory -or @($PSBoundParameters.Keys|Where-Object {$_ -notin $netAbilityAllowed}).Count){throw 'NetShooter ability requires its own native equipment/input/Cue/montage lane and current proof'}
     if([bool]$Network -ne [bool]$NetShooterNetwork){throw 'NetShooter network must select its actual predicted two-owner fixture'}
     $AutoRespawnActivation=$true
@@ -3337,6 +3338,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
     if($EquipmentBlueprintFallback){$arguments+=@('-UEPEquipmentProfile=BlueprintFallback')}
     if($ReloadMagazine){$arguments+=@("-UEPReloadWeapon=$ReloadWeapon")}
     if($AutoReload){$arguments+=@("-UEPAutoReloadWeapon=$AutoReloadWeapon")}
+    if($NetShooterAmmoExhaustion){$arguments+='-UEPNetShooterAmmoExhaustion'}
     if($SessionEntry){
         . (Join-Path $PSScriptRoot 'UEPSessionEntryProcesses.ps1')
         $summary.processes=Invoke-UEPSessionEntryPeers (Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe') $arguments $stage $output $ServerPort
@@ -3583,6 +3585,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
         if($NotificationRelaysNetwork){$module='uep_lyra_hud.notification_relays_network_contract'}
         if($WeaponAudioNetwork){$module='uep_lyra_weapons.weapon_audio_network_contract'}
         if($NetShooterNetwork){$module='uep_lyra_weapons.netshooter_network_contract'}
+        if($NetShooterAmmoExhaustion){$module='uep_lyra_weapons.netshooter_ammo_contract'}
         if($NetShooterImpactNetwork){$module='uep_lyra_weapons.netshooter_impact_network_contract'}
         if($DashActivation){$module='uep_lyra_abilities.dash_activation_contract'}
         if($DashTasks){$module='uep_lyra_abilities.dash_tasks_contract'}
@@ -3647,6 +3650,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
         if($GrenadeDetonate){$module='uep_lyra_weapons.grenade_detonate_contract'}
         if($NetShooterActor){$module='uep_lyra_weapons.netshooter_actor_contract'}
         if($NetShooterAbility){$module='uep_lyra_weapons.netshooter_ability_contract'}
+        if($NetShooterAmmoExhaustion){$module='uep_lyra_weapons.netshooter_ammo_contract'}
         if($WeaponActorHelpers){$module='uep_lyra_weapons.weapon_actor_helpers_contract'}
         if($WeaponActorFire){$module='uep_lyra_weapons.weapon_actor_fire_contract'}
         if($WeaponActorBegin){$module='uep_lyra_weapons.weapon_actor_begin_contract'}
