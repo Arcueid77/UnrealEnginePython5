@@ -4,6 +4,7 @@ param([string]$EngineRoot='F:/UnrealEngine',
     [string]$StageProject='F:/UnrealEnginePython5/.build/LyraValidation/Full/Stage/Lyra/LyraStarterGame.uproject',
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [ValidateRange(1024,65535)][int]$ServerPort=54913,[switch]$CaptureNativeStacks,
+    [ValidateRange(0,30)][int]$ClientB0LaunchDelaySeconds=0,
     [string]$SdkEvidenceFile='.build/LyraValidation/BlueprintPython/20261023-pawn-sdk-causality/SDKBuild01/summary.json')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -17,7 +18,8 @@ if(!$stage.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$outpu
 if(@(Get-Process -Name UnrealEditor,UnrealEditor-Cmd,UnrealBuildTool -ErrorAction SilentlyContinue).Count){throw 'Another native lane is active'}
 New-Item -ItemType Directory -Path $output|Out-Null
 $summary=[ordered]@{schema_version=1;status='failed';bounded_runtime_acceptance=$false;full_acceptance=$false;network_acceptance=$false
-    cpp_compile_executed=$false;cook_package_executed=$false;assets_saved=$false;hashes=@();process=$null;external_gate=$null;error=$null}
+    cpp_compile_executed=$false;cook_package_executed=$false;assets_saved=$false;hashes=@();process=$null;external_gate=$null;error=$null
+    client_b0_launch_delay_seconds=$ClientB0LaunchDelaySeconds;launch_schedule=@{}}
 function Read-MeleeLiveJson([string]$Path){
     if(!(Test-Path -LiteralPath $Path)){return $null}
     try{$stream=[IO.FileStream]::new($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))}
@@ -84,6 +86,13 @@ try{
         '-ini:Engine:[OnlineSubsystem]:DefaultPlatformService=Null','-ini:Engine:[OnlineServices]:DefaultServices=Null')
     if($CaptureNativeStacks){$base+='-UEPReplicaNativeConstructionStacks'}
     foreach($peer in @('server','A','B0')){
+        if($peer -eq 'B0' -and $ClientB0LaunchDelaySeconds -gt 0){
+            $delay=[Diagnostics.Stopwatch]::StartNew()
+            while($delay.Elapsed.TotalSeconds -lt $ClientB0LaunchDelaySeconds){
+                if($handles.server.process.HasExited -or $handles.A.process.HasExited){throw 'Native peer exited during controlled second-client launch delay'}
+                Start-Sleep -Milliseconds 200
+            }
+        }
         $arguments=@($base)
         if($peer -eq 'server'){$arguments+=@('-server','-NullRHI','-NoSound',"-port=$ServerPort",'-multihome=127.0.0.1');$exe='UnrealEditor-Cmd.exe'}
         else{
@@ -92,6 +101,7 @@ try{
                 '-ExecCmds=t.MaxFPS 30,sg.ShadowQuality 0,sg.GlobalIlluminationQuality 0,sg.ReflectionQuality 0,r.Streaming.PoolSize 256');$exe='UnrealEditor.exe'
         }
         $arguments+=@("-UEPJumpPeer=$peer","-UEPMeleeTraceNetworkResult=$output/$peer.json","-abslog=$output/$peer.log")
+        $summary.launch_schedule[$peer]=[DateTime]::UtcNow.ToString('o')
         $handles[$peer]=Start-UEPValidationProcess -Executable (Join-Path $EngineRoot "Engine/Binaries/Win64/$exe") -Arguments $arguments -WorkingDirectory $stage -LogPrefix "$output/$peer" -Name "Current melee native trace readiness $peer"
         if($peer -eq 'server'){
             $timer=[Diagnostics.Stopwatch]::StartNew()
