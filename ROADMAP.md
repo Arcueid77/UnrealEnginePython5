@@ -1736,7 +1736,7 @@ scope/reachability decisions; editor/test utilities remain excluded.
 
 - [ ] Navigation, focus/back behavior, settings persistence, session results
   and replay controls pass original-BP/Python comparisons.
-- [ ] Repeated screen open/close and travel restore subscriptions and state.
+- [x] Repeated screen open/close and travel restore subscriptions and state.
 - [x] Failures/cancellations are tested, not accepted only on the success path.
 
 ## 0.14.0 Explorer TopDownArena and coverage closeout
