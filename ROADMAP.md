@@ -1719,7 +1719,7 @@ logic. Keep rendering/audio engines, animation, navigation, Behavior Tree and
 EQS execution facilities native. Match-rule and presentation ownership remain
 separate, including dedicated-server zero-UI behavior.
 
-- [ ] Effect/audio triggering, warmup/play/postgame, scoring and notifications
+- [x] Effect/audio triggering, warmup/play/postgame, scoring and notifications
   match the original BP checkpoints under the same inputs.
 - [x] AI task/service outcomes and cancellation are reproducible; long-running
   tasks do not retain a destroyed Pawn or World.
