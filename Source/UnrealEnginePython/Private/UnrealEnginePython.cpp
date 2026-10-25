@@ -10,6 +10,7 @@
 #include "HAL/PlatformProcess.h"
 #include "Misc/CoreDelegates.h"
 #include "CoreGlobals.h"
+#include "Containers/StringConv.h"
 #if UEP_LEGACY_ENGINE_MINOR_VERSION < 13
 #include "ClassIconFinder.h"
 #endif
@@ -156,36 +157,52 @@ void FUnrealEnginePythonModule::UESetupPythonInterpreter(bool verbose)
 
 	unreal_engine_init_py_module();
 
-	PyObject *py_sys = PyImport_ImportModule("sys");
-	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
-
-	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
-
-	char *zip_path = TCHAR_TO_UTF8(*ZipPath);
-	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
-	PyList_Insert(py_path, 0, py_zip_path);
-	Py_DECREF(py_zip_path);
+	PyObject* py_path = PySys_GetObject("path"); // Borrowed reference.
+	if (!py_path || !PyList_Check(py_path))
+	{
+		PyErr_SetString(PyExc_RuntimeError, "Python sys.path must be a list during UEP initialization");
+		unreal_engine_py_log_error();
+		return;
+	}
+	auto insert_path = [py_path](const FString& path, int index)
+	{
+		// A pointer returned by TCHAR_TO_UTF8 expires at the end of its full
+		// expression. Keep the conversion alive until Python has copied it.
+		FTCHARToUTF8 utf8_path(*path);
+		PyObject* py_value = PyUnicode_FromStringAndSize(utf8_path.Get(), utf8_path.Length());
+		if (!py_value)
+		{
+			unreal_engine_py_log_error();
+			return false;
+		}
+		const int result = PyList_Insert(py_path, index, py_value);
+		Py_DECREF(py_value);
+		if (result != 0)
+		{
+			unreal_engine_py_log_error();
+			return false;
+		}
+		return true;
+	};
+	if (!insert_path(ZipPath, 0))
+		return;
 
 
 	int i = 0;
-	for (FString ScriptsPath : ScriptsPaths)
+	for (const FString& ScriptsPath : ScriptsPaths)
 	{
-		char *scripts_path = TCHAR_TO_UTF8(*ScriptsPath);
-		PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
-		PyList_Insert(py_path, i++, py_scripts_path);
-		Py_DECREF(py_scripts_path);
+		if (!insert_path(ScriptsPath, i++))
+			return;
 		if (verbose)
 		{
-			UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
+			UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), *ScriptsPath);
 		}
 	}
 
 	if (!AdditionalModulesPath.IsEmpty())
 	{
-		char *additional_modules_path = TCHAR_TO_UTF8(*AdditionalModulesPath);
-		PyObject *py_additional_modules_path = PyUnicode_FromString(additional_modules_path);
-		PyList_Insert(py_path, 0, py_additional_modules_path);
-		Py_DECREF(py_additional_modules_path);
+		if (!insert_path(AdditionalModulesPath, 0))
+			return;
 	}
 
 	if (verbose)

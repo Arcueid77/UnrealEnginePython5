@@ -25,11 +25,11 @@ $plugin=[IO.Path]::GetFullPath((Join-Path $stage 'Plugins/UnrealEnginePython'))+
 foreach($action in $plan.Actions){foreach($item in @($action.ProducedItems)+@($action.DeleteItems)){
     if($item -and ![IO.Path]::GetFullPath($item).StartsWith($plugin,[StringComparison]::OrdinalIgnoreCase)){throw 'Reviewed action writes outside the staged UEP plugin'}
 }}
-$source=Join-Path $repo 'Source/UnrealEnginePython/Private/UEPyMixin.cpp'
-$staged=Join-Path $plugin 'Source/UnrealEnginePython/Private/UEPyMixin.cpp'
+$source=Join-Path $repo ('Source/UnrealEnginePython/Private/'+$ExpectedCompileFiles[0])
+$staged=Join-Path $plugin ('Source/UnrealEnginePython/Private/'+$ExpectedCompileFiles[0])
 if((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $staged).Hash){throw 'Staged Mixin source differs'}
 $sourceHashes=@()
-foreach($name in @('UEPyMixin.cpp','UEPyMixin.h','PythonFunction.cpp')){
+foreach($name in @(@('UEPyMixin.cpp','UEPyMixin.h','PythonFunction.cpp')+@($ExpectedCompileFiles)|Select-Object -Unique)){
     $corePath=Join-Path $repo ('Source/UnrealEnginePython/Private/'+$name)
     $stagePath=Join-Path $plugin ('Source/UnrealEnginePython/Private/'+$name)
     $hash=(Get-FileHash -LiteralPath $corePath).Hash

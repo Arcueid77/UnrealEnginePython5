@@ -3,7 +3,8 @@
 param([string]$EngineRoot='F:/UnrealEngine',
     [string]$StageProject='F:/UnrealEnginePython5/.build/LyraValidation/Full/Stage/Lyra/LyraStarterGame.uproject',
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [ValidateRange(1024,65535)][int]$ServerPort=54913,[switch]$CaptureNativeStacks)
+    [ValidateRange(1024,65535)][int]$ServerPort=54913,[switch]$CaptureNativeStacks,
+    [string]$SdkEvidenceFile='.build/LyraValidation/BlueprintPython/20261023-pawn-sdk-causality/SDKBuild01/summary.json')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -41,7 +42,7 @@ try{
         if((Get-Content -LiteralPath $path -Raw|ConvertFrom-Json).BuildId -ne $build){throw 'Native BuildId mismatch'}
         Add-FailureHash $path
     }
-    $sdkPath=Join-Path $repo '.build/LyraValidation/BlueprintPython/20261023-current-third-person/SDKBuild01/summary.json'
+    $sdkPath=if([IO.Path]::IsPathRooted($SdkEvidenceFile)){[IO.Path]::GetFullPath($SdkEvidenceFile)}else{Join-Path $repo $SdkEvidenceFile}
     $sdk=Get-Content -LiteralPath $sdkPath -Raw|ConvertFrom-Json -Depth 30
     foreach($row in $sdk.source_hashes){if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256){throw 'Reviewed SDK source changed'};Add-FailureHash $row.path}
     foreach($row in $sdk.binary_after){if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256){throw 'Current SDK binary changed'};Add-FailureHash $row.path}
