@@ -3,13 +3,16 @@
 param(
     [string]$EngineRoot = 'F:\UnrealEngine',
     [Parameter(Mandatory = $true)][string]$StageProject,
-    [Parameter(Mandatory = $true)][string]$OutputDirectory
+    [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [string[]]$TestName=@()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
 . (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
+. (Join-Path $PSScriptRoot 'UEPCallMatrixCases.ps1')
+$selectedCases=@(Get-UEPCallMatrixCases -TestName $TestName)
 $repo = Split-Path $PSScriptRoot -Parent
 $stage = Split-Path ([IO.Path]::GetFullPath($StageProject)) -Parent
 $output = [IO.Path]::GetFullPath($OutputDirectory)
@@ -18,11 +21,14 @@ if (Test-Path -LiteralPath $output) { throw 'Use a fresh evidence directory' }
 New-Item -ItemType Directory -Path $output | Out-Null
 $summary = [ordered]@{schema_version=1; status='failed'; cpp_compile_executed=$false; cook_package_executed=$false
     native_binary_provenance='Existing source-matching generic host and UEP Editor modules'
-    input_hashes=@(); tests=@(); error=$null}
+    input_hashes=@(); tests=@(); error=$null;selected_test_names=@($selectedCases.name)
+    full_matrix_executed=($selectedCases.Count -eq 11);full_regression_requested=$false}
 function Add-CallMatrixInput([string]$Path) {
     $summary.input_hashes += @{path=$Path; sha256=(Get-FileHash -LiteralPath $Path).Hash}
 }
 try {
+    Add-CallMatrixInput $PSCommandPath
+    Add-CallMatrixInput (Join-Path $PSScriptRoot 'UEPCallMatrixCases.ps1')
     foreach ($mapping in @(
         @{source=(Join-Path $repo 'Source'); target=(Join-Path $stage 'Plugins\UnrealEnginePython\Source')},
         @{source=(Join-Path $PSScriptRoot 'UEP58Host\Source'); target=(Join-Path $stage 'Source')}
@@ -43,19 +49,7 @@ try {
         Add-CallMatrixInput $manifest
         foreach ($binary in Get-ChildItem -LiteralPath $root -Filter 'UnrealEditor-*.dll') { Add-CallMatrixInput $binary.FullName }
     }
-    foreach ($test in @(
-        @{name='delegate-broadcast'; script='delegate_broadcast_validation.py'; result='UEPDelegateBroadcastResult'; marker='UEP_DELEGATE_BROADCAST_PASSED'},
-        @{name='signature-standalone'; script='mixin_signature_validation.py'; result='UEPMixinSignatureResult'; marker='UEP_MIXIN_SIGNATURE_PASSED'},
-        @{name='signature-shared'; script='mixin_signature_validation.py'; result='UEPMixinSignatureResult'; marker='UEP_MIXIN_SIGNATURE_PASSED'},
-        @{name='callsite'; script='mixin_callsite_validation.py'; result='UEPMixinCallsiteResult'; marker='UEP_MIXIN_CALLSITE_PASSED'},
-        @{name='experimental-body'; script='blueprint_script_body_validation.py'; result='UEPBlueprintScriptBodyResult'; marker='UEP_BLUEPRINT_SCRIPT_BODY_PASSED'},
-        @{name='named-outputs'; script='mixin_named_output_validation.py'; result='UEPMixinNamedOutputResult'; marker='UEP_MIXIN_NAMED_OUTPUT_PASSED'},
-        @{name='named-outputs-negative'; script='mixin_named_output_validation.py'; result='UEPMixinNamedOutputResult'; marker='UEP_MIXIN_NAMED_OUTPUT_PASSED'},
-        @{name='inherited-selector'; script='mixin_inherited_selector_validation.py'; result='UEPInheritedSelectorResult'; marker='UEP_INHERITED_SELECTOR_PASSED'},
-        @{name='construction-forwarder'; script='mixin_construction_forwarder_validation.py'; result='UEPConstructionForwarderResult'; marker='UEP_CONSTRUCTION_FORWARDER_PASSED'},
-        @{name='soft-class-path'; script='soft_class_path_validation.py'; result='UEPSoftClassPathResult'; marker='UEP_SOFT_CLASS_PATH_PASSED'},
-        @{name='mixin-exception'; script='mixin_exception_validation.py'; result='UEPMixinExceptionResult'; marker='UEP_MIXIN_EXCEPTION_PASSED'}
-    )) {
+    foreach ($test in $selectedCases) {
         $script = Join-Path $PSScriptRoot ('UEP58Host\Tests\' + $test.script)
         Add-CallMatrixInput $script
         $resultPath = Join-Path $output ($test.name + '.json')

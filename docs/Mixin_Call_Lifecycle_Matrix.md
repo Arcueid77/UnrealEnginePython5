@@ -49,6 +49,17 @@ signatures, build configurations or direct C++ invocation.
 The focused drivers reuse marked, already built stages and check source/module
 parity. Run them with PowerShell 7 and fresh output directories:
 
+The call matrix accepts `-TestName` for an affected subset. Omitting it keeps
+the original eleven cases. Unknown or duplicate names fail before staging or
+launching a native process. For example:
+
+```powershell
+& .\Validation\Run-UEP58FocusedCallMatrixValidation.ps1 `
+  -StageProject F:\UnrealEnginePython5\.build\Validation\UEP58Host\UEP58Host.uproject `
+  -OutputDirectory F:\UnrealEnginePython5\.build\Validation\Results\Calls-NewRun `
+  -TestName @('signature-standalone', 'delegate-broadcast')
+```
+
 ```powershell
 .\Validation\Run-UEP58FocusedLifecycleValidation.ps1 `
   -StageProject F:\UnrealEnginePython5\.build\Validation\UEP58Host\UEP58Host.uproject `
