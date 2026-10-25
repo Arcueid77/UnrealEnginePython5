@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [switch]$CheckPlayableStartup,
+    [switch]$RenderOffscreen,
     [ValidateRange(10,60)][int]$PlayableObservationSeconds=20
 )
 
@@ -117,6 +118,7 @@ try {
     $logPath=Join-Path $output 'weapon.log'
     $arguments=@($StageProject,'/Engine/Maps/Entry?game=/Script/Engine.GameModeBase','-game') + $common +
         @('-windowed','-ResX=1280','-ResY=720','-NoLoadingScreen',"-UEPLyraWeaponHUDResult=$reportPath","-abslog=$logPath")
+    if ($RenderOffscreen) { $arguments += '-RenderOffscreen' }
     $summary.process=Invoke-UEPValidationProcess $editor $arguments $stage (Join-Path $output 'weapon') 'weapon-differential'
     $report=Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
     Assert-LyraWeaponHUDData $report
