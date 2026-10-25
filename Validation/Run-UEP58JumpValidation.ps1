@@ -965,7 +965,7 @@ if($ADS -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal
 if($DropWeapon -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $WidgetLifecycle)){throw 'DropWeapon and other ability fixtures are separate lanes'}
 if($ReloadMagazine -and ($Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle)){throw 'ReloadMagazine and other fixtures are separate lanes'}
 if($ReloadWeapon -ne 'pistol' -and !$ReloadMagazine){throw 'Non-pistol reload requires its native weapon fixture lane'}
-if($AutoReloadWeapon -ne 'pistol' -and (!$AutoReload -or !$Network)){throw 'Non-pistol AutoReload requires its native two-owner equipment lane'}
+if($AutoReloadWeapon -ne 'pistol' -and !$AutoReload){throw 'Non-pistol AutoReload requires its native equipment fixture lane'}
 if($WeaponInstance -and ($Network -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Equipment-instance standalone is a separate native lane'}
 if($SpawnEffect -and ($WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'SpawnEffect is a separate native lane'}
 if($DeviceColor -and ($Network -or $SpawnEffect -or $WeaponInstance -or $Quickslot -or $Death -or $Cosmetics -or $AutoReload -or $HeroHeal -or $ADS -or $DropWeapon -or $WidgetLifecycle -or $ReloadMagazine)){throw 'Device color is a standalone software lane'}
@@ -3594,6 +3594,7 @@ function Assert-UEPHeroParentFamily($Author,$Proof,[int]$MinimumMethods){
         if($report.status -ne 'passed'){throw 'Native ability report failed'}
         if($WidgetHeld -and (@($report.targets).Count -ne 1 -or $report.targets[0] -ne $WidgetHeldMode)){throw 'Held-widget native Experience target differs'}
         $module=if($ReloadMagazine){'uep_lyra_abilities.reload_magazine_contract'}elseif($DropWeapon){'uep_lyra_abilities.drop_weapon_contract'}elseif($WidgetLifecycle){'uep_lyra_abilities.widget_contract'}elseif($ADS){'uep_lyra_abilities.ads_contract'}elseif($HeroHeal){'uep_lyra_abilities.hero_heal_contract'}elseif($AutoReload){'uep_lyra_abilities.autoreload_contract'}elseif($Cosmetics){'uep_lyra_characters.cosmetic_contract'}elseif($Death){'uep_lyra_abilities.death_contract'}elseif($Quickslot){'uep_lyra_abilities.quickslot_contract'}else{'uep_lyra_abilities.jump_contract'}
+        if($AutoReload -and $AutoReloadWeapon -ne 'pistol'){$module='uep_lyra_abilities.autoreload_standalone_contract'}
         if($WeaponInstance){$module='uep_lyra_weapons.weapon_instance_contract'}
         if($EquipmentDeath){$module='uep_lyra_weapons.weapon_instance_death_contract'}
         if($SpawnEffect){$module='uep_lyra_abilities.spawn_effect_contract'}
