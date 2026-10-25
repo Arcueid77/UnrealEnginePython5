@@ -1723,7 +1723,7 @@ separate, including dedicated-server zero-UI behavior.
   match the original BP checkpoints under the same inputs.
 - [x] AI task/service outcomes and cancellation are reproducible; long-running
   tasks do not retain a destroyed Pawn or World.
-- [ ] Multi-client score/phase state, local notifications and cleanup agree.
+- [x] Multi-client score/phase state, local notifications and cleanup agree.
 
 ## 0.13.0 Frontend settings sessions and replays
 
