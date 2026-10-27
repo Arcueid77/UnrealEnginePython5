@@ -1617,3 +1617,43 @@ API after these dispositions. Unknown defects are not certified absent.
 Twenty immutable-index checks pass;no new native process,build,cook,tag or release.
 Full original0.14 Explorer/TopDownArena acceptance remains open. Preserve original
 246 paths/22 texts,prior20 accepted criteria,official source and unrelated dirt.
+
+## Final original migration acceptance batch275 (2026-10-28)
+
+**Original migration scope accepted batch275 (2026-10-28):22/22,246 candidates.**
+All original0.9-0.14 criteria are accepted within UE5.8/CPython3.11 Win64 Development.
+Keep491 original audited assets,246 candidate paths/order/versions,182 configuration
+shells,63 retained assets and eleven scope reviews unchanged. This accepts the
+agreed Python replacement scope;other platforms/configurations,broader native
+game-C++ migration,RC tags and publication remain separate.
+
+The final0.14 criterion covers all forty Explorer/TopDownArena candidates.
+Recheck49 original component captures plus the shared GetReady Cue parent against
+current production code and raw semantic reports. Six current original/Python
+integration pairs pass:inventory menus,placed interactions,follow/navigation/
+cancel/travel,two-client predicted collect/sit,two-local-player variable-frame
+natural bombs/death/refund/HUD,and opponent death/kill/team attribution. All16
+accepted native processes exit0. Six actual Arena images show owner0 bomb1->0->1
+while owner1 stays1. Retain native debug/warning text and death-transition blur.
+
+Preserve five earlier network groups:one earlier positive group and four failed
+groups,15 processes in total;31 new UE processes including final16. The first
+Python failure is an overspecified server local-montage end counter. The shared
+reader correction preserves a Windows sharing-violation interruption. Exact
+callback/native-end-observer waits fail within the unchanged70-second phase bound
+and remain preserved. Final evidence observes the same native ability active at
+entry,then inactive with spec count0/no tasks;client montage completion stays
+required. Original/Python authoritative pickup,owner replication,progress and
+cleanup outcomes agree. No generic native C++ event interception is claimed.
+
+Preserve the initial SDK-status and quoted-helper-root prelaunch failures.
+Controls use SDK236,bind helper paths through an explicit variable,and use the
+existing shared JSON reader for the network monitor. Archive exact retired test/
+control inputs;only the two named test modules and wrapper may use them. No
+production policy,asset,normal bootstrap,C++ source,build or cook changes occur.
+Thirty-three immutable-index Python checks and sixteen exact-index PS control checks
+pass. Reuse the previous21 criteria only after their inputs,Git production delta,
+original inventory and metadata-only manifest changes verify. Promote all22
+criteria and246 candidate dispositions together. Historical per-capture scope
+limits remain intact. Official Lyra stays unchanged;the approved isolated Hero
+guard246 remains required. All six unrelated modified files are preserved.
