@@ -1573,3 +1573,24 @@ wrong versions and teardown failures still reject. Archive the original runner,
 26 original build payload inputs and each variant's mutable stage files. Keep all
 prior failed captures and the previous candidate matrix. Preserve gameplay code,
 assets,official Lyra,the approved guard/binaries and six unrelated modified files.
+
+## Original candidate matrix aggregate batch273 (2026-10-28)
+
+**Original candidate matrix accepted batch273 (2026-10-28):**
+The original0.9 Generic/both Third Person/Lyra candidate criterion is accepted;
+overall20/22. Aggregate the existing clean Generic six-suite70/current11call/
+three-PIE proof, both rendered current-SDK Third Person Editor captures and both
+actual current Game packages. Lyra retains normal no-probe startup, the current
+nineteen-phase two-client owner/travel/rejoin protocol, five directly reviewed
+Batch1A paired views and the visible/actual packaged42-scenario weapon example.
+
+Recheck actual source, binary, report, log and image fingerprints. Recover the
+exact old bytes of three unselected ability/weapon test modules from the recorded
+Examples Git parent; identify this as post-execution reconstruction. Both root
+and stage input references remain explicit. Only these named test probes may use
+the exact archive. Normal/focused weapon production inputs must still match.
+Thirty-two immutable-index checks pass, including missing-family, stale-SDK,
+missing-Game, ownership/visual/package cells and production-archive rejection.
+No new native process, build, cook or broad regression. Full Explorer/TopDownArena
+and RC API review remain separate original requirements. Preserve all246 paths,
+22 original texts, prior19 accepted criteria, official Lyra and unrelated dirt.
