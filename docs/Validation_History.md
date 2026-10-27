@@ -1429,3 +1429,26 @@ contract still lacks current-source packaged21. Complete candidate regression,
 RC and full migration remain open;overall16/22. No C++/production policy/asset
 changes,compile/link,cook/package or full regression. Official Lyra,the isolated
 initialization guard/binaries and six unrelated files retain their fingerprints.
+
+## Current Generic package and clean core70 batch268 (2026-10-28)
+
+The current original Generic Game target required its first UE5.8.1 build:
+948 compile actions,one link,one metadata action,parallel2,3872.613 seconds,
+zero compiler diagnostics. All produced paths are inside the owned project;
+NoEngineChanges guards existing Engine outputs. Native source remains unchanged.
+Preserve the optional-library preflight failure that occurred before build start.
+
+Package01 Cook/Pak/archive exits0,but its wrapper fails before runtime because
+Pak belongs to STAGE rather than a separate completion marker. Keep the failed
+capture/archive and exact old driver. Package02 corrects phase verification,
+uses versioned incremental Entry cooking and skips native rebuild. Real Game
+PID37948 exits0 and independently passes packaged21 without the earlier
+unversioned serialization warning. Its binary matches the actual Game build.
+
+CleanCandidate01 reuses these artifacts and runs all six original suites in one
+failure-free candidate record:70/70. Only its two deliberately logged recovery
+fixtures exit1;all ordinary processes exit0 and close normally. Six new gate
+tests,one driver parse and three preflight rejection checks pass. Full regression
+is limited to Generic Win64 Development core;the complete multi-domain candidate
+and original migration conditions remain open,16/22. Preserve all unrelated
+files,official Lyra and the already authorized isolated initialization guard.
