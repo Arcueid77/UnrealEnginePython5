@@ -1452,3 +1452,29 @@ tests,one driver parse and three preflight rejection checks pass. Full regressio
 is limited to Generic Win64 Development core;the complete multi-domain candidate
 and original migration conditions remain open,16/22. Preserve all unrelated
 files,official Lyra and the already authorized isolated initialization guard.
+
+## Controlled reload,PIE,GC and travel cleanup batch269 (2026-10-28)
+
+Accept only the original0.9 controlled reload,PIE,GC and travel cleanup condition.
+Weapon01 PID17880 exits0 after42 scenarios (38 BP/Python state comparisons),
+four live Profile round trips and three unregister/reload/re-register cycles.
+Each cycle constructs a NEW widget,collects the old native object and closes
+all subscriptions/scopes/tickers. Four original class routers are restored;
+the native message callback/cancellation probe also passes.
+
+WeaponNetwork01's server38612,A22788,B037656 and rejoinedB112304 all exit0.
+Nineteen phases cover native fire/reload/exhaustion,slot change,Pawn replacement,
+two server travels,client exit/rejoin and continued fire. Both original clients
+exercise three scope lifetimes. Final callbacks,HUD bindings,widget references
+and weapon samplers are balanced and empty. Reuse current-SDK PIE01 PID39448
+after exact frozen source/binary checks:three actual shared-Editor sessions,
+native GC,closed scopes and restored routers. No PIE reexecution is claimed.
+
+Twenty-two selected immutable-index checks pass;the network driver independently
+passes91 selected host checks and its PowerShell contracts. No compile/link,
+cook/package or full regression occurs. Only audit/index/tests and records are
+changed. Overall17/22;all246 original candidate paths/order/versions and22 exact
+checklist texts remain intact. Network screenshots show gameplay/ammo but retain
+TapIDs/invalid-tap warnings in the NoSound fixture;complete visual/audio and
+packaged criteria remain open. Preserve official Lyra,the authorized isolated
+initialization guard/binaries and six unrelated modified files.
