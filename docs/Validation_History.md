@@ -1383,3 +1383,25 @@ replace every placeholder with measured evidence.
 A script-only retest must record the actual new scripts and the compatible
 native binary provenance. A source change after the candidate invalidates the
 affected results. Do not fill a missing field with an unrelated old green run.
+
+## Original call/lifecycle matrix criterion batch266 (2026-10-27)
+
+The checked-in contract now classifies21 call and12 lifecycle paths,with named
+reproducers:24 bounded supported,six intentionally rejected,three bypass or
+unsupported. Correct the blanket output-parameter rejection to distinguish
+explicit non-reference named-output opt-in,and include the already tested
+authored Parent Construction virtual-helper route. No runtime behavior changes.
+
+MissingCalls01 refreshes only nine generic cases against SDK236;reuse two current
+call cases from258 and native rejection from257. Seven new commandlets exit0;
+named-output-negative PID39840 and mixin-exception PID2440 intentionally exit1,
+with exclusive expected errors,recovery/original restoration and normal shutdown.
+PIE01 PID39448 exits0 after three actual shared-interpreter sessions,with native
+GC,closed scopes and original routers restored. Ten new processes;zero compile,
+link,cook/package or full regression. Final immutable selected checks22/22 pass.
+
+Historical Third Person,Dash,packaged reload,Explorer and travel/rejoin references
+keep their own SDK/configuration scope. Only the exact matrix/reproducer original
+criterion is newly accepted. Overall16/22;the other original0.9 conditions and
+complete migration/version/package/release acceptance remain open. Official Lyra,
+the isolated initialization guard/binaries and six unrelated files are preserved.
