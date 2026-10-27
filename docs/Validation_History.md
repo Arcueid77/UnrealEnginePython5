@@ -1405,3 +1405,27 @@ keep their own SDK/configuration scope. Only the exact matrix/reproducer origina
 criterion is newly accepted. Overall16/22;the other original0.9 conditions and
 complete migration/version/package/release acceptance remain open. Official Lyra,
 the isolated initialization guard/binaries and six unrelated files are preserved.
+
+## Current Editor candidate components batch267 (2026-10-28)
+
+ThirdPerson01 refreshes both rendered native-input variants against SDK236;
+Mixin PID4068 and PythonFirst PID11468 exit0. Six1280x720 images are directly
+inspected,with visible characters,map and HUD. Native movement/look/jump and
+final teardown pass;PythonFirst also travels once. No pixel/animation/hardware
+parity claim. Existing binaries and project-owned metadata are reused.
+
+Five Generic Editor suites prove49 checks:shared/standalone core21 each,two
+isolated expected dynamic-exception recovery checks,and Editor/Slate5. The
+new selective driver performs no build. Preserve Core01's missing-result
+standalone failure and Core02's existing-asset preflight stop;carry forward
+only independently rechecked successful component reports. Core03 uses new
+UUID-suffixed test assets;the original two files stay byte-identical in place.
+Two new test packages and their copies are retained;deletion is still excluded.
+
+Eight pure-gate checks,one driver parse and three invalid-selection checks pass
+from an immutable index. Seven native components pass across eight attempts;
+both failed capture summaries remain failed. The original Generic six-suite70
+contract still lacks current-source packaged21. Complete candidate regression,
+RC and full migration remain open;overall16/22. No C++/production policy/asset
+changes,compile/link,cook/package or full regression. Official Lyra,the isolated
+initialization guard/binaries and six unrelated files retain their fingerprints.

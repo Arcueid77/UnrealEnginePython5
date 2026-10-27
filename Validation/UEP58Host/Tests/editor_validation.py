@@ -39,7 +39,14 @@ if not result_path_value:
     raise RuntimeError("-UEPValidationResult=<path> is required")
 
 result_path = pathlib.Path(result_path_value)
+asset_suffix = command_line_value("UEPValidationAssetSuffix", "")
+if asset_suffix and not re.fullmatch(r"UEP_[0-9a-f]{32}", asset_suffix):
+    raise RuntimeError("UEPValidationAssetSuffix must be a driver-generated UEP UUID")
 results = []
+
+
+def validation_asset_name(name):
+    return name + ("_" + asset_suffix if asset_suffix else "")
 
 
 def check(condition, message):
@@ -99,10 +106,11 @@ def validate_asset_lifecycle():
     from unreal_engine.classes import Material
 
     material = Material()
-    material.set_name("M_UEP58Validation")
-    package_name = "/Game/UEPValidation/M_UEP58Validation"
+    name = validation_asset_name("M_UEP58Validation")
+    material.set_name(name)
+    package_name = "/Game/UEPValidation/" + name
     material.save_package(package_name)
-    asset_path = f"{package_name}.M_UEP58Validation"
+    asset_path = f"{package_name}.{name}"
     loaded = ue.get_asset(asset_path)
     check(loaded is not None, f"Could not load saved asset {asset_path}")
 
@@ -110,7 +118,8 @@ def validate_asset_lifecycle():
 def validate_sequencer_lifecycle():
     from unreal_engine.classes import LevelSequenceFactoryNew, MovieSceneAudioTrack
 
-    package_name = "/Game/UEPValidation/LS_UEP58Validation"
+    name = validation_asset_name("LS_UEP58Validation")
+    package_name = "/Game/UEPValidation/" + name
     sequence = LevelSequenceFactoryNew().factory_create_new(package_name)
     check(sequence is not None, "Could not create a LevelSequence")
     check(sequence.sequencer_master_tracks() == [], sequence.sequencer_master_tracks())
@@ -128,7 +137,7 @@ def validate_sequencer_lifecycle():
     sequence.sequencer_set_view_range(0.0, 2.0)
 
     sequence.save_package(package_name)
-    loaded = ue.get_asset(f"{package_name}.LS_UEP58Validation")
+    loaded = ue.get_asset(f"{package_name}.{name}")
     check(loaded is not None, "Could not reload saved LevelSequence")
     check(len(loaded.sequencer_master_tracks()) == 1, loaded.sequencer_master_tracks())
     check(len(loaded.sequencer_sections()) == 1, loaded.sequencer_sections())
@@ -200,9 +209,12 @@ report = {
     "epic_unreal_module_loaded": "unreal" in sys.modules,
     "passed": len(results) - len(failed),
     "failed": len(failed),
-    "known_skips": [
-        "delete_asset unattended reference scan; the driver removes the two isolated test assets after editor exit",
-    ],
+    "validation_asset_suffix": asset_suffix,
+    "test_asset_packages": ["/Game/UEPValidation/" + validation_asset_name(name)
+                            for name in ("M_UEP58Validation", "LS_UEP58Validation")],
+    "known_skips": ["delete_asset unattended reference scan; uniquely named test assets retained in the managed stage"
+                    if asset_suffix else
+                    "delete_asset unattended reference scan; the driver removes the two isolated test assets after editor exit"],
     "tests": results,
 }
 
