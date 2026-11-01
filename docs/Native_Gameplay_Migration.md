@@ -65,3 +65,15 @@ natural player/bot assignments produced populations 6/5, and the CPP01 native
 damage, scoring, and owner notification checks still passed. Native compilation
 was limited to the two affected LyraGame unity units. No engine compilation or
 Cook was needed for this batch.
+
+CPP03 passed for bot count, names, and removal selection; see
+[the bot acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP03-acceptance.json).
+Both production spawner configurations passed native/Python creation, count
+precedence, naming, nine native self-destruct/removal operations, and cleanup.
+Native spawn/initialization/destruction and the native RNG remain in use. The
+performance test Blueprint keeps its custom creation graph. This does not claim
+an exact RNG sequence or separate PIE editor-override acceptance.
+
+The dedicated server and two actual clients passed naturally creating/naming
+nine bots, with the CPP01 damage/score/notification and CPP02 team gates enabled.
+Only LyraGame units 1/2 were recompiled; the accepted team object was reused.

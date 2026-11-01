@@ -7,7 +7,9 @@ param(
     [Parameter(Mandatory=$true)][string]$AssetEvidenceDirectory,
     [ValidateRange(1024,65535)][int]$ServerPort=18814,
     [switch]$ValidateTeam,
-    [string]$TeamAssetEvidenceDirectory
+    [string]$TeamAssetEvidenceDirectory,
+    [switch]$ValidateBots,
+    [string]$BotAssetEvidenceDirectory
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -28,9 +30,15 @@ if($ValidateTeam) {
     if($teamAssets.status -ne 'passed' -or $teamAssets.assets.Count -ne 3) {throw 'Accepted team asset family required'}
     foreach($row in $teamAssets.assets) {if((Get-FileHash -LiteralPath (Join-Path $stage $row.relative)).Hash -ne $row.sha256) {throw 'Authored team asset changed'}}
 }
+if($ValidateBots) {
+    $botAssets=Get-Content -LiteralPath "$BotAssetEvidenceDirectory/summary.json" -Raw|ConvertFrom-Json -Depth 24
+    if($botAssets.status -ne 'passed' -or $botAssets.assets.Count -ne 3) {throw 'Accepted bot asset family required'}
+    foreach($row in $botAssets.assets) {if((Get-FileHash -LiteralPath (Join-Path $stage $row.relative)).Hash -ne $row.sha256) {throw 'Authored bot asset changed'}}
+}
 New-Item -ItemType Directory -Path "$output/Inputs"|Out-Null
 $summary=[ordered]@{schema_version=1;status='failed';batch='CPP01';actual_native_damage_and_network=$false;cpp_compile_executed=$false;cook_package_executed=$false;hashes=@();profiles=@{};error=$null}
 if($ValidateTeam) {$summary.batch='CPP02'}
+if($ValidateBots) {$summary.batch='CPP03'}
 $python='F:/UnrealEngine/Engine/Binaries/ThirdParty/Python3/Win64/python.exe';$overlay=Join-Path $repo 'Demos/UEPLyraIntegration/Overlay';$scripts=Join-Path $overlay 'Content/Scripts';$handles=@{}
 function Add-NativeMessageHash([string]$Path) {$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
 function Read-NativeMessageReport([string]$Path) {
@@ -68,6 +76,7 @@ try {
                     "-UEPNativeMessageNetworkPeer=$peer","-UEPNativeMessageNetworkRun=$run","-UEPNativeMessageNetworkProfile=$profile",
                     "-UEPNativeMessageNetworkResult=$dir/$peer.json","-abslog=$dir/$peer.log","-UserDir=$cache/User/CPP01/$profile/$peer/")
                 if($ValidateTeam) {$arguments+="-UEPNativeTeamProfile=$profile"}
+                if($ValidateBots) {$arguments+="-UEPNativeBotProfile=$profile"}
                 if($peer -eq 'server') {$arguments+=@('-server','-NullRHI',"-port=$ServerPort",'-multihome=127.0.0.1','-ExecCmds=t.MaxFPS 60');$exe='F:/UnrealEngine/Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}
                 else {$arguments+=@('-game','-NullRHI','-RenderOffscreen','-ExecCmds=t.MaxFPS 30');$exe='F:/UnrealEngine/Engine/Binaries/Win64/UnrealEditor-Cmd.exe'}
                 $handles[$peer]=Start-UEPValidationProcess $exe $arguments $stage "$dir/$peer" "$profile native rules $peer" $environment
