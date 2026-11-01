@@ -78,6 +78,15 @@ The dedicated server and two actual clients passed naturally creating/naming
 nine bots, with the CPP01 damage/score/notification and CPP02 team gates enabled.
 Only LyraGame units 1/2 were recompiled; the accepted team object was reused.
 
+CPP05 passed quickbar cycling/free-slot selection and pickup grant ordering; see
+[the inventory acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP05-acceptance.json).
+Fourteen native/Python boundary cases and a dedicated server with two actual
+owners passed native event/RPC/equipment, inventory stack replication, OnRep
+notifications, owner isolation, and restoration. Only the three LyraGame unity
+units included by the shared headers were rebuilt. The original native
+existing-instance inventory AddEntry remains unimplemented; this migration
+preserves that limitation and does not claim runtime support for it.
+
 CPP04 passed TDM and general player-start policy migration; see
 [the spawning acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP04-acceptance.json).
 Eleven native/Python cases use real collision geometry for empty, partial, and
