@@ -77,3 +77,12 @@ an exact RNG sequence or separate PIE editor-override acceptance.
 The dedicated server and two actual clients passed naturally creating/naming
 nine bots, with the CPP01 damage/score/notification and CPP02 team gates enabled.
 Only LyraGame units 1/2 were recompiled; the accepted team object was reused.
+
+CPP04 passed TDM and general player-start policy migration; see
+[the spawning acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP04-acceptance.json).
+Eleven native/Python cases use real collision geometry for empty, partial, and
+full fits, check distance and claim preferences, preserve spectator behavior,
+and enter actual native RestartPlayer. Start discovery, weak caches, PIE start
+preference, physics, and claim timers retain native ownership. The peer run
+enters selection 22 times per profile, with CPP01–CPP03 regression gates enabled.
+The affected base/derived module compilation reuses the unchanged LyraGame unit.
