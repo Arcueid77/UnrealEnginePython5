@@ -87,6 +87,15 @@ units included by the shared headers were rebuilt. The original native
 existing-instance inventory AddEntry remains unimplemented; this migration
 preserves that limitation and does not claim runtime support for it.
 
+CPP06 passed native spawner pickup/reset/completion orchestration; see
+[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP06-acceptance.json).
+The original C++ reference and Python implementation keep the previously accepted
+Blueprint Python layer fixed. Five guards, real timer completion, stationary
+overlap retry, and pending-timer destruction passed. The original level actors
+then passed 36 scenarios with two actual clients, including unchanged ten-second
+cooldown, inventory/equipment/health replication, and owner isolation. Native
+timer/replication ownership is retained. Only LyraGame units 1/3 were rebuilt.
+
 CPP04 passed TDM and general player-start policy migration; see
 [the spawning acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP04-acceptance.json).
 Eleven native/Python cases use real collision geometry for empty, partial, and
