@@ -114,3 +114,15 @@ both profiles with equal four-award queue/presentation results and no awards for
 the other owner. NullRHI clients each construct one original owner-bound host
 fixture; natural HUD creation and visible rendering are outside this evidence.
 Only ShooterCore is rebuilt. The official Lyra reference and SDK remain unchanged.
+
+CPP08 passed native interaction indicator/option/first-choice orchestration; see
+[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP08-acceptance.json).
+The typed native adapters retain interface calls, soft class paths, payload
+customization, ActorInfo assembly, and GAS execution. Native/Python boundary
+matrices and the existing Explorer regression pass. In both profiles, two actual
+owners each issue three native inputs and produce two matching local-predicted
+and authority interactions; empty inputs and foreign targets remain inactive.
+The native witness uses the ASC owner/avatar that UE5.8.1 actually applies;
+the engine's ignored ActorInfo argument is preserved as existing behavior.
+Only affected LyraGame units are compiled; SDK, bridge, ShooterCore, and engine
+binaries are reused. No physical-keyboard or visible-rendering claim is made.
