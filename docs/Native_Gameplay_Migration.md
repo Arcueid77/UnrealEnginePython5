@@ -50,3 +50,18 @@ Only ShooterCoreRuntime header generation, one module compilation, and linking
 were required. No full engine compilation or Cook ran. Future batches follow the
 approved order and affected regression scope. After each accepted batch, push
 Examples first, then the main repository's validation entry points and gitlink.
+
+CPP02 also passed and is recorded in
+[its team acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP02-acceptance.json).
+It moves player team selection and least-populated team calculation to Python,
+using the original two/four-team configuration classes. A thin reflected setter
+keeps native team notifications intact. Six branch comparisons passed for each
+configuration, with temporary fixture state fully restored. The four-team case
+uses three temporary native PlayerState actors alongside one natural owner; it
+does not claim four actual network owners.
+
+The dedicated server and two actual clients passed in both profiles: eleven
+natural player/bot assignments produced populations 6/5, and the CPP01 native
+damage, scoring, and owner notification checks still passed. Native compilation
+was limited to the two affected LyraGame unity units. No engine compilation or
+Cook was needed for this batch.
