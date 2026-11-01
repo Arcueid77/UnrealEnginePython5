@@ -104,3 +104,13 @@ and enter actual native RestartPlayer. Start discovery, weak caches, PIE start
 preference, physics, and claim timers retain native ownership. The peer run
 enters selection 22 times per profile, with CPP01–CPP03 regression gates enabled.
 The affected base/derived module compilation reuses the unchanged LyraGame unit.
+
+CPP07 passed accolade notification, registry-order, cancellation, timer, and
+teardown policy migration; see
+[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP07-acceptance.json).
+Eleven paired native/Python cases include pending native asset and registry
+callbacks across destruction/rebuild. The two-owner native damage lane passes
+both profiles with equal four-award queue/presentation results and no awards for
+the other owner. NullRHI clients each construct one original owner-bound host
+fixture; natural HUD creation and visible rendering are outside this evidence.
+Only ShooterCore is rebuilt. The official Lyra reference and SDK remain unchanged.
