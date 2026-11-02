@@ -44,7 +44,7 @@ try {
     if($assets.status -ne 'passed') {throw 'Native tag-stack cost asset result failed'}
     Assert-UEPFocusedLog (Get-Content -LiteralPath "$output/assets.log" -Raw) 'UEP_NATIVE_LIFECYCLE_ASSETS_PASSED'
     foreach($row in $summary.hashes) {if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256) {throw 'Frozen authoring input changed'}}
-    if(!$assets.assets_saved -or $assets.policy_events -ne $(if($Kind -eq 'jump'){4}else{5}) -or $assets.asset_family_count -ne 1) {throw 'Complete tag-stack cost asset family required'}
+    if(!$assets.assets_saved -or $assets.policy_events -ne $(if($Kind -eq 'jump'){4}else{5}) -or $assets.asset_family_count -ne $(if($Kind -eq 'jump'){1}else{2})) {throw 'Complete lifecycle asset family required'}
     foreach($relative in $assets.assets) {
         $from=Join-Path $stage $relative;$to=Join-Path $overlay $relative
         New-Item -ItemType Directory -Path (Split-Path $to -Parent) -Force|Out-Null

@@ -209,3 +209,16 @@ tracks that scope. [CPP13 input/physics progress](../Demos/UEPLyraIntegration/Mi
 passes 28 real native network Jump trials and 12 admission-boundary calls.
 Death/respawn crosschecks remain explicit for CPP14. The user deferred desktop
 operation, so CPP09 actual-window input remains pending while other work continues.
+
+[CPP13](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP13-acceptance.json),
+[CPP14](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP14-acceptance.json),
+and [CPP15](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP15-acceptance.json)
+now close native Jump, Death and Reset replacement. Incremental evidence includes
+four death/new-Avatar Jump checks, 24 native lethal/self-destruct network cases,
+two original Arena death tasks and 12 original native Reset requests. Existing
+Blueprint Python rules stay fixed while the new native policy changes. Reset
+uses a world-owned Blueprint carrier because the SDK rejects native UClass mixins;
+native GAS handles, waits, cancellation, typed payloads and transport remain.
+The carrier build compiles LyraGame units 1/2 plus UHT and reuses unit 3, SDK,
+bridge and engine. Startup selection passes 46 focused tests. CPP16-24 continue;
+CPP09 actual desktop input remains user-deferred.
