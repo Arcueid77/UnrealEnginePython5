@@ -148,7 +148,7 @@ part of the pending window acceptance. Headless reports are rejected by that gat
 
 The original uncooked shooter level has a separate Niagara graph failure in an
 unchanged rifle asset. The isolated UI worlds do not claim full shooter rendering
-acceptance or a fix for that resource. The optional CPP-016 through CPP-030 groups
+acceptance or a fix for that resource. The optional CPP-019 through CPP-030 groups
 remain outside the approved implementation scope.
 
 A read-only preflight for CPP-016 through CPP-018 is now available in
@@ -159,7 +159,7 @@ and no player-cost consumer in that census. GameplayTag struct keys cannot be
 read through the current Python dictionary conversion. The proposal uses typed
 stat snapshots and existing Blueprint owners while preserving native instanced
 objects, authority, prediction, and the original caller's hit-only filtering.
-It has not been compiled or applied. Player-cost fixture validation must be
+The preflight itself does not establish runtime acceptance. Player-cost fixture validation must be
 distinguished from production migration. Existing CPP09 sources, assets, and
 binary remain available for its pending actual-window acceptance.
 
@@ -173,3 +173,32 @@ Prior inventory/quickbar Python behavior stays fixed in the native/Python
 comparison. Only affected LyraGame units are compiled; SDK, bridge, ShooterCore,
 and engine are reused. The unused/prototype definitions and exception-injection
 limits remain explicit in the ledger.
+
+CPP11/CPP-017 routes item-cost decisions through three typed ability-owner events.
+Original instanced costs, native curve/level evaluation and truncation, failure-tag
+writeback, AdditionalCosts ordering, hit-only filtering, authority and replicated
+stack writes remain native. Three mixin sets retain the earlier weapon/heal/net
+Python methods and add `NativeCostFallback` for the new rules. The original
+`BlueprintFallback` profile and ability Blueprint bytes are preserved.
+
+CPP12/CPP-018 uses the same binary and remains capability-only: the preflight found
+no original configured player-cost consumer. Disposable cost-only abilities and
+temporary additional player costs on real owned weapons exercise this capability.
+The lifecycle lane applies actual lethal GAS damage and native Avatar destruction,
+observes replacement Pawns with the same PlayerState/stacks and native ASC binding,
+then fires from the new Avatar. Forced Avatar destruction retains its previously
+documented native quickbar recovery; this does not claim an original inventory fix.
+Restoration compares the native post-lifecycle inventory baseline and its replicas.
+
+The focused lanes cover 18 boundary scenarios per cost kind in both profiles,
+all five configured item costs, three weapon types with two actual clients, and
+the additional respawn/Avatar lane. The previous weapon Python policy stays fixed
+while cost profiles change. Diagnostic history is bounded to 128 entries; 320
+native callbacks exercise that bound. The earlier matrices are reused only after
+verifying the exact one-line diagnostic-only change. No SDK/bridge rebuild, full
+engine build, cook/package, new platform, or physical-input acceptance is added.
+
+[CPP11 production acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP11-acceptance.json)
+and [CPP12 capability acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP12-acceptance.json)
+close the selected extended scope: two production groups and one capability-only
+group. The first-stage CPP09 actual-window gate remains pending.
