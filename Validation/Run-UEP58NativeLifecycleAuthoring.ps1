@@ -1,0 +1,59 @@
+#Requires -Version 7.0
+[CmdletBinding()]
+param(
+    [string]$StageProject='F:/UnrealEnginePython5/.build/LyraValidation/CppGameplayExtended/Stage/Lyra/LyraStarterGame.uproject',
+    [Parameter(Mandatory=$true)][string]$OutputDirectory,
+    [Parameter(Mandatory=$true)][string]$BuildEvidenceDirectory,
+    [ValidateSet('jump','death')][string]$Kind='jump'
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
+. (Join-Path $PSScriptRoot 'LyraHUDContracts.ps1')
+$repo=Split-Path $PSScriptRoot -Parent;$stage=Split-Path ([IO.Path]::GetFullPath($StageProject)) -Parent
+$output=[IO.Path]::GetFullPath($OutputDirectory);$owned=[IO.Path]::GetFullPath((Join-Path $repo '.build'))+[IO.Path]::DirectorySeparatorChar
+if(!$stage.StartsWith($owned,[StringComparison]::OrdinalIgnoreCase) -or !$output.StartsWith($owned,[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $output)) {throw 'Owned native stage and fresh output required'}
+if(@(Get-CimInstance Win32_Process|Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|LyraGame|UnrealBuildTool|AutomationTool)\.exe$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool\.dll|AutomationTool\.dll')}).Count) {throw 'Another native lane is active'}
+$build=Get-Content -LiteralPath "$BuildEvidenceDirectory/summary.json" -Raw|ConvertFrom-Json -Depth 24
+if($build.status -ne 'built_requires_native_acceptance' -or $null -ne $build.error) {throw 'Successful native tag-stack cost build evidence required'}
+foreach($row in $build.products) {if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256) {throw 'Compiled native module changed'}}
+New-Item -ItemType Directory -Path "$output/Controls"|Out-Null
+$summary=[ordered]@{schema_version=1;status='failed';runtime_acceptance=$false;cpp_compile_executed=$false;cook_package_executed=$false;hashes=@();process=$null;error=$null}
+try {
+    $overlay=Join-Path $repo 'Demos/UEPLyraIntegration/Overlay'
+    foreach($file in Get-ChildItem -LiteralPath "$overlay/Content/Scripts" -Recurse -File -Filter '*.py') {
+        $target=Join-Path $stage ([IO.Path]::GetRelativePath($overlay,$file.FullName))
+        New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force|Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+        foreach($path in @($file.FullName,$target)) {$summary.hashes+=@{path=$path;sha256=(Get-FileHash -LiteralPath $path).Hash}}
+    }
+    $script=Join-Path $repo 'Demos/UEPLyraIntegration/Tools/generate_native_lifecycle_assets.py'
+    foreach($path in @($script,$PSCommandPath,(Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/stage_safety.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/mixin_graph_gates.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/explorer_character_cdo.py'))) {
+        Copy-Item -LiteralPath $path -Destination "$output/Controls"
+        $summary.hashes+=@{path=$path;sha256=(Get-FileHash -LiteralPath $path).Hash}
+    }
+    foreach($row in $build.products) {$summary.hashes+=$row}
+    $cache=Join-Path $repo '.build/TaskRuntimeCache'
+    foreach($dir in @('Temp','User','DDC')) {New-Item -ItemType Directory -Path "$cache/$dir" -Force|Out-Null}
+    $environment=@{'UE-LocalDataCachePath'="$cache/DDC";TEMP="$cache/Temp";TMP="$cache/Temp"}
+    $arguments=@($StageProject,'-run=Py',$script,"-UEPNativeLifecycleStageRoot=$stage","-UEPNativeLifecycleAssetsResult=$output/assets.json","-UEPNativeLifecycleKind=$Kind",
+        "-UserDir=$cache/User/",'-NullRHI','-unattended','-nop4','-NoSound','-NoSplash','-culture=en','-UTF8Output','-DisablePython',
+        '-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging','-notraceserver','-trace=none','-NoDDCCleanup',"-abslog=$output/assets.log")
+    $summary.process=Invoke-UEPValidationProcess 'F:/UnrealEngine/Engine/Binaries/Win64/UnrealEditor-Cmd.exe' $arguments $stage "$output/assets" 'Native tag-stack cost asset authoring' 420 $environment
+    $assets=Get-Content -LiteralPath "$output/assets.json" -Raw|ConvertFrom-Json -Depth 60
+    if($assets.status -ne 'passed') {throw 'Native tag-stack cost asset result failed'}
+    Assert-UEPFocusedLog (Get-Content -LiteralPath "$output/assets.log" -Raw) 'UEP_NATIVE_LIFECYCLE_ASSETS_PASSED'
+    foreach($row in $summary.hashes) {if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256) {throw 'Frozen authoring input changed'}}
+    if(!$assets.assets_saved -or $assets.policy_events -ne $(if($Kind -eq 'jump'){4}else{5}) -or $assets.asset_family_count -ne 1) {throw 'Complete tag-stack cost asset family required'}
+    foreach($relative in $assets.assets) {
+        $from=Join-Path $stage $relative;$to=Join-Path $overlay $relative
+        New-Item -ItemType Directory -Path (Split-Path $to -Parent) -Force|Out-Null
+        Copy-Item -LiteralPath $from -Destination $to -Force
+        if((Get-FileHash -LiteralPath $from).Hash -ne (Get-FileHash -LiteralPath $to).Hash) {throw 'Canonical cost asset differs'}
+    }
+    $summary.assets=@($assets.assets|ForEach-Object { @{relative=$_;sha256=(Get-FileHash -LiteralPath (Join-Path $stage $_)).Hash} })
+    $summary.fixtures=@($assets.fixtures|ForEach-Object { @{relative=$_;sha256=(Get-FileHash -LiteralPath (Join-Path $stage $_)).Hash} })
+    $summary.retained_abilities=$assets.retained_abilities
+    $summary.status='passed'
+} catch {$summary.error=$_.ToString();throw}
+finally {$summary|ConvertTo-Json -Depth 14|Set-Content -LiteralPath "$output/summary.json" -Encoding utf8}

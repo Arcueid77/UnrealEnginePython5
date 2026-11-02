@@ -202,3 +202,10 @@ engine build, cook/package, new platform, or physical-input acceptance is added.
 and [CPP12 capability acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP12-acceptance.json)
 close the selected extended scope: two production groups and one capability-only
 group. The first-stage CPP09 actual-window gate remains pending.
+
+The user has now selected all remaining CPP-019 through CPP-030 and requested
+continuous execution. [Remaining progress](../Demos/UEPLyraIntegration/Migration/cpp_remaining_batches.json)
+tracks that scope. [CPP13 input/physics progress](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP13-progress.json)
+passes 28 real native network Jump trials and 12 admission-boundary calls.
+Death/respawn crosschecks remain explicit for CPP14. The user deferred desktop
+operation, so CPP09 actual-window input remains pending while other work continues.
