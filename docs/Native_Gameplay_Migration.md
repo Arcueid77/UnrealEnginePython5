@@ -162,3 +162,14 @@ objects, authority, prediction, and the original caller's hit-only filtering.
 It has not been compiled or applied. Player-cost fixture validation must be
 distinguished from production migration. Existing CPP09 sources, assets, and
 binary remain available for its pending actual-window acceptance.
+
+The user then selected CPP-016 through CPP-018; their independent progress lives
+in [the extended tracker](../Demos/UEPLyraIntegration/Migration/cpp_extended_batches.json).
+CPP10/CPP-016 passed [native initial-stat acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP10-acceptance.json).
+Two Const owner events and typed stat snapshots preserve the native instanced
+fragments and map iteration order. Definition/boundary creation, missing-owner
+fallback, no native replay, and actual two-owner tag-stack replication passed.
+Prior inventory/quickbar Python behavior stays fixed in the native/Python
+comparison. Only affected LyraGame units are compiled; SDK, bridge, ShooterCore,
+and engine are reused. The unused/prototype definitions and exception-injection
+limits remain explicit in the ledger.
