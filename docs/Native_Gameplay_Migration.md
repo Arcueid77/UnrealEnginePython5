@@ -235,3 +235,30 @@ claimed; supplied callback results and typed cancellation choices stay explicit.
 Only LyraGame units 1/3 plus UHT were compiled; unit 2, SDK, bridge and engine were
 reused. Startup selection passes 48 tests. CPP19-24 continue; CPP09 physical
 desktop input remains user-deferred.
+
+[CPP19](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP19-acceptance.json)
+through [CPP24](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP24-acceptance.json)
+close the remaining device-notification, replay-retention, audio-selection,
+team-damage, Arena-attribute and GameMode-selection policies. Their default profile
+retains all earlier Python replacements. Evidence includes 600 typed boundaries,
+actual native/Python callbacks and effects, two network lanes with eight authority
+trials and sixteen independent client views, two-local-player native GAS clamps
+and original bomb input/refund. Final combined frontend, Pawn and Arena smokes pass;
+four original pistol shots prove native prediction-key/target-data agreement and
+eight replicated damage observations. Startup selection passes 51 focused tests.
+
+Device callback inputs are supplied by fixtures; physical disconnects are untested.
+Replay uses temporary memory streams, with keep/live flags checked in typed contexts
+and invalid negative retention rejected by Python. Existing recordings and gameplay
+playback are untouched. Audio verifies native resource/state parameters, not audible
+output. Attribute writes belong to an explicit restored fixture phase; subsequent
+input remains the original Enhanced Input path, without OS desktop control.
+
+Incremental compilation covers LyraGame units 1/2/3, one TopDownArena unit and
+LyraGame UHT. The body repair reuses UHT and successful units 1/2. The engine's stale
+unregistered 5.8.0 memory-streamer DLL is not used: one current-source test module is
+built and registered solely in the advancing stage. Engine manifest/binaries, SDK,
+bridge and the preserved CPP09 stage remain unchanged; 972 protected hashes match.
+No full-engine build, cook/package, new platform or hardware/audio acceptance is
+added. All 30 selected candidates are implemented, with 29 accepted in their stated
+scope (CPP-018 capability-only); CPP09 actual desktop input remains user-deferred.
