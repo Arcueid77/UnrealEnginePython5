@@ -150,3 +150,15 @@ The original uncooked shooter level has a separate Niagara graph failure in an
 unchanged rifle asset. The isolated UI worlds do not claim full shooter rendering
 acceptance or a fix for that resource. The optional CPP-016 through CPP-030 groups
 remain outside the approved implementation scope.
+
+A read-only preflight for CPP-016 through CPP-018 is now available in
+[the next-batch review](../Demos/UEPLyraIntegration/Migration/CPP16_18_PREFLIGHT_REVIEW.md).
+The native commandlet examined 44 original Lyra item/ability definitions and two
+existing stage fixtures, finding five initial-stat fragments, five item costs,
+and no player-cost consumer in that census. GameplayTag struct keys cannot be
+read through the current Python dictionary conversion. The proposal uses typed
+stat snapshots and existing Blueprint owners while preserving native instanced
+objects, authority, prediction, and the original caller's hit-only filtering.
+It has not been compiled or applied. Player-cost fixture validation must be
+distinguished from production migration. Existing CPP09 sources, assets, and
+binary remain available for its pending actual-window acceptance.
