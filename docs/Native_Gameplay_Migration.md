@@ -126,3 +126,27 @@ The native witness uses the ASC owner/avatar that UE5.8.1 actually applies;
 the engine's ignored ActorInfo argument is preserved as existing behavior.
 Only affected LyraGame units are compiled; SDK, bridge, ShooterCore, and engine
 binaries are reused. No physical-keyboard or visible-rendering claim is made.
+
+CPP09 implements the Escape menu request seam and its Python policy, preserving
+native CommonUI action binding, streamed loading, and input/lifetime ownership.
+Its four original HUD shells and shared Set passed asset checks. LyraGame units
+1/3 were compiled; unit 2 and the other module/engine binaries were reused.
+The review patch reproduces those compiled sources without another build.
+
+The added `-Headless` mode of `Run-UEP58NativeEscapeValidation.ps1` compares policy
+and widget deactivation directly in isolated CommonUI worlds. It uses temporary
+zero-duration runtime stack transitions and checks restoration. This lane is
+separate from actual keyboard and visible-window acceptance. CPP09 remains
+pending those checks; eight batches and fourteen candidates are accepted.
+
+[The CPP09 progress ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP09-progress.json)
+records seven passing native/Python open/close cycles and two native travels,
+including menu class/layer/owner, desired Menu configuration, input-state
+equivalence/restoration, native HUD destruction/rebuild, and fixture cleanup.
+The offscreen input router stayed in `All`; its actual `Menu` takeover remains
+part of the pending window acceptance. Headless reports are rejected by that gate.
+
+The original uncooked shooter level has a separate Niagara graph failure in an
+unchanged rifle asset. The isolated UI worlds do not claim full shooter rendering
+acceptance or a fix for that resource. The optional CPP-016 through CPP-030 groups
+remain outside the approved implementation scope.
