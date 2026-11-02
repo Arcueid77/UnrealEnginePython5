@@ -222,3 +222,16 @@ native GAS handles, waits, cancellation, typed payloads and transport remain.
 The carrier build compiles LyraGame units 1/2 plus UHT and reuses unit 3, SDK,
 bridge and engine. Startup selection passes 46 focused tests. CPP16-24 continue;
 CPP09 actual desktop input remains user-deferred.
+
+[CPP16](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP16-acceptance.json),
+[CPP17](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP17-acceptance.json),
+and [CPP18](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP18-acceptance.json)
+accept frontend, controller cosmetic selection and camera priority. Evidence
+contains 106 typed boundaries, native/Python actual runtime paths, default boot
+smokes and four network Reset trials with eight independent cosmetic actor/mesh
+views. Native GAS camera ownership/end cleanup, cosmetic fast arrays, flow handles
+and async widget lifetimes remain. Frontend online-provider outcomes are not
+claimed; supplied callback results and typed cancellation choices stay explicit.
+Only LyraGame units 1/3 plus UHT were compiled; unit 2, SDK, bridge and engine were
+reused. Startup selection passes 48 tests. CPP19-24 continue; CPP09 physical
+desktop input remains user-deferred.
