@@ -293,4 +293,13 @@ two. This bounded observation includes memory growth and does not establish
 unlimited stability or leak freedom. Current SDK timing covers 14,400 interleaved
 calls: Damage medians 6.18/17.22 microseconds native/Python and Pawn 4.70/15.43.
 The scope is the same reflected entrypoint with bridge admission, not frame rate.
-H03-H04 remain in progress; actual desktop Escape/Menu remains user-deferred.
+[H03](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H03-acceptance.json)
+reproduces all 63 current production outputs from fifteen versioned recipes in
+an independent stage. All 11,341 final staged files match their original/versioned
+composition; 23 project modules build with 289 actions scoped to that stage, and
+thirteen actual exception/recovery cases pass on the fresh DLLs. No old project
+compiler outputs are imported. The production descriptor now consistently disables
+RuntimeTests/ShooterTests, and project-local manifests use the unchanged Engine
+BuildId. See [the reproduction entry point](../Demos/UEPLyraIntegration/Migration/REPRODUCE_NATIVE.md).
+H04 Game build/cook/package runtime remains in progress; actual desktop Escape/Menu
+remains user-deferred.
