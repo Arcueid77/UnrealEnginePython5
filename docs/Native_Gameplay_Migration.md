@@ -273,7 +273,7 @@ Reset aborts/recoveries. Incomplete world policies reject their outputs without 
 engine ensure; incomplete Reset plans take only their terminal EndAbility action.
 Normal default frontend and 52 startup selection tests pass. Only changed bodies
 in LyraGame units 3 and then 1 compile; UHT, other units/modules, SDK and Engine
-are reused. H02-H04 remain in progress; CPP09 desktop input is still user-deferred.
+are reused. H02-H04 acceptance follows; CPP09 desktop input is still user-deferred.
 
 H02's first long run exposed expired Mixin selector targets after the original
 twelve-minute match ended and seamless travel destroyed the cached world. The
@@ -301,5 +301,23 @@ thirteen actual exception/recovery cases pass on the fresh DLLs. No old project
 compiler outputs are imported. The production descriptor now consistently disables
 RuntimeTests/ShooterTests, and project-local manifests use the unchanged Engine
 BuildId. See [the reproduction entry point](../Demos/UEPLyraIntegration/Migration/REPRODUCE_NATIVE.md).
-H04 Game build/cook/package runtime remains in progress; actual desktop Escape/Menu
-remains user-deferred.
+[H04](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H04-acceptance.json)
+closes the current Game build, cook and actual packaged execution. Its cold Game
+configuration compiles 1,190 actions, including Engine runtime dependencies inside
+the owned project; 4,105 compiler-generated paths stay in that stage. The installed
+Engine distribution and original projects remain unchanged. The cook processes
+4,707 packages, with all 246 original candidates, 493 overlay assets, twelve maps
+and three typed validation observers present in the archive.
+
+The packaged executable passes thirteen native exception/recovery cases, normal
+frontend startup and Damage/Pawn listen-authority/two-remote-client lanes: eight
+authority trials and sixteen independent client views. All eight processes exit
+normally, loading the packaged CPython DLL, home and 4,578 receipt files. Exactly
+one test INI allows only UAT's BOM/newline transformation; all other hashes remain
+strict. Separate pure reviews preserve the original dependency and dedicated/listen
+gate failures without repeating successful native runs. The listen checker keeps
+all raw gameplay assertions and explicitly checks stable UI/local cosmetic messages.
+
+All four selected follow-up groups are accepted in this Win64 Development scope.
+Actual desktop Escape/Menu remains user-deferred. This adds no packaged Dedicated
+Server, Shipping, other-platform, rendered graphics or hardware/audio claim.

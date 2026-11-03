@@ -19,6 +19,9 @@ foreach($product in $build.products){if((Get-FileHash -LiteralPath $product.path
 $plan=Get-Content -LiteralPath $planPath -Raw|ConvertFrom-Json -Depth 80
 if($plan.status -ne 'passed' -or !$plan.inspection_only -or ($plan.static_scope -join ',') -ne '246,182,63,11' -or @($plan.candidate_assets).Count -ne 246 -or @($plan.accepted_overlay_assets).Count -lt 1 -or @($plan.runtime_maps).Count -lt 12){throw 'Complete original migration package inventory required'}
 function Assert-PlanInputs {
+    if($plan.PSObject.Properties.Name -contains 'validation_fixture_assets'){
+        foreach($asset in $plan.validation_fixture_assets){if((Get-FileHash -LiteralPath (Join-Path $stage $asset.relative_path)).Hash -ne $asset.sha256){throw 'Planned native validation fixture changed'}}
+    }
     foreach($asset in $plan.candidate_assets){if((Get-FileHash -LiteralPath $asset.stage).Hash -ne $asset.sha256){throw 'Planned candidate asset changed'}}
     foreach($asset in $plan.accepted_overlay_assets){if((Get-FileHash -LiteralPath (Join-Path $stage $asset.relative_path)).Hash -ne $asset.sha256){throw 'Planned overlay asset changed'}}
     foreach($script in $plan.script_hashes){if((Get-FileHash -LiteralPath (Join-Path $stage $script.relative_path)).Hash -ne $script.sha256){throw 'Planned stage script changed'}}
@@ -47,9 +50,12 @@ try{
     $env:uebp_LogFolder="$output/UAT";$env:uebp_FinalLogFolder=$env:uebp_LogFolder;New-Item -ItemType Directory -Path $env:uebp_LogFolder|Out-Null
     $dotnet=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/DotNet/10.0/win-x64/dotnet.exe'
     $uat=Join-Path $EngineRoot 'Engine/Binaries/DotNET/AutomationTool/AutomationTool.dll'
-    $arguments=@($uat,'BuildCookRun',"-project=$project",'-noP4','-utf8output','-WaitForUATMutex','-unattended','-platform=Win64','-clientconfig=Development','-target=LyraGame','-skipbuild','-SkipBuildEditor','-nocompile','-nocompileeditor','-cook','-stage','-pak','-archive',"-archivedirectory=$output/Archive",('-map='+($maps -join '+')),('-MapsToCook='+($maps -join '+')),('-cookdir='+($directories -join '+')),'-AdditionalCookerOptions=-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging -notraceserver -SkipZenStore','-nodebuginfo')
+    $editor=Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe';Add-CookHash $editor
+    $arguments=@($uat,'BuildCookRun',"-project=$project","-unrealexe=$editor",'-noP4','-utf8output','-WaitForUATMutex','-unattended','-platform=Win64','-clientconfig=Development','-target=LyraGame','-skipbuild','-SkipBuildEditor','-nocompile','-nocompileeditor','-cook','-stage','-pak','-archive',"-archivedirectory=$output/Archive",('-map='+($maps -join '+')),('-MapsToCook='+($maps -join '+')),('-cookdir='+($directories -join '+')),'-AdditionalCookerOptions=-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging -notraceserver -SkipZenStore','-nodebuginfo')
     $summary.cook_package_executed=$true
-    $summary.process=Invoke-UEPValidationProcess $dotnet $arguments $stage (Join-Path $output 'cook-package') 'Current complete migration content cook/package' 7200
+    $cache=Join-Path $repo '.build/TaskRuntimeCache'
+    $environment=@{'UE-LocalDataCachePath'="$cache/DDC";TEMP="$cache/Temp";TMP="$cache/Temp"}
+    $summary.process=Invoke-UEPValidationProcess $dotnet $arguments $stage (Join-Path $output 'cook-package') 'Current complete migration content cook/package' 7200 $environment
     $log=Get-Content -LiteralPath "$output/cook-package-stdout.log" -Raw
     if($log -notmatch 'BUILD SUCCESSFUL' -or $log -notmatch 'AutomationTool exiting with ExitCode=0' -or $log -match '(?im)(Log\w+:\s*Error:|Fatal error:|Assertion failed|Unhandled Exception|Ensure condition failed)' -or $log -match 'Registered Python mixin'){throw 'Cook/package failed strict gate or activated runtime Mixin routing during cook'}
     foreach($file in Get-ChildItem -LiteralPath "$output/Archive" -Recurse -File|Where-Object {$_.Name -eq 'LyraGame.exe' -or $_.Extension -in @('.pak','.utoc','.ucas')}){$summary.products+=@{path=$file.FullName;sha256=(Get-FileHash -LiteralPath $file.FullName).Hash}}
