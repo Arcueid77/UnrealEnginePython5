@@ -262,3 +262,15 @@ bridge and the preserved CPP09 stage remain unchanged; 972 protected hashes matc
 No full-engine build, cook/package, new platform or hardware/audio acceptance is
 added. All 30 selected candidates are implemented, with 29 accepted in their stated
 scope (CPP-018 capability-only); CPP09 actual desktop input remains user-deferred.
+
+The user selected exception recovery, timing/long-run stability, fresh-stage
+reproduction and actual packaged delivery in
+[the hardening tracker](../Demos/UEPLyraIntegration/Migration/hardening_batches.json).
+[H01](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H01-acceptance.json)
+passes thirteen actual native failure/recovery cases, including original equipped
+item costs, one reward callback after its real native broadcast and three GAS
+Reset aborts/recoveries. Incomplete world policies reject their outputs without an
+engine ensure; incomplete Reset plans take only their terminal EndAbility action.
+Normal default frontend and 52 startup selection tests pass. Only changed bodies
+in LyraGame units 3 and then 1 compile; UHT, other units/modules, SDK and Engine
+are reused. H02-H04 remain in progress; CPP09 desktop input is still user-deferred.
