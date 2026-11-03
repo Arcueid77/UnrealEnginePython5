@@ -1361,13 +1361,16 @@ namespace
 	UClass* PythonObjectAsClass(PyObject* value)
 	{
 		ue_PyUObject* py_class = ue_is_pyuobject(value);
-		return py_class ? Cast<UClass>(py_class->ue_object) : nullptr;
+		return py_class && FUnrealEnginePythonHouseKeeper::Get()->IsValidPyUObject(py_class)
+			? Cast<UClass>(py_class->ue_object) : nullptr;
 	}
 
 	UObject* PythonObjectAsUObject(PyObject* value)
 	{
 		ue_PyUObject* py_object = ue_is_pyuobject(value);
-		return py_object ? py_object->ue_object : nullptr;
+		// A retained Python wrapper can outlive its world after seamless travel.
+		return py_object && FUnrealEnginePythonHouseKeeper::Get()->IsValidPyUObject(py_object)
+			? py_object->ue_object : nullptr;
 	}
 
 	bool PythonObjectAsProfileName(PyObject* value, FName& out_name, bool allow_none = false)

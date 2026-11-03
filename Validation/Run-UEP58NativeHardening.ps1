@@ -4,7 +4,8 @@ param(
     [string]$StageProject='F:/UnrealEnginePython5/.build/LyraValidation/CppGameplayExtended/Stage/Lyra/LyraStarterGame.uproject',
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
     [ValidateSet('Exceptions','Benchmark','Soak')][string]$Mode='Exceptions',
-    [ValidateRange(60,86400)][int]$DurationSeconds=1200
+    [ValidateRange(60,86400)][int]$DurationSeconds=1200,
+    [ValidateRange(0,86400)][int]$TravelAfterSeconds=0
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -31,6 +32,7 @@ try{
     foreach($file in @($PSCommandPath,(Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/check_hardening_log.py'),(Join-Path $repo 'Demos/UEPLyraIntegration/Tools/check_hardening_stability.py'))){Copy-Item -LiteralPath $file -Destination "$output/Inputs";Add-HardeningHash $file}
     $cache=Join-Path $repo '.build/TaskRuntimeCache';$environment=@{'UE-LocalDataCachePath'="$cache/DDC";TEMP="$cache/Temp";TMP="$cache/Temp"}
     $arguments=@($StageProject,'/ShooterMaps/Maps/L_Expanse?NumBots=3','-game','-NullRHI','-RenderOffscreen','-unattended','-nop4','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-ExecCmds=t.MaxFPS 60',"-UEPHardeningMode=$Mode","-UEPHardeningResult=$output/runtime.json","-UEPHardeningDuration=$DurationSeconds","-abslog=$output/runtime.log","-UserDir=$cache/User/Hardening/$Mode/")
+    if($TravelAfterSeconds){$arguments+=@("-UEPHardeningTravelAfter=$TravelAfterSeconds")}
     $handle=Start-UEPValidationProcess 'F:/UnrealEngine/Engine/Binaries/Win64/UnrealEditor-Cmd.exe' $arguments $stage "$output/runtime" "native hardening $Mode" $environment
     try{
         $nextSample=0.;$limit=if($Mode -eq 'Soak'){$DurationSeconds+240}else{300}

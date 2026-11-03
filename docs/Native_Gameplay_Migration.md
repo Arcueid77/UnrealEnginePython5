@@ -274,3 +274,13 @@ engine ensure; incomplete Reset plans take only their terminal EndAbility action
 Normal default frontend and 52 startup selection tests pass. Only changed bodies
 in LyraGame units 3 and then 1 compile; UHT, other units/modules, SDK and Engine
 are reused. H02-H04 remain in progress; CPP09 desktop input is still user-deferred.
+
+H02's first long run exposed expired Mixin selector targets after the original
+twelve-minute match ended and seamless travel destroyed the cached world. The
+[incremental selector repair](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H02-selector-guard-acceptance.json)
+checks the tracked weak owner before using that pointer. One SDK source file and
+two links rebuild; Engine, game/bridge DLLs and the CPP09 checkpoint remain intact.
+Ninety seconds of active gameplay, actual early travel, three rejected expired
+selectors, three native respawns and 4,250 queries pass. The harness now rebinds
+to the ready world, with travel waits excluded from activity duration. Full H02
+timing and twenty-minute acceptance are still pending.
