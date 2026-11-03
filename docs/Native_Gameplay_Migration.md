@@ -282,5 +282,15 @@ checks the tracked weak owner before using that pointer. One SDK source file and
 two links rebuild; Engine, game/bridge DLLs and the CPP09 checkpoint remain intact.
 Ninety seconds of active gameplay, actual early travel, three rejected expired
 selectors, three native respawns and 4,250 queries pass. The harness now rebinds
-to the ready world, with travel waits excluded from activity duration. Full H02
-timing and twenty-minute acceptance are still pending.
+to the ready world, with travel waits excluded from activity duration.
+
+[H02](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H02-acceptance.json)
+then passes 1,200 active seconds, 58 native respawns, 57,250 native queries and a
+natural seamless travel. Post-warmup median private bytes grow 207.16 MiB and
+handles grow four within the predeclared 256 MiB/32 budgets; native actor population
+ranges by one, router count stays constant and quiescent native contexts peak at
+two. This bounded observation includes memory growth and does not establish
+unlimited stability or leak freedom. Current SDK timing covers 14,400 interleaved
+calls: Damage medians 6.18/17.22 microseconds native/Python and Pawn 4.70/15.43.
+The scope is the same reflected entrypoint with bridge admission, not frame rate.
+H03-H04 remain in progress; actual desktop Escape/Menu remains user-deferred.
