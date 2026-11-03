@@ -321,3 +321,15 @@ all raw gameplay assertions and explicitly checks stable UI/local cosmetic messa
 All four selected follow-up groups are accepted in this Win64 Development scope.
 Actual desktop Escape/Menu remains user-deferred. This adds no packaged Dedicated
 Server, Shipping, other-platform, rendered graphics or hardware/audio claim.
+
+The later [H05 frame/CPU follow-up](../Demos/UEPLyraIntegration/Migration/RENDERED_PERFORMANCE.md)
+does enable actual D3D12 offscreen rendering on the current package, with 1080p
+Medium settings and sixteen balanced twenty-second blocks. Only the shared
+native world-policy carrier changes; the other migrated layers stay fixed.
+Normal fixed-scene Native/Python results are 120.56/120.39 FPS and
+36.92%/36.72% whole-machine CPU, with no distinguishable paired local effect.
+At 200 extra reflected Damage/Pawn queries per frame, GameThread grows from
+4.54 to 8.25 ms, CPU from 37.28% to 39.85%, and FPS falls from 120.23 to 118.26.
+The complete ledger keeps profiler captures, CPU cross-checks, low-frame results
+and scope limits. This adds no desktop, combat, hardware/audio or other-target
+acceptance and reuses the Game build and cooked package unchanged.
