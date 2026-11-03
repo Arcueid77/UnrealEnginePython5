@@ -4,6 +4,16 @@ The user approved CPP-001 through CPP-015 on 2026-11-01. Progress and per-batch
 acceptance live in [the Examples ledger](../Demos/UEPLyraIntegration/Migration/cpp_batches.json).
 This extends the earlier accepted Blueprint scope; it does not reopen or replace it.
 
+The [consolidated completion index](../Demos/UEPLyraIntegration/Migration/completion_status.json)
+covers all three subsequently approved C++ stages and H01-H05. All thirty C++
+candidates are implemented: twenty-eight production replacements and one capability
+case are accepted; CPP09 actual input remains user-deferred. The review checks
+195 referenced files, including 168 closed JSON reports, against their recorded
+hashes. Two earlier live compiler intermediates legitimately changed in later
+batches and retain separate historical/current fingerprints. The full objective
+stays open until fourteen actual Escape presses, native Menu input transitions
+and visible original UI/restoration are accepted; headless evidence cannot close it.
+
 CPP01 moves elimination streak, rapid elimination chain, and assist rules into
 Python. Four native callback seams are `BlueprintNativeEvent` functions. The
 original C++ bodies remain selectable through `NativeFallback`; native Gameplay
