@@ -6,13 +6,13 @@ This extends the earlier accepted Blueprint scope; it does not reopen or replace
 
 The [consolidated completion index](../Demos/UEPLyraIntegration/Migration/completion_status.json)
 covers all three subsequently approved C++ stages and H01-H05. All thirty C++
-candidates are implemented: twenty-eight production replacements and one capability
-case are accepted; CPP09 actual input remains user-deferred. The review checks
-195 referenced files, including 168 closed JSON reports, against their recorded
-hashes. Two earlier live compiler intermediates legitimately changed in later
-batches and retain separate historical/current fingerprints. The full objective
-stays open until fourteen actual Escape presses, native Menu input transitions
-and visible original UI/restoration are accepted; headless evidence cannot close it.
+candidates are implemented and accepted within the confirmed scope: twenty-nine
+production replacements and one capability case. CPP09 passed fourteen actual
+Escape presses, native Menu input transitions and visible original UI/restoration
+on 2026-11-05 after the user unlocked the desktop. The completion index verifies
+the source-bound reports and captures. Two earlier live compiler intermediates
+retain separate historical/current fingerprints. The batch notes below preserve
+their original capture boundaries.
 
 CPP01 moves elimination streak, rapid elimination chain, and assist rules into
 Python. Four native callback seams are `BlueprintNativeEvent` functions. The
@@ -146,8 +146,10 @@ The review patch reproduces those compiled sources without another build.
 The added `-Headless` mode of `Run-UEP58NativeEscapeValidation.ps1` compares policy
 and widget deactivation directly in isolated CommonUI worlds. It uses temporary
 zero-duration runtime stack transitions and checks restoration. This lane is
-separate from actual keyboard and visible-window acceptance. CPP09 remains
-pending those checks; eight batches and fourteen candidates are accepted.
+separate from actual keyboard and visible-window acceptance. The later
+[CPP09 actual-window ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP09-acceptance.json)
+closes fourteen real Escape inputs, seven cycles and two native HUD travels;
+all nine batches and fifteen first-stage candidates are now accepted.
 
 [The CPP09 progress ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP09-progress.json)
 records seven passing native/Python open/close cycles and two native travels,
@@ -329,7 +331,7 @@ gate failures without repeating successful native runs. The listen checker keeps
 all raw gameplay assertions and explicitly checks stable UI/local cosmetic messages.
 
 All four selected follow-up groups are accepted in this Win64 Development scope.
-Actual desktop Escape/Menu remains user-deferred. This adds no packaged Dedicated
+Actual desktop Escape/Menu subsequently passed on 2026-11-05. H04 adds no packaged Dedicated
 Server, Shipping, other-platform, rendered graphics or hardware/audio claim.
 
 The later [H05 frame/CPU follow-up](../Demos/UEPLyraIntegration/Migration/RENDERED_PERFORMANCE.md)
