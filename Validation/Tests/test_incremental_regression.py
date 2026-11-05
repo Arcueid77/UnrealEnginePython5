@@ -96,6 +96,19 @@ class IncrementalRegressionTests(unittest.TestCase):
         process, result = self.run_cli()
         self.assertEqual(process.returncode, 0, process.stderr); self.assertEqual(result["tests_run"], 1)
         self.assertEqual(result["selection"]["selected_test_files"], [TESTS+"test_child.py"])
+    def test_cli_child_process_inherits_project_script_import_paths(self):
+        self.write(SCRIPTS+"release_subprocess_probe.py", "VALUE = 'owned-fixture'\n")
+        for name in ("Run-UEPLyraHostTests.py", "uep_test_scope.py"):
+            destination = self.root/"Validation"/name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(VALIDATION/name, destination)
+        self.write(TESTS+"test_child.py", "import subprocess,sys,unittest\nclass Selected(unittest.TestCase):\n def test_import(self):\n  subprocess.run([sys.executable, '-c', \"import release_subprocess_probe; assert release_subprocess_probe.VALUE == 'owned-fixture'\"], check=True)\n")
+        changes = self.root/".build/changes.json"
+        changes.parent.mkdir(parents=True, exist_ok=True)
+        changes.write_text(json.dumps([TESTS+"test_child.py"]))
+        process = subprocess.run([sys.executable, '-B', str(self.root/"Validation/Run-UEPLyraHostTests.py"),
+            '--result', str(self.root/".build/result.json"), '--changes-file', str(changes)], capture_output=True, text=True)
+        self.assertEqual(process.returncode, 0, process.stderr)
     def test_cli_explicit_full_mode_detects_unrelated_fixture_failure(self):
         process, result = self.run_cli("--all")
         self.assertEqual(process.returncode, 1); self.assertEqual(result["tests_run"], 2)

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -16,6 +17,9 @@ parser.add_argument("--test-pattern", action="append", default=[], help="Add aff
 parser.add_argument("--changes-file", help="JSON array of repository-relative changed paths from an isolated index")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
+module_paths = [repo/'Demos/UEPLyraIntegration/Overlay/Content/Scripts', repo/'Content/Scripts']
+inherited_python_path = os.environ.get('PYTHONPATH', '')
+os.environ['PYTHONPATH'] = os.pathsep.join([str(path) for path in module_paths] + ([inherited_python_path] if inherited_python_path else []))
 build = (repo / ".build").resolve()
 result_path = Path(args.result).resolve()
 result_path.relative_to(build)  # Evidence stays inside the permitted workspace.

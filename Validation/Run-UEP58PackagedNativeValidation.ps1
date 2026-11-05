@@ -43,7 +43,10 @@ try{
     }
     $map=if($Mode -eq 'Frontend'){'/Game/System/FrontEnd/Maps/L_LyraFrontEnd'}else{'/ShooterMaps/Maps/L_Expanse?NumBots=3'}
     $arguments=@($map,'-NullRHI','-RenderOffscreen','-unattended','-nop4','-NoSound','-NoSplash','-NoLoadingScreen','-culture=en','-UTF8Output','-DisablePython','-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging,RemoteSession','-notraceserver','-trace=none','-NoDDCCleanup','-ExecCmds=t.MaxFPS 60',"-abslog=$output/runtime.log","-UserDir=$output/User/")
-    if($Mode -eq 'Exceptions'){$arguments+=@('-UEPHardeningMode=Exceptions',"-UEPHardeningResult=$output/runtime.json")}
+    if($Mode -eq 'Exceptions'){
+        $arguments+=@('-UEPHardeningMode=Exceptions',"-UEPHardeningResult=$output/runtime.json")
+        if($configuration -eq 'Shipping'){$arguments+='-UEPHardeningTravelFromFrontend'}
+    }
     else{$arguments+=@('-UEPNativeWorldPolicyKind=frontend','-UEPNativeWorldPolicyProfile=Python',"-UEPNativeWorldPolicyResult=$output/runtime.json")}
     $handle=Start-UEPValidationProcess $gameExe $arguments (Split-Path $gameExe -Parent) "$output/runtime" "actual packaged $Mode"
     try{
