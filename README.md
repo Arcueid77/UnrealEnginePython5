@@ -9,10 +9,10 @@ per-object profiles, explicit native/original composition and owned subscription
 lifecycle management.
 
 The accepted Lyra baseline covers the original twenty-two Blueprint criteria,
-thirty approved game-C++ candidates and H01-H05. Current candidate validation
-adds a frozen source pair, Generic shared/owned-interpreter tests, PythonFirst
-and Mixin examples, Shipping source/archive installation and packaged runtime
-checks. Release status and exact artifacts are recorded in
+thirty approved game-C++ candidates and H01-H05. Candidate validation passed
+5,866 source checks, Generic shared/owned-interpreter tests, PythonFirst and
+Mixin rendered game packages, current Lyra two-client package lanes, and the
+Shipping source/archive build and packaged runtime checks. Exact artifacts are recorded in
 [the candidate notes](docs/Release_1.0.0-rc.1.md).
 
 Start with the [supported API inventory](docs/Supported_API_Inventory.md),

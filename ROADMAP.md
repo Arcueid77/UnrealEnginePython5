@@ -17,8 +17,8 @@ Game-project C++ business migration is a separate later scope.
 ## Current status
 
 The confirmed migration scope is accepted through all original Blueprint
-criteria, thirty game-C++ candidates and H01-H05. The 1.0.0-rc.1 candidate is
-being validated on `dev/release-1.0.0-rc.1`, targeting UE5.8.1 / CPython3.11 /
+criteria, thirty game-C++ candidates and H01-H05. The 1.0.0-rc.1 candidate passed
+validation on `dev/release-1.0.0-rc.1`, targeting UE5.8.1 / CPython3.11 /
 Win64. Its release record distinguishes Development and Shipping evidence,
 source/archive installation and the exact source pair. See
 [the release notes](docs/Release_1.0.0-rc.1.md) and
@@ -1776,23 +1776,24 @@ remaining semantic/gameplay/presentation and applicable multiplayer evidence.
 
 ## 1.0.0-rc.N — Freeze and prove a release candidate
 
-Status: planned; release fixes only after scope/API freeze.
+Status: 1.0.0-rc.1 accepted on 2026-11-06. The linked candidate record retains
+the exact source pair, artifacts, gates and configuration-specific evidence.
 
 Goal: validate one identified plugin/Examples pair, not a mixture of old green
 reports and new source.
 
-- [ ] Freeze the API and declared support matrix, including exact UE revision/
+- [x] Freeze the API and declared support matrix, including exact UE revision/
   BuildId, CPython version, Win64 target and build configuration.
-- [ ] Run the complete generic, PythonFirst, Mixin and Lyra matrix on the
+- [x] Run the complete generic, PythonFirst, Mixin and Lyra matrix on the
   candidate; retain editor/standalone, synchronized network, package, visible
   and post-exit lifecycle evidence with strict diagnostics.
-- [ ] Keep Development evidence separate from Shipping. A production-game 1.0
+- [x] Keep Development evidence separate from Shipping. A production-game 1.0
   claim requires a dedicated Shipping smoke/package gate; the current drivers
   and old Development runs do not provide it. DebugGame also needs its own
   evidence before being advertised as validated.
-- [ ] Reproduce a clean checkout with its pinned Examples revision and test
+- [x] Reproduce a clean checkout with its pinned Examples revision and test
   source/archive installation. Verify Engine/reference assets remain unchanged.
-- [ ] Record the [candidate manifest](docs/Validation_History.md#candidate-record-template),
+- [x] Record the [candidate manifest](docs/Validation_History.md#candidate-record-template),
   artifact hashes, known limitations and migration notes. A code/asset change
   after validation invalidates affected evidence and requires a new candidate.
 

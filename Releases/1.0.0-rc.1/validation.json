@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "status": "accepted",
+  "version": "1.0.0-rc.1",
+  "accepted_date": "2026-11-06",
+  "core_code_commit": "62c710722c130fa702f2a90d7a73ce81390db7dc",
+  "examples_code_commit": "95ac0d09302d956144ed9aed4187145cebeee750",
+  "target": "UE5.8.1 / CPython3.11.8 / Win64",
+  "configurations": [
+    "Development",
+    "Shipping"
+  ],
+  "beta": true,
+  "source_host_tests": 5866,
+  "indexed_python_files": 2027,
+  "supported_registration_counts": [
+    213,
+    462
+  ],
+  "generic_native_suites": 6,
+  "generic_native_checks": 70,
+  "call_matrix_lanes": 11,
+  "repeated_PIE_sessions": 3,
+  "third_person": {
+    "variants": [
+      "Mixin",
+      "PythonFirst"
+    ],
+    "actual_rendered_editor_and_packages": true,
+    "packaged_images": 6,
+    "mixin_fallback_displacement": 365.945
+  },
+  "shipping": {
+    "configuration": "Shipping",
+    "compile_actions": 1151,
+    "compiler_elapsed_seconds": 11524.8,
+    "full_source_build": true,
+    "source_archive_install_verified": true,
+    "cpython_receipt_files": 4578,
+    "actual_loaded_python_inside_package": true,
+    "exception_recovery": {
+      "status": "passed",
+      "actual_native_exception_cases": 13,
+      "recovered": true,
+      "no_duplicate_native_payment_or_reward": true,
+      "native_reset_ends_on_exception": true,
+      "subscriptions_closed": true
+    },
+    "frontend": {
+      "status": "passed",
+      "kind": "frontend",
+      "profile": "Python",
+      "online_service_tested": false,
+      "network_replication_tested": false
+    },
+    "default_frontend_then_native_gameplay_travel": true
+  },
+  "development_network": {
+    "authority_mode": "ListenServer",
+    "remote_clients": 2,
+    "authority_trials": 8,
+    "independent_client_views": 16,
+    "results": {
+      "Damage": {
+        "status": "passed",
+        "native_rule_family": "Damage",
+        "independent_client_views": 8,
+        "native_reset_producer_tested": true,
+        "owners": 2,
+        "authority_trials": 4,
+        "owner_trials": 4,
+        "passive_foreign_client_observations": 4,
+        "reset_router_payload_replicated_to_foreign_client": false,
+        "full_auto_respawn_acceptance": false,
+        "packaged_authority_mode": "ListenServer",
+        "native_listen_ui_reference_preserved": true,
+        "raw_peer_reports_rewritten": false
+      },
+      "Pawn": {
+        "status": "passed",
+        "native_rule_family": "Pawn",
+        "independent_client_views": 8,
+        "native_reset_producer_tested": true,
+        "owners": 2,
+        "authority_trials": 4,
+        "owner_trials": 4,
+        "passive_foreign_client_observations": 4,
+        "reset_router_payload_replicated_to_foreign_client": false,
+        "full_auto_respawn_acceptance": false,
+        "packaged_authority_mode": "ListenServer",
+        "native_listen_ui_reference_preserved": true,
+        "raw_peer_reports_rewritten": false
+      }
+    }
+  },
+  "binary_reuse": {
+    "editor": "Native-source-identical H03 products with verified current SDK",
+    "development_Lyra": "Native-source-identical current Development product; fresh candidate cook and network validation",
+    "shipping": "Fresh source-archive installation and full Shipping source build"
+  },
+  "retained_failures": [
+    "HostFull01 missing snapshot docs, stale completion/bootstrap assertions and localized PowerShell decoding",
+    "InstalledSources01 Git LF versus Windows CRLF materialization",
+    "ShippingExceptions01 Shipping map override ignored; replaced by explicit native travel in opt-in validation",
+    "ThirdPersonPackages01 first-render-hitch timing before key delivery; strict movement threshold preserved"
+  ],
+  "distribution_format": "source archives plus validation manifest and SHA256SUMS",
+  "engine_distribution_and_official_reference_unchanged": true,
+  "source_archives_git_eol_only_materialization": true,
+  "source_archive_eol_normalizations": 139,
+  "support_contract": "Documented supported API inventory with native ownership and explicit reload/signature boundaries",
+  "evidence": [
+    {
+      "path": ".build/CommitVerification/RC1-Host04/summary.json",
+      "sha256": "1EB91D7A1AAAC896529DA9CBD2A4F7B39385A37530EAEA4854FA943CF0803459"
+    },
+    {
+      "path": ".build/CommitVerification/RC1-Host04/workspace/.build/host.json",
+      "sha256": "3528399AC4293339EA52DE18B31D311BC25F0E3837BA6FC67157787A29B19F94"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/InstalledSources02/summary.json",
+      "sha256": "19CAB8EC8B1B5235EA663BC5BCAC4E9DF4C3103B3103254E8E9A4CB687C75E7D"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/GenericInstall01/summary.json",
+      "sha256": "9AD8BEAF7EDF5B245339795AE86ADB566DD9DC672AD77919F90AB4C62D2FCB3E"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingBuild01/summary.json",
+      "sha256": "2A4762E94FF8B165B2F35520BC34B48CACB0902D8C84674A43FAE79DEDE70D38"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingCook02/summary.json",
+      "sha256": "E2AFCD7E701A55B9597C9AE808080EBE075B9CD2FF5E04F6E85C053977F3B1D4"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingExceptions02/summary.json",
+      "sha256": "1BABE9A852A3C527C902A66FD3FB73D94D10558013738B28A64A956E35A53A9B"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingFrontend02/summary.json",
+      "sha256": "853D9931602EB67145D0C20507BC42B1AE23DC28A070DB1F0452D0ECB66F9112"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/GenericRuntime01/summary.json",
+      "sha256": "F1B860A4705BE4DB0656A2E1EA0948733028A0CBE81BA087C6D2E73821D38251"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/CallMatrix01/summary.json",
+      "sha256": "6466338D670EFD63A62032C9B40F5EAD543FEA9E689B1B01184AA31B938DF9D1"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/PIE01/summary.json",
+      "sha256": "B60CA06DE13A6CA8A1F70576D7AD1A8FF8BD389266AF6ED757306A776CC4E3F0"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/GenericGameBuild01/summary.json",
+      "sha256": "2A6727A2A9B7576B8B5C92017D2305B6AE0A97751FA0195A000BD88BBE80DB9A"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/GenericPackage01/summary.json",
+      "sha256": "3A11F2EC9E34B9388ECB4DE9801CECE5E37CEA2A66DD163B959CB2A09E698F43"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonRendered02/summary.json",
+      "sha256": "14A3201DF1CF1CCCC70BAE6B434790FBC3A6735EB81A6E13209EAB3247EB92DA"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonRendered03/summary.json",
+      "sha256": "5E061072699CEC0C2B6584F394911369DC9C9AD8144BBB93A23BDFB089626CD3"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonGameBuild01/summary.json",
+      "sha256": "92C69C1894A346C5465524D08E75A8C5D1BF48FB010A8CDA4DAF3D2A8695394A"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/DevelopmentGameReuse01/summary.json",
+      "sha256": "BA90DB74341B03B91A8760FFE37C56A56916F9D15ADE9112F86281454230DA99"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/DevelopmentCook01/summary.json",
+      "sha256": "1D0A0D12E3DBEC69E9D7ACDD19C3AE0E8AA333FD7117129B891A91D8AC53A1BA"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/DevelopmentDamageNetwork01/summary.json",
+      "sha256": "8C7941FD61E78266401CA07B05D070105CB3F609604E3D26FB93129451507A75"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/DevelopmentPawnNetwork01/summary.json",
+      "sha256": "C262F81078B23F75E2A54ACD00BDA288034A6F936FD7531B24DBDABF9F129167"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/Mixin/summary.json",
+      "sha256": "714AF5BAF5F3E61E5B81EABF464721F7AAB3F6EBF26A52C5B7A22790DCC24303"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/Mixin/runtime.json",
+      "sha256": "7EA3828ECB7542D2AC21F7D0ED57B1C934FC673F2B6439FD10B577C7DD92CFAC"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/Mixin/visible.json",
+      "sha256": "613AAEBC163CA61BB5B35E77B7C0448E03BE958BDF177310651682A9D55C9614"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/PythonFirst/summary.json",
+      "sha256": "DF343F5AED5D62BD438B31F4A546788C46173E86B0E05B1CE8BB04E11B7ED5B1"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/PythonFirst/runtime.json",
+      "sha256": "5931A45BDE3B76014909F64AD42DC8946CA484B4360B8A48C72E3DA143310B23"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ThirdPersonPackages02/PythonFirst/visible.json",
+      "sha256": "913AA01703D17CBA31549C5F672CE8B7E7838BF835A417C28B8BFD990C38CA1A"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingExceptions02/runtime.json",
+      "sha256": "681BC60BA0CD3EA291375FE02266A36CB626F9A72B9D716B524D2D7DBB5E3C85"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingExceptions02/dependencies.json",
+      "sha256": "22A92E95D400073BD47DF1A46887A0A47DC9174D043EC4EA1FC40F65FE4F1CED"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingFrontend02/runtime.json",
+      "sha256": "1A850432BB43393B98C0B40CCDD62F18045F67CA9D0827715BE4532235611533"
+    },
+    {
+      "path": ".build/Release/1.0.0-rc.1/ShippingFrontend02/dependencies.json",
+      "sha256": "22A92E95D400073BD47DF1A46887A0A47DC9174D043EC4EA1FC40F65FE4F1CED"
+    }
+  ]
+}

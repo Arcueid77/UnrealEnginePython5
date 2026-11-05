@@ -3,7 +3,7 @@
 This file records the UE5 port maintained in this repository. The historical
 UE4 project history remains available in Git.
 
-## [1.0.0-rc.1] - Candidate validation in progress
+## [1.0.0-rc.1] - 2026-11-06
 
 - Freeze the documented UE5.8.1 / CPython3.11 Win64 API surface and support
   matrix for the first 1.0 release candidate.
@@ -14,6 +14,11 @@ UE4 project history remains available in Git.
   provenance and candidate-specific runtime/dependency checks.
 - Correct source-test snapshot dependencies, localized PowerShell error decoding
   and historical completion/bootstrap assertions discovered by the full RC suite.
+- Pass 5,866 source checks, the seventy-check Generic matrix, eleven Mixin call
+  lanes, three PIE sessions, rendered PythonFirst/Mixin game packages, current
+  Lyra two-client lanes and the full Shipping package/runtime gate.
+- Adapt opt-in Shipping validation to native frontend-to-gameplay travel and
+  start rendered movement smoke timing after key delivery.
 
 ## [0.11.0] - Development batches, not a release
 

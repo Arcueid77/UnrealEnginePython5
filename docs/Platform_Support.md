@@ -7,8 +7,8 @@ surface is frozen in [Supported API inventory](Supported_API_Inventory.md).
 
 | Configuration | Candidate state |
 | --- | --- |
-| Win64 Development | Current-source Generic, PythonFirst, Mixin and Lyra evidence is being reconciled and refreshed |
-| Win64 Shipping | Source build and cooked gameplay/runtime validation in progress |
+| Win64 Development | Accepted Generic seventy-check matrix, Mixin calls/PIE, PythonFirst/Mixin rendered game packages and Lyra two-client package lanes |
+| Win64 Shipping | Accepted source/archive build, complete Lyra cook/archive, thirteen gameplay recovery cases, frontend and packaged Python locality |
 
 The release record identifies the exact Engine BuildId, source pair, binary
 and dependency hashes for each accepted gate. Source archives are the delivery
