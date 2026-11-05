@@ -20,7 +20,7 @@ $stage=Split-Path $project -Parent
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 $prefix=[IO.Path]::GetFullPath((Join-Path $repo '.build'))+[IO.Path]::DirectorySeparatorChar
 if(!$stage.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or !$output.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or
-   (!(Test-Path -LiteralPath (Join-Path $stage '.uep-validation-stage')) -and !(Test-Path -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json')))){
+   (!(Test-Path -LiteralPath (Join-Path $stage '.uep-validation-stage')) -and !(Test-Path -LiteralPath (Join-Path $stage '.uep-lyra-full-stage.json')) -and !(Test-Path -LiteralPath (Join-Path $stage '.uep-demo-stage')))){
     throw 'Marked workspace stage/output required'
 }
 if(Test-Path -LiteralPath $output){throw 'Use a fresh plan evidence directory'}
