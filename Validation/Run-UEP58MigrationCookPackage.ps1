@@ -20,6 +20,8 @@ $gameBase=if($Configuration -eq 'Shipping'){'LyraGame-Win64-Shipping'}else{'Lyra
 foreach($product in $build.products){if((Get-FileHash -LiteralPath $product.path).Hash -ne $product.sha256){throw 'Built Game product changed'}}
 $plan=Get-Content -LiteralPath $planPath -Raw|ConvertFrom-Json -Depth 80
 if($plan.status -ne 'passed' -or !$plan.inspection_only -or ($plan.static_scope -join ',') -ne '246,182,63,11' -or @($plan.candidate_assets).Count -ne 246 -or @($plan.accepted_overlay_assets).Count -lt 1 -or @($plan.runtime_maps).Count -lt 12){throw 'Complete original migration package inventory required'}
+$planConfiguration=if($plan.PSObject.Properties.Name -contains 'configuration'){$plan.configuration}else{'Development'}
+if($planConfiguration -ne $Configuration){throw 'Frozen package plan configuration differs from Game build'}
 function Assert-PlanInputs {
     if($plan.PSObject.Properties.Name -contains 'validation_fixture_assets'){
         foreach($asset in $plan.validation_fixture_assets){if((Get-FileHash -LiteralPath (Join-Path $stage $asset.relative_path)).Hash -ne $asset.sha256){throw 'Planned native validation fixture changed'}}

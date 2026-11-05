@@ -3,6 +3,18 @@
 This file records the UE5 port maintained in this repository. The historical
 UE4 project history remains available in Git.
 
+## [1.0.0-rc.1] - Candidate validation in progress
+
+- Freeze the documented UE5.8.1 / CPython3.11 Win64 API surface and support
+  matrix for the first 1.0 release candidate.
+- Integrate the accepted original Blueprint migration, thirty selected game-C++
+  candidates and H01-H05. Keep the source-bound native/runtime evidence and
+  actual Escape/Menu acceptance linked from the completion record.
+- Add protected Shipping build/package controls, source/archive installation
+  provenance and candidate-specific runtime/dependency checks.
+- Correct source-test snapshot dependencies, localized PowerShell error decoding
+  and historical completion/bootstrap assertions discovered by the full RC suite.
+
 ## [0.11.0] - Development batches, not a release
 
 - Retained-class Python decisions now have bounded native evidence for the

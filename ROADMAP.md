@@ -16,10 +16,14 @@ Game-project C++ business migration is a separate later scope.
 
 ## Current status
 
-The latest locally recorded release tag is `v0.7.0` in both repositories;
-neither checkout has a `v0.8.0` tag. The 0.8 closeout remains separate from
-the new `dev/lyra-blueprint-python` work, which starts from the 0.8 development
-baseline. The plugin descriptor still says 0.8.0; it is not a release gate.
+The confirmed migration scope is accepted through all original Blueprint
+criteria, thirty game-C++ candidates and H01-H05. The 1.0.0-rc.1 candidate is
+being validated on `dev/release-1.0.0-rc.1`, targeting UE5.8.1 / CPython3.11 /
+Win64. Its release record distinguishes Development and Shipping evidence,
+source/archive installation and the exact source pair. See
+[the release notes](docs/Release_1.0.0-rc.1.md) and
+[migration completion](Demos/UEPLyraIntegration/Migration/completion_status.json).
+The milestone descriptions below retain their capture-time scope.
 
 Implementation cadence: modify one coherent batch, verify that exact batch,
 then make a local commit. Backfill earlier accepted work the same way. Each

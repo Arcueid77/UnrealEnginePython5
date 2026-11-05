@@ -1,8 +1,9 @@
-# Supported API inventory before RC freeze
+# Supported API inventory for 1.0.0-rc.1
 
-This is a capability inventory for the UE 5.8 / CPython 3.11 Win64 Development
-candidate. It is not a compatibility claim for every legacy wrapper, UE version,
-platform or build configuration. Validation history identifies actual runs.
+The candidate freezes the following API surfaces for UE5.8.1, CPython3.11 and
+Win64. Configuration-specific validation and artifact provenance are recorded
+in [the release notes](Release_1.0.0-rc.1.md). The primary contracts below define
+each surface's accepted inputs, ownership and lifecycle behavior.
 
 | Surface | Support and boundaries | Primary contract |
 | --- | --- | --- |
@@ -55,12 +56,14 @@ implementations can be intercepted. Native wildcard CustomThunks need dedicated
 binding support; do not invoke their placeholder C++ signatures through generic
 ProcessEvent.
 
-No public API is removed in this candidate. Deprecation must identify the old
-API, replacement, affected examples and removal version, and keep a compatibility
-path until the documented removal. Experimental APIs may change before RC and
-must not silently become a supported gameplay dependency.
+The candidate preserves existing public entry points. During 1.x, a deprecation
+identifies the affected API, its replacement, migration examples and the planned
+removal version. A compatibility entry point remains available through the
+documented deprecation period. Experimental APIs retain the separate contract
+shown in the inventory.
 
 The engine/general-purpose plugin C++ systems remain native. Examples owns
 Lyra-specific presentation/business and assets. ABPs/animation, editor/test
 tools, interface declarations, component/default-data shells and UMG layouts
-are retained. Game-project C++ business migration remains a separate phase.
+are retained. The confirmed game-project C++ migration is accepted separately
+in the Examples completion index.

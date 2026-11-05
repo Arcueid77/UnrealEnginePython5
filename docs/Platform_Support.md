@@ -1,6 +1,20 @@
 # Platform support and readiness
 
-## Target and evidence status
+## 1.0.0-rc.1 candidate matrix
+
+The candidate targets UE5.8.1 and engine-bundled CPython3.11 on Win64. The API
+surface is frozen in [Supported API inventory](Supported_API_Inventory.md).
+
+| Configuration | Candidate state |
+| --- | --- |
+| Win64 Development | Current-source Generic, PythonFirst, Mixin and Lyra evidence is being reconciled and refreshed |
+| Win64 Shipping | Source build and cooked gameplay/runtime validation in progress |
+
+The release record identifies the exact Engine BuildId, source pair, binary
+and dependency hashes for each accepted gate. Source archives are the delivery
+format for this candidate. See [candidate release notes](Release_1.0.0-rc.1.md).
+
+## Historical 0.8 target and evidence
 
 UnrealEnginePython 0.8.0 is an unreleased candidate targeting Win64, Unreal
 Engine 5.8 and engine-bundled CPython 3.11. Historical runs used UE 5.8.0 and
