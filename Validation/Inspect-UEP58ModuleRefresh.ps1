@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$Target,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
+    [ValidateSet('Development','Shipping')][string]$Configuration='Development',
     [string[]]$Modules=@(),
     [switch]$RefreshRules,
     [switch]$RegenerateActionGraph,
@@ -50,7 +51,7 @@ try {
     }
     $dotnet=Join-Path $EngineRoot 'Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe'
     $ubt=Join-Path $EngineRoot 'Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll'
-    $arguments=@($ubt,$Target,'Win64','Development',"-Project=$project",'-NoEngineChanges','-IgnoreJunk',
+    $arguments=@($ubt,$Target,'Win64',$Configuration,"-Project=$project",'-NoEngineChanges','-IgnoreJunk',
         '-SkipPreBuildTargets','-WaitMutex','-NoHotReload','-NoUBA','-MaxParallelActions=2','-UTF8Output',
         "-WriteOutdatedActions=$output\actions.json","-Log=$output\plan.log")
     if($Modules.Count){$arguments+=('-Module='+($Modules -join '+'))}

@@ -16,15 +16,18 @@ if(@(Get-CimInstance Win32_Process|Where-Object {$_.Name -match '^(UnrealEditor(
 $cook=Get-Content -LiteralPath "$CookEvidenceDirectory/summary.json" -Raw|ConvertFrom-Json -Depth 50
 if($cook.status -ne 'passed' -or $cook.scope -ne 'current-original-migration-content-cook-package' -or !$cook.cook_package_executed){throw 'Accepted current cooked package required'}
 $gameExe=[IO.Path]::GetFullPath($cook.packaged_executable)
-if(!$gameExe.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($gameExe) -ne 'LyraGame.exe'){throw 'Owned actual inner packaged executable required'}
+$configuration=if($cook.PSObject.Properties.Name -contains 'configuration'){$cook.configuration}else{'Development'}
+if($configuration -notin @('Development','Shipping')){throw 'Supported packaged configuration required'}
+$gameBase=if($configuration -eq 'Shipping'){'LyraGame-Win64-Shipping'}else{'LyraGame'}
+if(!$gameExe.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($gameExe) -ne "$gameBase.exe"){throw 'Owned actual inner packaged executable required'}
 foreach($row in $cook.products){if((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256){throw 'Packaged native/container product changed'}}
 $project=Split-Path (Split-Path (Split-Path $gameExe -Parent) -Parent) -Parent
 $packageRoot=Split-Path $project -Parent
 $buildSummaryPath=@($cook.hashes|Where-Object {[IO.Path]::GetFileName($_.path) -eq 'summary.json'})[0].path
 $gameBuild=Get-Content -LiteralPath $buildSummaryPath -Raw|ConvertFrom-Json -Depth 30
-$receipt=@($gameBuild.products|Where-Object {[IO.Path]::GetFileName($_.path) -eq 'LyraGame.target'})[0].path
+$receipt=@($gameBuild.products|Where-Object {[IO.Path]::GetFileName($_.path) -eq "$gameBase.target"})[0].path
 New-Item -ItemType Directory -Path "$output/Inputs"|Out-Null
-$summary=[ordered]@{schema_version=1;status='failed';scope='actual-current-packaged-native-runtime';mode=$Mode;packaged_runtime=$true;cpp_compile_executed=$false;cook_package_executed=$false;physical_input_tested=$false;hashes=@();process=$null;error=$null}
+$summary=[ordered]@{schema_version=1;status='failed';scope='actual-current-packaged-native-runtime';mode=$Mode;configuration=$configuration;packaged_runtime=$true;cpp_compile_executed=$false;cook_package_executed=$false;physical_input_tested=$false;hashes=@();process=$null;error=$null}
 function Pin-PackagedInput([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
 $python='F:/UnrealEngine/Engine/Binaries/ThirdParty/Python3/Win64/python.exe';$scripts=Join-Path $repo 'Demos/UEPLyraIntegration/Overlay/Content/Scripts'
 try{

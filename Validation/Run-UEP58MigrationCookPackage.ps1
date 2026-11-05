@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param([string]$EngineRoot='F:/UnrealEngine',[Parameter(Mandatory=$true)][string]$StageProject,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,[Parameter(Mandatory=$true)][string]$GameBuildDirectory,
-    [Parameter(Mandatory=$true)][string]$PackagePlan)
+    [Parameter(Mandatory=$true)][string]$PackagePlan,
+    [ValidateSet('Development','Shipping')][string]$Configuration='Development')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'UEPValidationProcesses.ps1')
@@ -14,7 +15,8 @@ if(!(Test-Path -LiteralPath "$stage/.uep-lyra-full-stage.json") -or (Test-Path -
 $activeNative=@(Get-CimInstance Win32_Process|Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool)\.exe$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool\.dll|AutomationTool\.dll')})
 if($activeNative.Count){throw 'Another native lane is active'}
 $build=Get-Content -LiteralPath "$buildRoot/summary.json" -Raw|ConvertFrom-Json -Depth 50
-if($build.status -ne 'passed' -or $build.scope -ne 'current-Development-LyraGame-build-only' -or !$build.no_engine_changes_requested -or $build.process.exit_code -ne 0 -or @($build.products).Count -ne 2){throw 'Accepted current protected Game build required'}
+if($build.status -ne 'passed' -or $build.scope -ne "current-$Configuration-LyraGame-build-only" -or !$build.no_engine_changes_requested -or $build.process.exit_code -ne 0 -or @($build.products).Count -ne 2){throw 'Accepted current protected Game build required'}
+$gameBase=if($Configuration -eq 'Shipping'){'LyraGame-Win64-Shipping'}else{'LyraGame'}
 foreach($product in $build.products){if((Get-FileHash -LiteralPath $product.path).Hash -ne $product.sha256){throw 'Built Game product changed'}}
 $plan=Get-Content -LiteralPath $planPath -Raw|ConvertFrom-Json -Depth 80
 if($plan.status -ne 'passed' -or !$plan.inspection_only -or ($plan.static_scope -join ',') -ne '246,182,63,11' -or @($plan.candidate_assets).Count -ne 246 -or @($plan.accepted_overlay_assets).Count -lt 1 -or @($plan.runtime_maps).Count -lt 12){throw 'Complete original migration package inventory required'}
@@ -34,7 +36,7 @@ $maps=@($plan.runtime_maps|ForEach-Object {$_.package})+@($plan.engine_entry_map
 $directories=@($plan.proposed_cook_directory_paths|ForEach-Object {$_.physical_directory})
 foreach($directory in $directories){$absolute=[IO.Path]::GetFullPath($directory);if(!$absolute.StartsWith(($stage+[IO.Path]::DirectorySeparatorChar),[StringComparison]::OrdinalIgnoreCase) -or !(Test-Path -LiteralPath $absolute -PathType Container)){throw 'Cook directory escapes or is absent from marked stage'}}
 New-Item -ItemType Directory -Path "$output/Archive"|Out-Null
-$summary=[ordered]@{schema_version=1;status='failed';scope='current-original-migration-content-cook-package';cpp_compile_executed=$false;cook_package_executed=$false;runtime_acceptance=$false;full_acceptance=$false;hashes=@();process=$null;archive="$output/Archive";maps=$maps;cook_directories=$directories;products=@();packaged_executable=$null;packaged_script_count=0;packaged_core_script_count=0;container_listing=$null;container_inspection=$null;package_inventory=$null;error=$null}
+$summary=[ordered]@{schema_version=1;status='failed';scope='current-original-migration-content-cook-package';configuration=$Configuration;cpp_compile_executed=$false;cook_package_executed=$false;runtime_acceptance=$false;full_acceptance=$false;hashes=@();process=$null;archive="$output/Archive";maps=$maps;cook_directories=$directories;products=@();packaged_executable=$null;packaged_script_count=0;packaged_core_script_count=0;container_listing=$null;container_inspection=$null;package_inventory=$null;error=$null}
 function Add-CookHash([string]$Path){$summary.hashes+=@{path=$Path;sha256=(Get-FileHash -LiteralPath $Path).Hash}}
 $priorLogFolder=$env:uebp_LogFolder;$priorFinalLogFolder=$env:uebp_FinalLogFolder
 try{
@@ -51,16 +53,16 @@ try{
     $dotnet=Join-Path $EngineRoot 'Engine/Binaries/ThirdParty/DotNet/10.0/win-x64/dotnet.exe'
     $uat=Join-Path $EngineRoot 'Engine/Binaries/DotNET/AutomationTool/AutomationTool.dll'
     $editor=Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe';Add-CookHash $editor
-    $arguments=@($uat,'BuildCookRun',"-project=$project","-unrealexe=$editor",'-noP4','-utf8output','-WaitForUATMutex','-unattended','-platform=Win64','-clientconfig=Development','-target=LyraGame','-skipbuild','-SkipBuildEditor','-nocompile','-nocompileeditor','-cook','-stage','-pak','-archive',"-archivedirectory=$output/Archive",('-map='+($maps -join '+')),('-MapsToCook='+($maps -join '+')),('-cookdir='+($directories -join '+')),'-AdditionalCookerOptions=-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging -notraceserver -SkipZenStore','-nodebuginfo')
+    $arguments=@($uat,'BuildCookRun',"-project=$project","-unrealexe=$editor",'-noP4','-utf8output','-WaitForUATMutex','-unattended','-platform=Win64',"-clientconfig=$Configuration",'-target=LyraGame','-skipbuild','-SkipBuildEditor','-nocompile','-nocompileeditor','-cook','-stage','-pak','-archive',"-archivedirectory=$output/Archive",('-map='+($maps -join '+')),('-MapsToCook='+($maps -join '+')),('-cookdir='+($directories -join '+')),'-AdditionalCookerOptions=-DisablePlugins=AndroidFileServer,UdpMessaging,TcpMessaging -notraceserver -SkipZenStore','-nodebuginfo')
     $summary.cook_package_executed=$true
     $cache=Join-Path $repo '.build/TaskRuntimeCache'
     $environment=@{'UE-LocalDataCachePath'="$cache/DDC";TEMP="$cache/Temp";TMP="$cache/Temp"}
     $summary.process=Invoke-UEPValidationProcess $dotnet $arguments $stage (Join-Path $output 'cook-package') 'Current complete migration content cook/package' 7200 $environment
     $log=Get-Content -LiteralPath "$output/cook-package-stdout.log" -Raw
     if($log -notmatch 'BUILD SUCCESSFUL' -or $log -notmatch 'AutomationTool exiting with ExitCode=0' -or $log -match '(?im)(Log\w+:\s*Error:|Fatal error:|Assertion failed|Unhandled Exception|Ensure condition failed)' -or $log -match 'Registered Python mixin'){throw 'Cook/package failed strict gate or activated runtime Mixin routing during cook'}
-    foreach($file in Get-ChildItem -LiteralPath "$output/Archive" -Recurse -File|Where-Object {$_.Name -eq 'LyraGame.exe' -or $_.Extension -in @('.pak','.utoc','.ucas')}){$summary.products+=@{path=$file.FullName;sha256=(Get-FileHash -LiteralPath $file.FullName).Hash}}
-    $internal=Join-Path "$output/Archive/Windows" (([IO.Path]::GetFileNameWithoutExtension($project))+'/Binaries/Win64/LyraGame.exe')
-    $gameProduct=@($build.products|Where-Object {[IO.Path]::GetFileName($_.path) -eq 'LyraGame.exe'})
+    foreach($file in Get-ChildItem -LiteralPath "$output/Archive" -Recurse -File|Where-Object {$_.Name -eq "$gameBase.exe" -or $_.Extension -in @('.pak','.utoc','.ucas')}){$summary.products+=@{path=$file.FullName;sha256=(Get-FileHash -LiteralPath $file.FullName).Hash}}
+    $internal=Join-Path "$output/Archive/Windows" (([IO.Path]::GetFileNameWithoutExtension($project))+'/Binaries/Win64/'+$gameBase+'.exe')
+    $gameProduct=@($build.products|Where-Object {[IO.Path]::GetFileName($_.path) -eq "$gameBase.exe"})
     if($gameProduct.Count -ne 1 -or !(Test-Path -LiteralPath $internal) -or (Get-FileHash -LiteralPath $internal).Hash -ne $gameProduct[0].sha256){throw 'Packaged internal executable differs from accepted current Game build'}
     if(!@($summary.products|Where-Object {[IO.Path]::GetExtension($_.path) -in @('.pak','.utoc','.ucas')}).Count){throw 'Cooked package containers missing'}
     $summary.packaged_executable=$internal
