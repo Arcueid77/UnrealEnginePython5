@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 1000,
-	"VersionName": "1.0.0-rc.1",
+	"Version": 1001,
+	"VersionName": "1.0.0",
 	"FriendlyName": "UnrealEnginePython",
 	"Description": "Unreal Engine 5.8.1 and CPython 3.11 bindings and runtime integration",
 	"Category": "Scripting Languages",
@@ -12,7 +12,7 @@
 	"SupportURL": "https://github.com/Arcueid77/UnrealEnginePython5/issues",
 	"EnabledByDefault": true,
 	"CanContainContent": true,
-	"IsBetaVersion": true,
+	"IsBetaVersion": false,
 	"Installed": false,
   "Modules": [
     {
