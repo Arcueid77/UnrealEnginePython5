@@ -10,8 +10,8 @@ HELPER = ROOT / 'Validation/UEPCallMatrixCases.ps1'
 
 class CallMatrixSelectionTests(unittest.TestCase):
     def query(self, arguments=''):
-        command = ". '" + str(HELPER).replace("'", "''") + "'; @(Get-UEPCallMatrixCases " + arguments + ') | ConvertTo-Json -Depth 5 -Compress'
-        return subprocess.run(['pwsh', '-NoProfile', '-Command', command], capture_output=True, text=True)
+        command = "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); . '" + str(HELPER).replace("'", "''") + "'; @(Get-UEPCallMatrixCases " + arguments + ') | ConvertTo-Json -Depth 5 -Compress'
+        return subprocess.run(['pwsh', '-NoProfile', '-Command', command], capture_output=True, text=True, encoding='utf-8')
 
     def test_default_keeps_all_eleven_original_cases_in_original_order(self):
         result = self.query()

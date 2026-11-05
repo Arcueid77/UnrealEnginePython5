@@ -28,7 +28,7 @@ try{
     $exampleChanges=@(& git -C (Join-Path $repo 'Demos') diff --cached $examplesBase --name-only|ForEach-Object {'Demos/'+$_})
     if($LASTEXITCODE -ne 0){throw 'Cannot read Examples index changes'}
     ConvertTo-Json -InputObject @($coreChanges+$exampleChanges) | Set-Content -LiteralPath "$output/changes.json" -Encoding utf8
-    & git -C $repo archive -o "$output/core.tar" $summary.core_index_tree Source Content Validation
+    & git -C $repo archive -o "$output/core.tar" $summary.core_index_tree Source Content Validation docs UnrealEnginePython.uplugin
     if($LASTEXITCODE -ne 0){throw 'Core snapshot archive failed'}
     & git -C (Join-Path $repo 'Demos') archive -o "$output/examples.tar" $summary.examples_index_tree
     if($LASTEXITCODE -ne 0){throw 'Examples snapshot archive failed'}
