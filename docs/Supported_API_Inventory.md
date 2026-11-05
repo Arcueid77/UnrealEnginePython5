@@ -1,8 +1,8 @@
-# Supported API inventory for 1.0.0-rc.1
+# Supported API inventory for 1.0.0
 
-The candidate freezes the following API surfaces for UE5.8.1, CPython3.11 and
+The release freezes the following API surfaces for UE5.8.1, CPython3.11 and
 Win64. Configuration-specific validation and artifact provenance are recorded
-in [the release notes](Release_1.0.0-rc.1.md). The primary contracts below define
+in [the release notes](Release_1.0.0.md). The primary contracts below define
 each surface's accepted inputs, ownership and lifecycle behavior.
 
 | Surface | Support and boundaries | Primary contract |

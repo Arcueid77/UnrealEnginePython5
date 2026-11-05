@@ -17,3 +17,14 @@ The supported API, ownership, threading and reload contracts remain defined by
 The source distribution includes plugin and matching Examples archives,
 validation evidence and SHA256SUMS. Configuration-specific results and the
 candidate's workload limits are retained in the linked candidate record.
+
+Formal promotion validation passed on 2026-11-06. The Shipping package passes
+thirteen exception/recovery cases, normal frontend flow, actual packaged Python
+locality and 4,578 dependency checks. Both rendered Third Person packages report
+`1.0.0`, produce all six expected images and exit with restored lifecycle state.
+The complete formal record is [validation.json](../Releases/1.0.0/validation.json).
+
+The candidate's 5,866 source checks, seventy Generic native checks, eleven Mixin
+call lanes, three PIE sessions and sixteen independent Lyra client views carry
+forward through the verified implementation-identical metadata promotion.
+Protected Engine/reference artifacts keep their tested fingerprints.

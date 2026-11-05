@@ -1,24 +1,25 @@
 
 # UnrealEnginePython
 
-## 1.0.0-rc.1 release candidate
+## 1.0.0 stable release
 
-The candidate targets Unreal Engine 5.8.1, engine-bundled CPython 3.11 and
-Win64. It provides runtime Python bindings, retained-class Blueprint Mixins,
+The release targets Unreal Engine 5.8.1, engine-bundled CPython 3.11 and
+Win64 Development/Shipping. It provides runtime Python bindings, retained-class Blueprint Mixins,
 per-object profiles, explicit native/original composition and owned subscription
 lifecycle management.
 
 The accepted Lyra baseline covers the original twenty-two Blueprint criteria,
-thirty approved game-C++ candidates and H01-H05. Candidate validation passed
+thirty approved game-C++ candidates and H01-H05. Release validation passed
 5,866 source checks, Generic shared/owned-interpreter tests, PythonFirst and
 Mixin rendered game packages, current Lyra two-client package lanes, and the
 Shipping source/archive build and packaged runtime checks. Exact artifacts are recorded in
-[the candidate notes](docs/Release_1.0.0-rc.1.md).
+[the release notes](docs/Release_1.0.0.md).
 
 Start with the [supported API inventory](docs/Supported_API_Inventory.md),
 [Mixin API](docs/Mixin_API.md), [lifecycle contract](docs/Lifecycle_Threading_API.md)
 and [platform matrix](docs/Platform_Support.md). The descriptor identifies this
-build as `1.0.0-rc.1` with the Beta flag enabled.
+build as `1.0.0` with the Beta flag cleared. The source distribution includes
+matching plugin/Examples archives, validation evidence and SHA256SUMS.
 
 ## Historical UE5 migration notes
 

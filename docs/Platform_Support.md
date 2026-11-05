@@ -1,8 +1,8 @@
 # Platform support and readiness
 
-## 1.0.0-rc.1 candidate matrix
+## 1.0.0 support matrix
 
-The candidate targets UE5.8.1 and engine-bundled CPython3.11 on Win64. The API
+The release targets UE5.8.1 and engine-bundled CPython3.11 on Win64. The API
 surface is frozen in [Supported API inventory](Supported_API_Inventory.md).
 
 | Configuration | Candidate state |
@@ -12,7 +12,7 @@ surface is frozen in [Supported API inventory](Supported_API_Inventory.md).
 
 The release record identifies the exact Engine BuildId, source pair, binary
 and dependency hashes for each accepted gate. Source archives are the delivery
-format for this candidate. See [candidate release notes](Release_1.0.0-rc.1.md).
+format for this release. See [release notes](Release_1.0.0.md).
 
 ## Historical 0.8 target and evidence
 

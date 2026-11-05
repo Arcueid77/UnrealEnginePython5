@@ -3,6 +3,15 @@
 This file records the UE5 port maintained in this repository. The historical
 UE4 project history remains available in Git.
 
+## [1.0.0] - 2026-11-06
+
+- Promote the accepted 1.0.0-rc.1 implementation to stable metadata, numeric
+  version 1001 and a cleared Beta flag.
+- Revalidate the formal Shipping package, thirteen recovery cases, frontend,
+  packaged Python locality and both rendered Third Person game packages.
+- Verify runtime version `1.0.0`, source-equivalent candidate provenance,
+  checksummed source/Examples archives and matching repository tags.
+
 ## [1.0.0-rc.1] - 2026-11-06
 
 - Freeze the documented UE5.8.1 / CPython3.11 Win64 API surface and support

@@ -17,11 +17,11 @@ Game-project C++ business migration is a separate later scope.
 ## Current status
 
 The confirmed migration scope is accepted through all original Blueprint
-criteria, thirty game-C++ candidates and H01-H05. The 1.0.0-rc.1 candidate passed
-validation on `dev/release-1.0.0-rc.1`, targeting UE5.8.1 / CPython3.11 /
+criteria, thirty game-C++ candidates and H01-H05. Stable 1.0.0 promotes the
+accepted 1.0.0-rc.1 on `dev/release-1.0.0`, targeting UE5.8.1 / CPython3.11 /
 Win64. Its release record distinguishes Development and Shipping evidence,
 source/archive installation and the exact source pair. See
-[the release notes](docs/Release_1.0.0-rc.1.md) and
+[the release notes](docs/Release_1.0.0.md) and
 [migration completion](Demos/UEPLyraIntegration/Migration/completion_status.json).
 The milestone descriptions below retain their capture-time scope.
 
@@ -1803,7 +1803,8 @@ their source relationship to retained runtime artifacts must stay explicit.
 
 ## 1.0.0 — Stable UE5.8 runtime binding
 
-Status: planned; promotion of a fully accepted RC.
+Status: accepted on 2026-11-06. The formal source archives and versioned packages
+retain the accepted RC implementation with verified stable metadata.
 
 Goal: a supported, documented Win64/UE5.8/CPython 3.11 binding for the declared
 API and configurations, with the accepted runtime BP migration scope as a
