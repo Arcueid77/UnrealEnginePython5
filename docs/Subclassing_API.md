@@ -1,12 +1,14 @@
+[English](Subclassing_API.md) | [简体中文](Subclassing_API.zh-CN.md)
+
 # Native subclassing API
 
-UnrealEnginePython 0.3.0 supports runtime Python subclass generation for Unreal
-Engine 5.8. A Python class that derives from an imported Unreal class produces a
+UnrealEnginePython 1.0.0 supports runtime Python subclass generation for Unreal
+Engine 5.8.1. A Python class that derives from an imported Unreal class produces a
 transient `UClass`; declared fields become UE5 `FProperty` objects and annotated
 methods become reflected `UFunction` objects.
 
 This API runs inside Unreal's Python interpreter. It cannot be imported from a
-standalone Python process. The validated configuration is UE 5.8 on Win64 with
+standalone Python process. The validated configuration is UE 5.8.1 on Win64 with
 the engine-bundled CPython 3.11 runtime, and it does not require an Engine source
 change.
 

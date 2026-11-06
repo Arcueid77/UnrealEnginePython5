@@ -1,4 +1,8 @@
+[English](Android.md) | [简体中文](Android.zh-CN.md)
+
 # Deploying on Android devices
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 Starting from release 20180723 and engine 4.20 you can deploy the UnrealEnginePython plugin on android devices (both for launching and for packaging).
 

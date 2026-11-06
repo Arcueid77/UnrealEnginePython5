@@ -1,4 +1,8 @@
+[English](Plugin_API.md) | [简体中文](Plugin_API.zh-CN.md)
+
 # Plugin API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 This API exposes Unreal Engine's `IPluginManager` and `IPlugin` interfaces.
 Starting with UEP 0.6.0, discovery and descriptor reads are available in both

@@ -1,4 +1,8 @@
+[English](Lyra_Gameplay_Slice_0.5.0.md) | [简体中文](Lyra_Gameplay_Slice_0.5.0.zh-CN.md)
+
 # Python-driven Lyra gameplay slice for 0.5.0
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 ## Scope
 

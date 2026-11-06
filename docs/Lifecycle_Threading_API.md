@@ -1,7 +1,9 @@
+[English](Lifecycle_Threading_API.md) | [简体中文](Lifecycle_Threading_API.zh-CN.md)
+
 # Lifecycle, reload, exceptions and threading
 
-This document records the current UnrealEnginePython runtime contract for UE
-5.8 and CPython 3.11 as released in 0.4.0.
+This document records the UnrealEnginePython 1.0.0 runtime contract for UE
+5.8.1 and engine-bundled CPython 3.11.8 on Win64.
 
 ## Interpreter ownership
 
@@ -59,6 +61,11 @@ also clears tracked callables during the housekeeper pass.
 
 Keep the returned Enhanced Input handle and remove it when the owning gameplay
 object tears down. Removing the same handle twice returns `False`.
+
+For grouped game-thread bindings, `uep_runtime.SubscriptionScope` owns exact
+delegate callbacks and optional native Gameplay Message channel subscriptions.
+Call `close()` from Destruct/EndPlay and Mixin teardown before module reload.
+See [Runtime subscriptions](Runtime_Subscriptions_API.md).
 
 ## Dynamic class reload contract
 

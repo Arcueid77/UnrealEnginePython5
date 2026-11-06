@@ -1,4 +1,8 @@
+[English](Physics_API.md) | [简体中文](Physics_API.zh-CN.md)
+
 # The Physics API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 The 'set_simulate_physics' method is exposed for enabling physic on PrimitiveComponent.
 

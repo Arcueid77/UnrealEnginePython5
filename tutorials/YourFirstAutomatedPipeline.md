@@ -1,5 +1,9 @@
+[English](YourFirstAutomatedPipeline.md) | [简体中文](YourFirstAutomatedPipeline.zh-CN.md)
+
 Your First Automated Pipeline with UnrealEnginePython (Part 1)
 =
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 In this tutorial i will try to show you how to build a python script that can generate
 a new Unreal Engine 4 Blueprint implementing a Kaiju (a big Japanese monster) with its materials and animations. In the second part a simple AI based on Behavior Trees will be added to the Blueprint as well as a bunch of simple unit tests..

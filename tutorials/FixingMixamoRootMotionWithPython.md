@@ -1,4 +1,8 @@
+[English](FixingMixamoRootMotionWithPython.md) | [简体中文](FixingMixamoRootMotionWithPython.zh-CN.md)
+
 # Fixing Mixamo Root Motion with Python
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 Mixamo.com is one of the biggest source for free (almost) characters animations. Unfortunately its root motion support works really differently from what Unreal Engine 4 expects.
 

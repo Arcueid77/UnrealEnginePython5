@@ -1,7 +1,303 @@
+[English](CHANGELOG.md) | [简体中文](CHANGELOG.zh-CN.md)
+
 # Changelog
 
 This file records the UE5 port maintained in this repository. The historical
 UE4 project history remains available in Git.
+
+## [1.0.0] - 2026-11-06
+
+- Promote the accepted 1.0.0-rc.1 implementation to stable metadata, numeric
+  version 1001 and a cleared Beta flag.
+- Revalidate the formal Shipping package, thirteen recovery cases, frontend,
+  packaged Python locality and both rendered Third Person game packages.
+- Verify runtime version `1.0.0`, source-equivalent candidate provenance,
+  checksummed source/Examples archives and matching repository tags.
+
+## [1.0.0-rc.1] - 2026-11-06
+
+- Freeze the documented UE5.8.1 / CPython3.11 Win64 API surface and support
+  matrix for the first 1.0 release candidate.
+- Integrate the accepted original Blueprint migration, thirty selected game-C++
+  candidates and H01-H05. Keep the source-bound native/runtime evidence and
+  actual Escape/Menu acceptance linked from the completion record.
+- Add protected Shipping build/package controls, source/archive installation
+  provenance and candidate-specific runtime/dependency checks.
+- Correct source-test snapshot dependencies, localized PowerShell error decoding
+  and historical completion/bootstrap assertions discovered by the full RC suite.
+- Pass 5,866 source checks, the seventy-check Generic matrix, eleven Mixin call
+  lanes, three PIE sessions, rendered PythonFirst/Mixin game packages, current
+  Lyra two-client lanes and the full Shipping package/runtime gate.
+- Adapt opt-in Shipping validation to native frontend-to-gameplay travel and
+  start rendered movement smoke timing after key delivery.
+
+## [0.11.0] - Development batches, not a release
+
+- Retained-class Python decisions now have bounded native evidence for the
+  shared Jump/Widget/ADS/Emote family, quickbar events, death, cosmetics,
+  auto-reload, hero heal, drop/reload policy, equipment presentation, spawn
+  effects and device-color software evaluation. Native GAS, movement,
+  animation, inventory, replication and general-purpose plugins stay native.
+- The shared Widget parent/Profile asset is committed with all its related
+  implementations. Per-batch evidence records exact scope, isolated staged-tree
+  tests, native binary hashes and report hashes; historical results are not
+  promoted to current-DLL reruns. Entire 0.10/0.11 migration and release gates
+  remain open; see the Examples progress and acceptance ledgers.
+- Backfill earlier accepted work as separate local modify/verify/commit batches.
+  Preserve failed runs and leave unfinished held-widget drafts uncommitted.
+  This workflow does not authorize a push, tag, release or new Engine build.
+
+## [0.10.0] - Development pilots
+
+- Fix native sparse `TMap` reads: traverse occupied slot range rather than
+  live element count, so Blueprint `Map_Remove` no longer makes UEP omit later
+  valid pairs. Six native original-BP removal/export comparisons pass on UE
+  5.8.1 together with the current 19-stage network and repeated core lifecycle
+  gates. Whole-version acceptance and release remain open.
+- Route the original healthbar `Health Changed`, `OnPosessedPawnChanged` and
+  `EventOnEliminated` entrypoints into Python, including native delegate and
+  animation-completion ingress. Repeated 19-stage/two-client regression and
+  separate real-UMG animation/Profile-switch tests pass; no asset reparenting.
+- Retained-class ammo-bar reticle and touch FireButton profiles with persisted
+  Interface/CDO configuration. Fire intent calls native Enhanced Input; no
+  ammo/inventory/GAS/replication rewrite.
+- Corrected two-client native weapon/HUD regression passes 19 phases, travel,
+  Pawn/weapon replacement, exit/rejoin and zero final scopes. The ammo-bar is
+  an explicitly test-owned overlay, not a claimed original default reticle.
+  Physical touch and new-asset package proof remain open.
+- Recover health UI from pre-ASC 0/0 followed by a 100/100 attribute notification;
+  rendered health/Profile regressions and 111 Examples host tests pass.
+- Test aim uses explicit FRotator fields; schema 4 verifies Pitch=80/Roll=0 and
+  actual per-owner numeric/material Health. Prior numeric-only passes are not
+  retroactively promoted to corrected visual proof.
+- Effect Pad parent/unchanged child pass construction and real collision/native
+  GAS damage/heal differentials. Explicit Parent construction reaches a virtual
+  helper using one parent router; the preserved BP body remains the fallback.
+- Editor-only construction extraction and inherited scalar Name selector reuse;
+  module-only UEP builds and seven current-DLL call fixtures pass. Examples host
+  tests pass 126. No Engine build or cook/package was run for these world pilots.
+- Other 0.10 assets, networking/package gates and release approval remain open;
+  official reference assets and weapon definitions stay unchanged.
+- Retained-class debug-spread Tick uses native spread and exact native text
+  formatting; 19-phase/two-client regression, automatic Tick, nonzero spread,
+  travel/rejoin and four clean exits pass. The overlay is explicitly test-owned;
+  native audio/Editor warnings and packaging/reachability gaps remain recorded.
+- Production reticle layout/geometry and typed ADS/elimination business move to
+  Python; native VM wildcard transport uses a thin example-only BP adapter.
+  Three-layout native-context comparisons, PlayerState/owner/suicide filtering,
+  elimination animation parity and final subscription closure pass. Production
+  Pistol/Rifle two-client regression, native ADS and equipped shotgun fire (8->5)
+  also pass; real kills, network shotgun, physical pickup and packages remain
+  open. Later host tests pass 148; core subscription tests pass 13.
+- Retained menu-button click now uses a lazy soft-class path through the native
+  CommonUI async layer push. Three Python/BP/Python open/close comparisons, an
+  initially unloaded menu class, clean exit and inspected/hashed screenshot pass.
+  Soft-class Unicode input has path/NUL validation without preloading; eight
+  current-DLL call fixtures pass. Incremental UEP module builds only, not Engine,
+  Game or packaging. Physical touch/input-token/cancel/network gates remain open.
+- Production weapon-reticle host creation, clear/visibility/death business now
+  uses Python. Eight original-BP comparisons, unchanged native class, live
+  Profile preservation, native Pistol/Rifle/Shotgun equip and injected native
+  death event pass. A four-node VM-only helper removes the old BP delegate.
+  Nineteen-phase/two-client travel/rejoin regression passes with zero final
+  host/reticle scopes. Host tests pass 170. No C++ build/cook/package occurred;
+  physical pickup, lethal damage, network shotgun and release gates stay open.
+- Production ability progress moves typed duration ownership, native game-time
+  countdown/text/material and completion visibility to Python. Twelve BP/Python
+  cases include paused game time, hidden Profile resume, Destruct and native
+  same-widget remount. Construct idempotently rearms after travel; the original
+  BP fallback preserves model while restarting its cancelled listener.
+  Nineteen-phase/two-client restart/travel/rejoin and four clean exits pass with
+  zero final progress/reticle/host scopes. The VM-only adapter now has six typed
+  functions/eighteen nodes; UI/Verb, ADS and shotgun regressions pass. Examples
+  tests pass 196. No C++ build/cook/package or release; real interaction ability
+  production and remote-player duration messages are not claimed.
+
+- Ability-failure feedback uses typed opaque FText transport, Python owner/reason
+  policy and the native widget RetriggerableDelay with an explicit int32 Linkage
+  callback. Seventeen original-BP/runtime comparisons and a native en/zh-Hans/en
+  text-identity roundtrip pass; corrected screenshots were inspected. Actual
+  differential failures repaired paused scheduling and named bool-output tuple
+  handling. Host checks pass 237. Native GAS producer/dead-health, two-client
+  completion, current adapter regressions, packaging and the full batch remain
+  open. No external ticker, new script Tick or C++/Engine build is implied.
+- Dash cooldown policy runs on the retained production class. Eleven bounded
+  comparisons and the full 19-phase/two-client lane pass. Native UIExtension
+  pool release is not Destruct: a shared read-only membership sampler disarms
+  inactive entries and closes with no final callbacks/ticker. Windows harness
+  reader/replacement and per-frame snapshot races were repaired and tested.
+  Original native GAS Dash delivers a 1.5s duration; native death/absent-Pawn
+  feedback checks pass separately. No ability/Health/CDO writes or synthetic
+  Dash duration in that native lane. Repeated native Dash emits no user-facing
+  failure; its producer remains untested. Host checks pass 282 at that gate.
+- Respawn timer duration/completion policy and example-owned Interface/CDO
+  assets are implemented. Native 0.25s timer, CommonNumeric, original material
+  net selection and audio remain native. Asset authoring and 290 supporting
+  host checks pass; runtime/lifetime/network acceptance is still being tested.
+
+## [0.9.0] - Development
+
+- Four retained-class Python weapon/ammo presenters, persisted Interface/CDO
+  selection, original-BP comparison, native QuickBar/Pawn signals and a shared
+  read-only ammo sampler. Lyra inventory/equipment/GAS/replication stay native.
+- Generic `uep_runtime.SubscriptionScope` for owned delegates and optional
+  Gameplay Message channel notifications, including disarm/cancel/error cleanup.
+- Real-input dedicated Editor server/two-client weapon acceptance, native
+  firing/reload/empty ammo/switch/respawn/travel and B exit/rejoin; post-exit
+  scope balance is required. Packaged dedicated networking remains unverified.
+- Four live weapon Profile round trips, three reload/native-GC cycles, three
+  PIE sessions, production signature/rejection/exception fixtures, rendered
+  Third Person regressions and a checked-in call/lifecycle/API inventory.
+- Reject abstract UClass construction before UE's native assertion. Runtime
+  plugin Content/Scripts directories now participate in packaged imports;
+  missing dependencies inside ue_site retain their actual traceback.
+- Incremental Third Person variant preparation restores template BP shells and
+  removes stale variant-only fixture assets so Mixin imports do not leak into
+  Python-first startup.
+- Win64 game archive and rendered UMG presentation pass. Failed packaging and
+  mixed cooked/uncooked-network attempts are retained. CC calls timed out with
+  no external review decision. No release/publication claim is made.
+
+## [0.8.0] - Unreleased
+
+Implementation is present on `dev/release-0.8.0`; 0.7.0 remains the latest
+tagged release. The isolated rendered and cross-Actor checks pass; a
+current-source combined release/package rerun remains open. The focused
+2026-09-12 loopback two-client network run passes; it is not rendered or packaged
+network certification. See
+[ROADMAP.md](ROADMAP.md) for the release exit gates.
+
+### Added
+
+- A Lyra health-bar presenter on the existing `W_Healthbar_C` class using the
+  0.7 retained-class Mixin router and a BP-declared `UEPPythonMixinSet`.
+- Event-driven Python ownership of widget Construct/Destruct, current-Pawn
+  rebinding, `ULyraHealthComponent.OnHealthChanged`/`OnMaxHealthChanged`,
+  normalized health and refresh timing.
+- A `BlueprintFallback` health-bar profile that executes the preserved
+  Blueprint Construct for per-instance rollback without changing type.
+- Clean-base staged authoring for the same-path health-bar copy and
+  `DA_LyraHealthbarMixin`, plus a read-only audit of Lyra's health bar, default/
+  shooter layouts and Shooter HUD action set.
+- Machine-readable HUD counters/events for registration, construction,
+  destruction, delegate balance, presentation, Pawn replacement, travel,
+  Experience-owned Game Feature action replacement and dedicated-server
+  zero-UI evidence.
+- A headless staged asset-registry prime step whose cache files and byte counts
+  are retained in full-content validation summaries.
+- Twenty-nine host-side presenter/bootstrap/shutdown tests for source-only asset
+  absence, exact delegate identity, event-driven rendering, Pawn replacement,
+  Blueprint fallback, Destruct, registry teardown and final Python-exit evidence.
+- Forty PowerShell acceptance-contract checks cover duplicate presenters,
+  absent/invalid cleanup evidence, ordered exit logs, invalid Mixin audits and
+  `All`/skip-mode routing without launching Unreal.
+- A precompiled caller Blueprint regression routes across Actor references to
+  two same-class instances, covering per-instance selection, missing-method
+  fallback, repeated Python calls without BP fallthrough, profile swaps and
+  restoration after unregister. Fixtures compile only in memory.
+- A no-build focused validator reuses a marked stage, checks native source and
+  module parity, records hashes, and captures eight real UMG frames for
+  damage/heal/death/respawn. The test-only health reader does not alter GAS or
+  widen the non-lethal bridge. Full `All` includes both new gates.
+- A no-build one-server/two-client Lyra network validator with explicit
+  World/Player tokens, native GAS target selection, individual Pawn restart,
+  fresh per-client delegate ACKs, two travels and B0 leave/B1 rejoin. All four
+  process instances require clean Python-exit reports. `Network/All` now require
+  this gate; the prior single-client lane is retained as `NetworkPrecheck`.
+- Adversarial network identity/ownership/message tests and bounded Windows
+  atomic-message sharing retries. The opt-in probe stops bot brain logic to
+  isolate test Health changes without changing player immunity or GAS policy.
+
+### Changed
+
+- The Lyra overlay now stages complete Content rather than Scripts alone, while
+  the reference `F:\LyraStarterGame` and Unreal Engine trees remain unchanged.
+- The 0.5 `100 -> 90 -> 100` authority/replication sequence now waits for the
+  Python health bar to observe both real Health Component events.
+- Runtime commandlets skip Lyra HUD/bootstrap registration so transient routed
+  functions cannot be serialized into cooked assets.
+- The optional HUD bootstrap now treats an absent content-backed Healthbar as
+  unavailable instead of aborting the source-only probe, and HUD audit now
+  verifies the exact Interface, selector, Mixin profiles, reflected state and
+  ShooterCore `Add Widgets` shape consumed by the presenter.
+- HUD-enabled `All` now invokes `HUDAudit`; its `full_acceptance` flag requires
+  both slices, a passed audit, cross-Actor regression and rendered HUD checks
+  in that invocation. Skip/narrow lanes cannot claim full acceptance.
+- Runtime report schema 5 preserves the active snapshot, writes
+  `awaiting_shutdown`, and finalizes from a pure-state Python exit callback.
+  The driver requires one active presenter, zero final owned callbacks/widget
+  references, monotonic evidence counters and ordered final exit log markers.
+- The read-only HUD inventory can export authored health-bar node pin defaults
+  for visual-primitive inspection, without compiling or saving assets.
+- Ordinary health changes no longer reinitialize the bar or snap its numeric
+  value. Python selects retained animations, scales materials using actual max
+  health, interpolates from the displayed value, and chains elimination through
+  the existing reflected `OnAnimationFinished` event. Cancellation disarms old
+  Pawn/death callbacks before stopping animations.
+- Router teardown pauses owned animations without firing their completion
+  events back into the unavailable router. A live profile-switch regression
+  covers this boundary separately from ordinary widget destruction.
+- Native fallback frames allocate at least one byte for parameterless events;
+  `UUserWidget::Destruct` no longer passes a null destination to
+  `UStruct::InitializeStruct`. Cross-Actor tests also exercise a missing-profile
+  parameterless native event.
+
+### Supported boundaries
+
+- Lyra still owns `ALyraHUD`, Experience/Game Feature activation, CommonUI
+  layout/widget creation, GAS authority, Gameplay Effects and replication.
+  Python owns health presentation only and reuses Blueprint visual primitives.
+- 0.8 does not include QuickBar, weapon/ammo, reticle, team score, elimination
+  feed, accolade presentation or a general Gameplay Message subscription API.
+  0.9 is scoped to Mixin engineering plus one weapon/ammo chain and a bounded
+  reusable message subscription surface; the other combat HUD panels are 1.1+
+  backlog. A release-candidate freeze precedes 1.0.
+
+### Validation
+
+- 2026-09-10: 29 Python and 40 PowerShell checks pass. A real NullRHI Lyra
+  Standalone passes damage/heal, Pawn replacement, Game Feature replacement,
+  travel and final zero-owned-state assertions. Separately, the precompiled
+  cross-Actor regression and rendered UMG fixture pass on UE5.8/CPython3.11.8.
+  Captured numeric values include damage `100 -> 93 -> 60`, healing
+  `60 -> 67 -> 100`, death and full-health respawn. Initial checks reused binaries;
+  subsequent profile-switch coverage required a four-action incremental UEP
+  build for the zero-frame fix (24.15 seconds, one CPP file). No Engine source
+  or cook/package changes. Generated module records were repaired through
+  official UBT, not manual BuildId edits. This does not close the full combined
+  release gate.
+- Closeout host checks pass: 17 Python tests (including actual CPython subprocess
+  exit, leaked binding and skipped-finalizer cases) and 28 PowerShell checks.
+  A fresh strict HUD audit and current-script NullRHI Standalone also pass on
+  2026-09-07. The active HUD count is 1; final counts are 0 presenters/references,
+  3/3 controller and 6/6 health binds/unbinds, with ordered Python-exit markers.
+  UBT resolved the initial BuildId mismatch using two metadata-only actions;
+  no manual GUID override, C++ compile, cook/package or asset save was needed.
+  Reference/staged Healthbar and checked DLL hashes stayed unchanged. This is
+  focused evidence, not integrated `All`, network/package or visual acceptance.
+- Clean-base generation results `20260903-033001` and `20260903-033049` both
+  produced `W_Healthbar_C` with the `Python` default, two profiles and
+  `PythonMixinProfile`; the reference widget remained SHA-256
+  `7AD30080E82AF2BB2FB40DD132F632A35E3429076ABAD49A37FDFD657895CF66`.
+- HUD audit result `20260903-032632` identifies the real
+  `LAS_ShooterGame_StandardHUD` action set: one `GameFeatureAction_AddWidgets`
+  with 1 layout and 11 widget entries.
+- Historical `All` result `20260903-033426` passed its then-implemented checks
+  on UE 5.8.0 / CPython 3.11.8 with
+  `full_acceptance: true`. Standalone, network client and packaged game each
+  observed Health `100 -> 90 -> 100`, Pawn replacement, 3 Constructs, 2
+  Destructs and balanced pre-quit callback snapshots; the dedicated server
+  created zero HUD state. BuildCookRun exited 0, strict logs passed, and archived/tested
+  executable SHA-256 values matched.
+- That Development run used NullRHI and has `hud_audit: null`; the independent
+  audit/generation records are not coverage of `All`. It predates the final
+  bootstrap fix/seventh host test, and does not enforce exactly one presenter
+  or post-shutdown zero owned callbacks. Damage/heal/death animations and
+  numeric interpolation were corrected and rendered separately on 2026-09-10.
+  Historical logs contain cleanup events; this is not an observed-leak claim.
+  DebugGame and Shipping are unvalidated. See
+  [Validation history](docs/Validation_History.md) for retained evidence and
+  candidate provenance requirements.
 
 ## [0.7.0] - 2026-08-29
 

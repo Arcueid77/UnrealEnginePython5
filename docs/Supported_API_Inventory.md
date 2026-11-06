@@ -1,0 +1,71 @@
+[English](Supported_API_Inventory.md) | [简体中文](Supported_API_Inventory.zh-CN.md)
+
+# Supported API inventory for 1.0.0
+
+The release freezes the following API surfaces for UE5.8.1, CPython3.11 and
+Win64. Configuration-specific validation and artifact provenance are recorded
+in [the release notes](Release_1.0.0.md). The primary contracts below define
+each surface's accepted inputs, ownership and lifecycle behavior.
+
+| Surface | Support and boundaries | Primary contract |
+| --- | --- | --- |
+| Interpreter | Engine CPython 3.11; standalone or shared Editor VM; finalize only the owned interpreter | Lifecycle_Threading_API.md |
+| UObject reflection | Tested scalar/math/struct/enum/object, array/map/set properties; function inputs, returns and native out parameters | uobject_API.md, core_validation.py |
+| Lazy soft-class input | Empty/null, loaded UClass or validated object-path Unicode input; rejects invalid paths/NUL, does not load the class; no new soft-reference getter contract | soft_class_path_validation.py, open_menu_mixin.py |
+| Dynamic types | Transient generated UClass/FProperty/UFunction; unique names for process lifetime; restart for type/signature replacement | Subclassing_API.md, Lifecycle_Threading_API.md |
+| Production Mixin | Retained BP class, named per-instance profiles, Interface/CDO declarations, original fallback/composition, teardown/restoration | Mixin_API.md, Mixin_Call_Lifecycle_Matrix.md |
+| Delegate / Enhanced Input lifetime | Exact callable/handle removal; game thread; explicit teardown | EnhancedInput_API.md, Lifecycle_Threading_API.md |
+| Runtime subscription scope | Native delegate and optional Gameplay Message signal or typed delivery with a supplied verified VM payload reader; explicit close, no generic wildcard ProcessEvent API | Runtime_Subscriptions_API.md |
+| Actor / World / exit | Native spawn/destruction, observed authority/replication, graceful request_exit; game thread | Level_API.md, Lifecycle_Threading_API.md |
+| World lookup convenience | `get_world()` resolves `UWorld`, `AActor` and `UActorComponent`; other UObject types are rejected. A StateTree node's reflected world-context operations do not expand this convenience-wrapper boundary | `ue_get_uworld` in UEPyModule.cpp; Explorer follow-map negative fixture |
+| Editor / asset / Slate helpers | Editor-only APIs retain their build boundary; focused asset and Slate ownership tests | ManagingAssets.md, Slate_API.md, editor_validation.py |
+| Construction extraction authoring | Editor-only zero-parameter Actor construction clone plus virtual helper forwarder; explicit compile/save; not generic Parent interception | Mixin_API.md, mixin_construction_forwarder_validation.py |
+| Experimental Blueprint body scripting | Separate API; one int/bool out-address fixture; not part of production Mixin support or RC stability promise | blueprint_script_body_validation.py |
+
+## Migration rules
+
+Blueprint `KismetSystemLibrary.CollectGarbage` requests collection through
+`GEngine->ForceGarbageCollection(true)`; it does not synchronously finish a
+collection inside the calling Python frame. Cross an engine frame before
+checking old wrappers, and record the request/check frames. Do not cache an
+immediate pre-collection result as a post-collection lifetime verdict.
+
+An observer around a Boolean Blueprint gateway must return the original result
+unchanged. In a fallback profile, `True` can allow the remaining original graph
+to run after the observer returns. Inspect its completed outputs on a subsequent
+control frame, rather than adding failing post-call work before that return.
+
+UEP's specialized `FRotator` positional constructor uses Roll/Pitch/Yaw,
+not UE C++'s Pitch/Yaw/Roll. Prefer explicit `.pitch`, `.yaw`, `.roll` fields
+for test/game intent and verify the native returned axes; a rotated screenshot
+is not evidence that a Pawn aimed at the intended target.
+
+Existing `register_mixin` and `@mixin` remain compatible single-profile forms.
+Use named profiles/Mixin Sets for multiple behaviors on one class. An object
+keeps its BP-generated Unreal type; unrelated code resolves reflected methods
+normally within the tested call-entry boundary. Never silently execute the BP
+after a Python success or exception.
+
+Close subscriptions and unregister before controlled module reload or BP asset
+authoring. Preserve original UFunction identity on restore. Recreate widgets
+explicitly when the workflow needs fresh native lifecycle events. Change
+generated types/reflected signatures by restarting the process.
+
+Unsupported RPC/delegate/latent Mixin signatures, direct C++ interception and
+unrestricted hot reload remain outside the contract. Ordinary reflected calls
+to native capabilities remain available without claiming that those native
+implementations can be intercepted. Native wildcard CustomThunks need dedicated
+binding support; do not invoke their placeholder C++ signatures through generic
+ProcessEvent.
+
+The 1.0.0 release preserves existing public entry points. During 1.x, a deprecation
+identifies the affected API, its replacement, migration examples and the planned
+removal version. A compatibility entry point remains available through the
+documented deprecation period. Experimental APIs retain the separate contract
+shown in the inventory.
+
+The engine/general-purpose plugin C++ systems remain native. Examples owns
+Lyra-specific presentation/business and assets. ABPs/animation, editor/test
+tools, interface declarations, component/default-data shells and UMG layouts
+are retained. The confirmed game-project C++ migration is accepted separately
+in the Examples completion index.

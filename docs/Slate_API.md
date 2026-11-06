@@ -1,5 +1,9 @@
+[English](Slate_API.md) | [简体中文](Slate_API.zh-CN.md)
+
 
 # The Slate API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 Slate is the GUI toolkit in Unreal Engine 4. It allows you to create windows, buttons, sliders and all of the graphics elements you see in the editor. It is the base for the Blueprint Widgets too.
 
@@ -829,3 +833,20 @@ It shows even how to register new style sets.
 ## SPythonTreeView
 
 ## SPythonWidget
+
+## Character-event user indices (UE5 port)
+
+`ue.FCharacterEvent(character, repeat, modifier_keys, user_index)` accepts an
+optional fourth positional user index; existing two/three-argument calls still
+use zero. For example:
+
+```python
+event = ue.FCharacterEvent('x', False, ue.FSlateApplication.get_modifier_keys(), 1)
+assert event.get_user_index() == 1
+```
+
+Constructing an event does not send hardware input. The existing
+`ue.FSlateApplication.process_key_char_event(event)` invokes native Slate
+processing for that user; native processing can create the process-local Slate
+user before a secondary LocalPlayer's CommonUI focus tick. Automated fixtures
+must declare synthetic input setup separately from physical-input acceptance.
