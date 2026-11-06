@@ -1,3 +1,5 @@
+[English](Runtime_Subscriptions_API.md) | [简体中文](Runtime_Subscriptions_API.zh-CN.md)
+
 # Runtime subscriptions
 
 `uep_runtime.SubscriptionScope` owns game-thread subscriptions. UEP stages its

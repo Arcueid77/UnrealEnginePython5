@@ -1,4 +1,8 @@
+[English](Landscape_API.md) | [简体中文](Landscape_API.zh-CN.md)
+
 # The Landscape/Terrain API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 Terrains in UE4 are special actors built over the 'heightmap' concept.
 

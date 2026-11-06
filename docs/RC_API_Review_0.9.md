@@ -1,4 +1,8 @@
+[English](RC_API_Review_0.9.md) | [简体中文](RC_API_Review_0.9.zh-CN.md)
+
 # 0.9 API freeze review
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 Status: ready for the original 0.9 API freeze within the supported inventory.
 Batch273 accepts the independent candidate matrix. This review does not create
@@ -25,7 +29,7 @@ gain a compatibility or correctness certification from this review.
 | Experimental BP body scripting | Batch266 tests a separate bounded int/bool fixture. It is excluded from production Mixin support and the RC stability promise. |
 
 The numbered ledgers are in
-[Migration/Acceptance](../Demos/UEPLyraIntegration/Migration/Acceptance).
+[Migration/Acceptance](https://github.com/Arcueid77/UnrealEnginePython5Examples/tree/dev/release-1.0.0/UEPLyraIntegration/Migration/Acceptance).
 Each retains its own execution configuration, source/binary fingerprints and
 limits. A reference here does not turn an older capture into a new runtime run.
 

@@ -1,3 +1,5 @@
+[English](EnhancedInput_API.md) | [简体中文](EnhancedInput_API.zh-CN.md)
+
 # Enhanced Input API
 
 UnrealEnginePython 0.3.0 exposes the UE5 Enhanced Input operations needed by

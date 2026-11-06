@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # Release packaging
 
 `Build-UEPRelease.ps1` creates commit-addressed release artifacts without

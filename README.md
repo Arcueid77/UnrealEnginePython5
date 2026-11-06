@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # UnrealEnginePython
 
 Runtime Python scripting and Unreal Engine bindings for **UE 5.8.1**.
@@ -7,9 +9,11 @@ runtime integration in the Editor and packaged Win64 games.
 **Stable release — 1.0.0 · November 6, 2026**
 
 [Download 1.0.0](https://github.com/Arcueid77/UnrealEnginePython5/releases/tag/v1.0.0)
-· [Release notes](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Release_1.0.0.md)
-· [Supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Supported_API_Inventory.md)
-· [Examples](https://github.com/Arcueid77/UnrealEnginePython5Examples/tree/v1.0.0)
+· [Release notes](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md)
+· [Supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md)
+· [Examples](https://github.com/Arcueid77/UnrealEnginePython5Examples/tree/dev/release-1.0.0)
+
+[Documentation index](docs/README.md)
 
 ## What you can build
 
@@ -28,7 +32,7 @@ The plugin uses the engine-bundled Python runtime. It can share an
 Editor interpreter initialized by Epic's PythonScriptPlugin or own the
 interpreter when running independently. Public contracts cover interpreter
 ownership, game-thread access and controlled reload.
-[Lifecycle and threading](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Lifecycle_Threading_API.md)
+[Lifecycle and threading](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Lifecycle_Threading_API.md)
 
 ## Release support
 
@@ -43,7 +47,7 @@ ownership, game-thread access and controlled reload.
 The release is distributed as source and requires the Windows C++ toolchain
 for your UE 5.8.1 installation. The release record identifies the exact tested
 engine build and artifact provenance.
-[Platform support](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Platform_Support.md)
+[Platform support](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Platform_Support.md)
 
 ## Get 1.0.0
 
@@ -148,7 +152,7 @@ Versioned package checks identify the final 1.0.0 source pair. The release
 notes record the build provenance, reused source-identical products and
 configuration-specific results.
 [Stable validation](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/Releases/1.0.0/validation.json)
-· [Candidate validation details](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Release_1.0.0-rc.1.md)
+· [Candidate validation details](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0-rc.1.md)
 
 The migration also includes a bounded 20-minute memory/lifecycle run and
 frame-rate, CPU and GameThread comparisons for declared native/Python
@@ -160,14 +164,14 @@ measurements.
 
 ## API and integration guides
 
-- [Supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Supported_API_Inventory.md)
-- [Blueprint Mixins and profiles](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Mixin_API.md)
-- [Python-defined Unreal classes](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Subclassing_API.md)
-- [UObject reflection and calls](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/uobject_API.md)
-- [Enhanced Input](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/EnhancedInput_API.md)
-- [Runtime subscriptions](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Runtime_Subscriptions_API.md)
-- [Ownership, threading and reload](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Lifecycle_Threading_API.md)
-- [Native gameplay migration](https://github.com/Arcueid77/UnrealEnginePython5/blob/v1.0.0/docs/Native_Gameplay_Migration.md)
+- [Supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md)
+- [Blueprint Mixins and profiles](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Mixin_API.md)
+- [Python-defined Unreal classes](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Subclassing_API.md)
+- [UObject reflection and calls](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/uobject_API.md)
+- [Enhanced Input](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/EnhancedInput_API.md)
+- [Runtime subscriptions](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Runtime_Subscriptions_API.md)
+- [Ownership, threading and reload](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Lifecycle_Threading_API.md)
+- [Native gameplay migration](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Native_Gameplay_Migration.md)
 
 Mixin routing supports the documented reflected call entries and signatures.
 Static, RPC, delegate and latent function bodies retain their native or

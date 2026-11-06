@@ -1,4 +1,8 @@
+[English](Lyra_Python_HUD_0.8.0.md) | [简体中文](Lyra_Python_HUD_0.8.0.zh-CN.md)
+
 # Lyra Python HUD foundation for 0.8.0
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 The unreleased UEP 0.8.0 candidate moves the event/subscription behavior of
 Lyra's existing health bar into Python without

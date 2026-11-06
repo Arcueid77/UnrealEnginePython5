@@ -1,3 +1,5 @@
+[English](Release_1.0.0.md) | [简体中文](Release_1.0.0.zh-CN.md)
+
 # UnrealEnginePython 1.0.0
 
 The stable release targets Unreal Engine 5.8.1, engine-bundled CPython 3.11.8
@@ -22,7 +24,7 @@ Formal promotion validation passed on 2026-11-06. The Shipping package passes
 thirteen exception/recovery cases, normal frontend flow, actual packaged Python
 locality and 4,578 dependency checks. Both rendered Third Person packages report
 `1.0.0`, produce all six expected images and exit with restored lifecycle state.
-The complete formal record is [validation.json](../Releases/1.0.0/validation.json).
+The complete formal record is [validation.json](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/Releases/1.0.0/validation.json).
 
 The candidate's 5,866 source checks, seventy Generic native checks, eleven Mixin
 call lanes, three PIE sessions and sixteen independent Lyra client views carry

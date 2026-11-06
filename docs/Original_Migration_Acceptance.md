@@ -1,3 +1,5 @@
+[English](Original_Migration_Acceptance.en.md) | [简体中文](Original_Migration_Acceptance.md)
+
 # 原定 Python 替换范围验收
 
 2026-10-28：原定 **246 个候选、22/22 项验收条件已通过**。
@@ -43,9 +45,9 @@ Cue父类记录；六组当前原始蓝图/Python流程对照、16个被接受�
 没有把所有历史标志改成 `true`。本次不扩大到其他平台/配置、硬件输入、整帧像素
 或音频一致性，也没有创建 RC 标签或发布版本。
 
-- [逐项验收与证据边界](../Demos/UEPLyraIntegration/Migration/ACCEPTANCE_REVIEW.md)
-- [第275批最终证据账本](../Demos/UEPLyraIntegration/Migration/Acceptance/275-original-explorer-arena-and-final-migration-acceptance.json)
-- [迁移进度](../Demos/UEPLyraIntegration/Migration/PROGRESS.md)
+- [逐项验收与证据边界](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/ACCEPTANCE_REVIEW.md)
+- [第275批最终证据账本](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/Acceptance/275-original-explorer-arena-and-final-migration-acceptance.json)
+- [迁移进度](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/PROGRESS.md)
 - [受支持 API 清单](Supported_API_Inventory.md)
 - [API 冻结复核](RC_API_Review_0.9.md)
 - [Mixin 调用及生命周期边界](Mixin_Call_Lifecycle_Matrix.md)

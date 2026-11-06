@@ -1,4 +1,8 @@
+[English](MigrateAssets.md) | [简体中文](MigrateAssets.zh-CN.md)
+
 # Assets migration
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 Assets migration is a procedure allowing you to export the assets of a project into another unreal engine project.
 

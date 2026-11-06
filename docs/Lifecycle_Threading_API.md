@@ -1,7 +1,9 @@
+[English](Lifecycle_Threading_API.md) | [简体中文](Lifecycle_Threading_API.zh-CN.md)
+
 # Lifecycle, reload, exceptions and threading
 
-This document records the current UnrealEnginePython runtime contract for UE
-5.8 and CPython 3.11 as released in 0.4.0.
+This document records the UnrealEnginePython 1.0.0 runtime contract for UE
+5.8.1 and engine-bundled CPython 3.11.8 on Win64.
 
 ## Interpreter ownership
 

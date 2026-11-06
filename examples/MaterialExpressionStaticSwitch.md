@@ -1,5 +1,9 @@
+[English](MaterialExpressionStaticSwitch.md) | [简体中文](MaterialExpressionStaticSwitch.zh-CN.md)
+
 
 ![MaterialExpressionStaticSwitch Screenshot](https://github.com/20tab/UnrealEnginePython/blob/master/examples/MaterialExpressionStaticSwitch.png)
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 ```python
 import unreal_engine as ue

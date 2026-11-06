@@ -1,4 +1,8 @@
+[English](Third_Person_Mixin_Demo_0.7.0.md) | [简体中文](Third_Person_Mixin_Demo_0.7.0.zh-CN.md)
+
 # Third Person Blueprint Mixin demo for 0.7.0
+
+> Historical guide. This page records its original milestone or upstream environment. See the [1.0.0 release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) for current support.
 
 The 0.7 demo starts from Unreal Engine 5.8's official Blueprint Third Person
 template and preserves its object paths and runtime class identities:

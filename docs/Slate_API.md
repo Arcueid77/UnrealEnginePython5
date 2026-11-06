@@ -1,5 +1,9 @@
+[English](Slate_API.md) | [简体中文](Slate_API.zh-CN.md)
+
 
 # The Slate API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 Slate is the GUI toolkit in Unreal Engine 4. It allows you to create windows, buttons, sliders and all of the graphics elements you see in the editor. It is the base for the Blueprint Widgets too.
 

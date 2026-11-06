@@ -1,4 +1,8 @@
+[English](Navigation_API.md) | [简体中文](Navigation_API.zh-CN.md)
+
 # The Navigation API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 The only exposed navigation-related method is 'simple_move_to_location'. It expects a Pawn with a movement component (like a Character)
 

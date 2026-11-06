@@ -1,6 +1,10 @@
+[English](Mixin_API.md) | [简体中文](Mixin_API.zh-CN.md)
+
 # Blueprint mixin API
 
-UEP 0.7 can route selected functions on an existing Blueprint-generated class
+The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) and call/lifecycle matrix define the release contract.
+
+UEP 1.0.0 can route selected functions on an existing Blueprint-generated class
 to Python without creating a new Unreal class. Placed and spawned objects keep
 their original `BP_*_C` identity. One class-level router preserves each original
 UFunction, while every UObject instance can select a different named Python
@@ -111,13 +115,13 @@ An ordinary derived Blueprint inherits its parent's router and selection hook;
 inheriting the Interface alone does not create a second router. Sharing a Mixin
 Set on the highest relevant Blueprint remains the simplest arrangement.
 
-The current 0.11 development pilot also supports an explicitly configured child
+The router also supports an explicitly configured child
 with its own `GetPythonMixinSet` override. UE 5.8.1's compiler removes duplicate
 inherited Interface descriptors and promotes their functions to overrides, so
 discovery accepts the owned provider plus native Interface implementation, not
 just a direct Interface descriptor. An inherited provider without an owned
-override remains excluded. This is editor-hosted native evidence, not a new
-packaged-build or published-version claim.
+override remains excluded. The original child-provider fixture is Editor-hosted;
+configuration-specific package evidence is recorded in the 1.0.0 release record.
 
 UEP scans already loaded Blueprint classes after project startup imports and
 also observes package completion in Editor, Game and packaged builds, so a class
@@ -131,9 +135,13 @@ UE 5.8.1 Editor builds (including `UnrealEditor -game` and Editor-hosted
 servers) observe `OnEndLoadPackage` and process every package in its completed
 batch. The old async per-package delegate is deprecated as unsafe in 5.8.1;
 the Editor path no longer reads its potentially unstable package pointer.
-Ordinary non-Editor builds do not expose `OnEndLoadPackage` and currently retain
-the existing per-package discovery path. Its replacement and packaged safety
-acceptance remain open; Editor tests must not be reported as proof of that path.
+Non-Editor builds use `OnHotfixableAssetLoaded` after postload and register the
+native UClass metaclasses required for Blueprint-class notifications. Module
+load events refresh that metaclass registration. Off-thread or reentrant
+notifications defer to the game thread with a weak UObject reference and a
+discovery epoch, so disabling discovery invalidates queued work. Shutdown removes
+both callbacks and unregisters the tracked metaclasses. The 1.0.0 release record
+includes rendered Mixin game packages and separate Development/Shipping evidence.
 
 Cook commandlets are deliberately excluded from discovery and Python registry
 mutation is rejected while Cook is running. A packaged game registers its
@@ -246,7 +254,9 @@ class ExampleProfile:
 profile class. `isinstance(self, ExampleProfile)`, cooperative Python multiple
 inheritance and zero-argument `super()` are not part of the contract.
 
-### Explicit parent and child routers (0.11 development)
+<a id="explicit-parent-and-child-routers-011-development"></a>
+
+### Explicit parent and child routers
 
 An explicitly configured child may own a router alongside its parent's router,
 including same-name functions. Each routed invocation, initializer and teardown
@@ -313,7 +323,9 @@ UEP prunes superseded generated classes when it observes normal Blueprint
 reinstancing, but editing a function signature while its live class is patched
 is not treated as a supported in-place migration.
 
-## Call-entry boundary and planned hardening
+<a id="call-entry-boundary-and-planned-hardening"></a>
+
+## Reflected call-entry boundary
 
 The router changes selected class function-map entries, not the object's class.
 Calls that resolve those entries can reach Python; the target UObject selects
@@ -349,21 +361,21 @@ That fixture uses one parent router for its children; it does not exercise the
 separate 0.11 explicit-child extension. This bounded graph adapter is not a general hook for cached UFunction
 pointers, other explicit Parent calls, or direct C++ invocations.
 
-## Safety boundary (0.7 baseline with identified development extensions)
+<a id="safety-boundary-07-baseline-with-identified-development-extensions"></a>
+
+## Supported signatures and bounded extensions
 
 - Registration, selection and UObject access run on Unreal's game thread.
 - Targets are Blueprint-generated classes.
 - One router exists per target class; it may contain multiple mutually
   exclusive profiles, but profile chaining/stacking is not supported.
-- The 0.7 baseline rejected related routers. The 0.11 development extension
-  above permits explicitly configured parent/child routers with lexical context;
-  it is not cooperative Python inheritance or profile stacking.
+- Explicitly configured parent/child routers use the lexical context described
+  above. Each router resolves its own preserved original and Python helpers.
 - A class must directly declare `UEPPythonMixinInterface` or implement it with
   its own `GetPythonMixinSet` override; ordinary derived classes inherit routing.
 - Profile methods accept `self` plus the reflected input signature.
 - Static functions, RPCs, latent functions and delegate signatures are rejected.
-- Non-const output parameters are rejected by default. In 0.10 development,
-  an individual Python method can explicitly opt in to named outputs with
+- Non-const output parameters are rejected by default. An individual Python method can explicitly opt in to named outputs with
   `method.uep_named_outputs = True` (a bool, not integer 1). Writable reference /
   in-out parameters remain rejected. Return values and const reference inputs
   retain their existing support.
@@ -377,7 +389,9 @@ pointers, other explicit Parent calls, or direct C++ invocations.
 See `Third_Person_Mixin_Demo_0.7.0.md` for the retained-class, multi-profile
 runtime proof. For the class-creating alternative, see `Subclassing_API.md`.
 
-## Explicit named outputs (0.10 development)
+<a id="explicit-named-outputs-010-development"></a>
+
+## Explicit named outputs
 
 This opt-in omits the reflected non-const output parameters from the Python
 method's arguments. Return a dictionary with exactly one entry per output,

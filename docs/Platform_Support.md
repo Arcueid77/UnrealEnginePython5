@@ -1,3 +1,5 @@
+[English](Platform_Support.md) | [简体中文](Platform_Support.zh-CN.md)
+
 # Platform support and readiness
 
 ## 1.0.0 support matrix
@@ -5,7 +7,7 @@
 The release targets UE5.8.1 and engine-bundled CPython3.11 on Win64. The API
 surface is frozen in [Supported API inventory](Supported_API_Inventory.md).
 
-| Configuration | Candidate state |
+| Configuration | Release validation |
 | --- | --- |
 | Win64 Development | Accepted Generic seventy-check matrix, Mixin calls/PIE, PythonFirst/Mixin rendered game packages and Lyra two-client package lanes |
 | Win64 Shipping | Accepted source/archive build, complete Lyra cook/archive, thirteen gameplay recovery cases, frontend and packaged Python locality |

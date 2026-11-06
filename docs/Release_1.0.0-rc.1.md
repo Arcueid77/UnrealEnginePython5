@@ -1,3 +1,5 @@
+[English](Release_1.0.0-rc.1.md) | [简体中文](Release_1.0.0-rc.1.zh-CN.md)
+
 # UnrealEnginePython 1.0.0-rc.1
 
 The release candidate targets Unreal Engine 5.8.1, its bundled CPython 3.11 and
@@ -12,7 +14,7 @@ and cooked runtime acceptance, source/archive installation, and checksummed
 release artifacts.
 
 Candidate validation passed on 2026-11-06. The complete evidence manifest is
-[validation.json](../Releases/1.0.0-rc.1/validation.json).
+[validation.json](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/Releases/1.0.0-rc.1/validation.json).
 
 | Gate | Accepted result |
 | --- | --- |

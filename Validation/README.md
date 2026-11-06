@@ -1,4 +1,9 @@
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # UEP 5.8 automated validation
+
+> Current release — **1.0.0**, UE **5.8.1**, engine CPython **3.11.8**, Win64 **Development / Shipping**. [Release record](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Release_1.0.0.md) and [supported API](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) define the release scope.
+> The dated sections below retain their capture-time evidence and limitations.
 
 Current validation uses the approved upstream UE 5.8.1 update and bundled
 CPython 3.11. For each migration batch, `Test-UEPStagedBatch.ps1` tests isolated
@@ -7,8 +12,8 @@ Git-index-only core and Examples archives, then
 are not runtime acceptance. Native runs retain their actual DLL provenance;
 later source-hash freezes do not re-execute old scenarios. Failed or unfinished
 batches must not be committed as accepted. See
-[batch ledgers](../Demos/UEPLyraIntegration/Migration/Acceptance/) and
-[current progress](../Demos/UEPLyraIntegration/Migration/PROGRESS.md).
+[batch ledgers](https://github.com/Arcueid77/UnrealEnginePython5Examples/tree/dev/release-1.0.0/UEPLyraIntegration/Migration/Acceptance) and
+[current progress](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/PROGRESS.md).
 
 As requested on 2026-10-20, regression is incremental by default. The staged
 driver checks changed Python syntax/imports and selects host tests affected by
@@ -33,10 +38,10 @@ The validation driver copies the project and the current plugin sources into
 `.build/Validation/UEP58Host`. It never installs the plugin into the engine and
 does not modify Unreal Engine source code.
 
-## Validation scope and cost
+## Incremental regression and historical validation scope
 
 The [roadmap](../ROADMAP.md) separates implementation, historical evidence and
-release approval. 0.8 is unreleased: the old Lyra `All` run does not include
+release approval. At the historical 0.8 review, the candidate was unreleased: the old Lyra `All` run does not include
 `HUDAudit`, enforce exactly one active presenter, verify post-shutdown zero
 owned callbacks, or prove rendered animation parity. The updated driver now
 audits HUD-enabled `All` and enforces one active presenter plus final Python-exit
@@ -65,7 +70,7 @@ native binary for script-only work requires matching native-source provenance
 and recording the actual new script hashes. Announce full cook/package work
 before starting it and reserve the full matrix for candidates or relevant risk.
 
-Retained packages are Win64 Development. The generic driver accepts DebugGame,
+The historical generic-driver packages described in this section are Win64 Development. The generic driver accepts DebugGame,
 but this review establishes no DebugGame or Shipping validation. A future RC
 must record exact core/Examples/engine/Python/configuration provenance using the
 [candidate record](../docs/Validation_History.md#candidate-record-template);
@@ -95,7 +100,7 @@ rather than being silently counted as passes.
 
 The release gate also preserves the independent Python-first Third Person
 audit, headless gameplay smoke and packaged gameplay smoke documented in
-[`../Demos/README.md`](../Demos/README.md). A green core report alone does not
+[`../Demos/README.md`](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/README.md). A green core report alone does not
 claim gameplay parity.
 
 The validation output is local evidence and is intentionally ignored by Git.

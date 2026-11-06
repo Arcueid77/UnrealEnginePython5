@@ -1,3 +1,5 @@
+[English](Supported_API_Inventory.md) | [简体中文](Supported_API_Inventory.zh-CN.md)
+
 # Supported API inventory for 1.0.0
 
 The release freezes the following API surfaces for UE5.8.1, CPython3.11 and
@@ -56,7 +58,7 @@ implementations can be intercepted. Native wildcard CustomThunks need dedicated
 binding support; do not invoke their placeholder C++ signatures through generic
 ProcessEvent.
 
-The candidate preserves existing public entry points. During 1.x, a deprecation
+The 1.0.0 release preserves existing public entry points. During 1.x, a deprecation
 identifies the affected API, its replacement, migration examples and the planned
 removal version. A compatibility entry point remains available through the
 documented deprecation period. Experimental APIs retain the separate contract

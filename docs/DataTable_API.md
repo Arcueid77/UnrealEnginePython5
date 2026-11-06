@@ -1,4 +1,8 @@
+[English](DataTable_API.md) | [简体中文](DataTable_API.zh-CN.md)
+
 # The DataTable API
+
+> API examples and upstream reference. The [1.0.0 supported API inventory](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/docs/Supported_API_Inventory.md) defines the release contract. Individual examples record their original environment.
 
 DataTables allows you to store (as an asset) a "list" (or better a dictionary) of structures.
 

@@ -1,3 +1,5 @@
+[English](Validation_History.md) | [简体中文](Validation_History.zh-CN.md)
+
 # Validation history
 
 Historical milestones and retained result identifiers, separated from the

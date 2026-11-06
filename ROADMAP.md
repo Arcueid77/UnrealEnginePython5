@@ -1,3 +1,5 @@
+[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md)
+
 # Roadmap
 
 Capability milestones, not delivery dates. Review baseline: 2026-10-16.
@@ -22,7 +24,7 @@ accepted 1.0.0-rc.1 on `dev/release-1.0.0`, targeting UE5.8.1 / CPython3.11 /
 Win64. Its release record distinguishes Development and Shipping evidence,
 source/archive installation and the exact source pair. See
 [the release notes](docs/Release_1.0.0.md) and
-[migration completion](Demos/UEPLyraIntegration/Migration/completion_status.json).
+[migration completion](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/completion_status.json).
 The milestone descriptions below retain their capture-time scope.
 
 Implementation cadence: modify one coherent batch, verify that exact batch,
@@ -1759,7 +1761,7 @@ full initial inventory against actual references and accepted replacements.
 - [x] Configuration-only BP shells and animation/editor/test exclusions have
   documented reasons. Game-project C++ migration stays a separate phase.
 
-The [current candidate dispositions](Demos/UEPLyraIntegration/Migration/candidate_dispositions.json)
+The [current candidate dispositions](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/candidate_dispositions.json)
 reconcile all246 candidates and963 original entries with the hash-bound native
 class census,current declaration/dependency sources and explicit retained
 transports/shells. Original candidate paths/order/versions stay fixed. The named
@@ -1767,7 +1769,7 @@ Pawn/ASC issue and original NetShooter component discrepancy remain visible.
 This completes the inventory disposition criterion,including named open issues;
 it does not accept all gameplay branches or any remaining version requirement.
 
-The [per-asset scope reasons](Demos/UEPLyraIntegration/Migration/static_scope_dispositions.json)
+The [per-asset scope reasons](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/static_scope_dispositions.json)
 record all182 configuration shells and63 retained assets. The source review
 reconstructs the original491-asset classification and verifies all245 excluded
 stage files against the official reference. This completes the documentation

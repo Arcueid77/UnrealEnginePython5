@@ -1,3 +1,5 @@
+[English](Lyra_Network_Acceptance_Plan.en.md) | [简体中文](Lyra_Network_Acceptance_Plan.md)
+
 # Lyra 联机验收方案
 
 基线日期：2026-09-12。适用范围：UEP 0.8.0 候选版本、UE 5.8、引擎自带 CPython 3.11、Win64 Development。
@@ -37,11 +39,11 @@
 | 能力 | 当前实现 | 使用限制 |
 | --- | --- | --- |
 | 一服一客预检 | [主验证脚本](../Validation/Run-UEP58LyraValidation.ps1) 的 `NetworkPrecheck` 模式 | 会先 staging、调用 UBT；`-Incremental` 不等于跳过构建 |
-| 多客复制与生命周期探针 | [uep_lyra_network.py](../Demos/UEPLyraIntegration/Overlay/Content/Scripts/uep_lyra_network.py) | 20 个阶段、A/B0/B1 独立回执；旧 `uep_lyra_probe.py` 保留单客流程 |
-| HUD 计数、最终清理与日志契约 | [LyraHUDContracts.ps1](../Validation/LyraHUDContracts.ps1) | 本轮四个进程退出后才能验收；`All` 强制检查双客专项结果 |
-| 免构建联机入口 | [Run-UEP58FocusedNetworkValidation.ps1](../Validation/Run-UEP58FocusedNetworkValidation.ps1) | 要求已匹配的 stage；不执行 UBT/UAT、不修 BuildId、不生成资产 |
-| HUD 资产语义审计 | [audit_hud.py](../Demos/UEPLyraIntegration/Tools/audit_hud.py) | 可由已有 Editor 执行只读审计；主脚本的 `HUDAudit` 入口仍有构建前置 |
-| 多玩家伤害目标 | [UEPLyraWorldSubsystem.cpp](../Demos/UEPLyraIntegration/Plugins/UEPLyraBridge/Source/UEPLyraBridge/Private/UEPLyraWorldSubsystem.cpp) | `ApplyAuthorityHealthDeltaToPlayer` 使用当前 World 的不透明 PlayerToken；旧 local/remote API 保留歧义拒绝 |
+| 多客复制与生命周期探针 | [uep_lyra_network.py](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Overlay/Content/Scripts/uep_lyra_network.py) | 20 个阶段、A/B0/B1 独立回执；旧 `uep_lyra_probe.py` 保留单客流程 |
+| HUD 计数、最终清理与日志契约 | [LyraHUDContracts.ps1](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/Validation/LyraHUDContracts.ps1) | 本轮四个进程退出后才能验收；`All` 强制检查双客专项结果 |
+| 免构建联机入口 | [Run-UEP58FocusedNetworkValidation.ps1](https://github.com/Arcueid77/UnrealEnginePython5/blob/dev/release-1.0.0/Validation/Run-UEP58FocusedNetworkValidation.ps1) | 要求已匹配的 stage；不执行 UBT/UAT、不修 BuildId、不生成资产 |
+| HUD 资产语义审计 | [audit_hud.py](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Tools/audit_hud.py) | 可由已有 Editor 执行只读审计；主脚本的 `HUDAudit` 入口仍有构建前置 |
+| 多玩家伤害目标 | [UEPLyraWorldSubsystem.cpp](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Plugins/UEPLyraBridge/Source/UEPLyraBridge/Private/UEPLyraWorldSubsystem.cpp) | `ApplyAuthorityHealthDeltaToPlayer` 使用当前 World 的不透明 PlayerToken；旧 local/remote API 保留歧义拒绝 |
 | 多玩家快照与重生 | `CapturePlayerSnapshots`、`RequestPlayerRestart` | 每个真实 PlayerController 的身份、Pawn/Health 路径；重生也按 token 精确选玩家 |
 
 双客入口每轮自动运行只读 HUD 审计，并将实际使用资产的前后哈希关联到本轮报告。它不直接加载有 staging/build 顶层副作用的主脚本。

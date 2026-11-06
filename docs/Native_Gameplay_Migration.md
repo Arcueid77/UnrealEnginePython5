@@ -1,10 +1,12 @@
+[English](Native_Gameplay_Migration.md) | [简体中文](Native_Gameplay_Migration.zh-CN.md)
+
 # Lyra native gameplay migration
 
 The user approved CPP-001 through CPP-015 on 2026-11-01. Progress and per-batch
-acceptance live in [the Examples ledger](../Demos/UEPLyraIntegration/Migration/cpp_batches.json).
+acceptance live in [the Examples ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/cpp_batches.json).
 This extends the earlier accepted Blueprint scope; it does not reopen or replace it.
 
-The [consolidated completion index](../Demos/UEPLyraIntegration/Migration/completion_status.json)
+The [consolidated completion index](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/completion_status.json)
 covers all three subsequently approved C++ stages and H01-H05. All thirty C++
 candidates are implemented and accepted within the confirmed scope: twenty-nine
 production replacements and one capability case. CPP09 passed fourteen actual
@@ -20,8 +22,8 @@ original C++ bodies remain selectable through `NativeFallback`; native Gameplay
 Message registration, authority roles, and listener shutdown retain their existing
 ownership. The UEP binding source and engine binaries were not changed.
 
-The [source patch and implementation notes](../Demos/UEPLyraIntegration/Migration/NativeGameplay/README.md)
-and [CPP01 acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP01-acceptance.json)
+The [source patch and implementation notes](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/README.md)
+and [CPP01 acceptance](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP01-acceptance.json)
 identify the precise scope. Validation passed native/Python payload and broadcast
 ordering comparisons, exact 4.5-second clock boundaries, nested assist broadcasts,
 and native EndPlay/listener cleanup. A dedicated server and two actual clients in
@@ -62,7 +64,7 @@ approved order and affected regression scope. After each accepted batch, push
 Examples first, then the main repository's validation entry points and gitlink.
 
 CPP02 also passed and is recorded in
-[its team acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP02-acceptance.json).
+[its team acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP02-acceptance.json).
 It moves player team selection and least-populated team calculation to Python,
 using the original two/four-team configuration classes. A thin reflected setter
 keeps native team notifications intact. Six branch comparisons passed for each
@@ -77,7 +79,7 @@ was limited to the two affected LyraGame unity units. No engine compilation or
 Cook was needed for this batch.
 
 CPP03 passed for bot count, names, and removal selection; see
-[the bot acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP03-acceptance.json).
+[the bot acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP03-acceptance.json).
 Both production spawner configurations passed native/Python creation, count
 precedence, naming, nine native self-destruct/removal operations, and cleanup.
 Native spawn/initialization/destruction and the native RNG remain in use. The
@@ -89,7 +91,7 @@ nine bots, with the CPP01 damage/score/notification and CPP02 team gates enabled
 Only LyraGame units 1/2 were recompiled; the accepted team object was reused.
 
 CPP05 passed quickbar cycling/free-slot selection and pickup grant ordering; see
-[the inventory acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP05-acceptance.json).
+[the inventory acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP05-acceptance.json).
 Fourteen native/Python boundary cases and a dedicated server with two actual
 owners passed native event/RPC/equipment, inventory stack replication, OnRep
 notifications, owner isolation, and restoration. Only the three LyraGame unity
@@ -98,7 +100,7 @@ existing-instance inventory AddEntry remains unimplemented; this migration
 preserves that limitation and does not claim runtime support for it.
 
 CPP06 passed native spawner pickup/reset/completion orchestration; see
-[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP06-acceptance.json).
+[its acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP06-acceptance.json).
 The original C++ reference and Python implementation keep the previously accepted
 Blueprint Python layer fixed. Five guards, real timer completion, stationary
 overlap retry, and pending-timer destruction passed. The original level actors
@@ -107,7 +109,7 @@ cooldown, inventory/equipment/health replication, and owner isolation. Native
 timer/replication ownership is retained. Only LyraGame units 1/3 were rebuilt.
 
 CPP04 passed TDM and general player-start policy migration; see
-[the spawning acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP04-acceptance.json).
+[the spawning acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP04-acceptance.json).
 Eleven native/Python cases use real collision geometry for empty, partial, and
 full fits, check distance and claim preferences, preserve spectator behavior,
 and enter actual native RestartPlayer. Start discovery, weak caches, PIE start
@@ -117,7 +119,7 @@ The affected base/derived module compilation reuses the unchanged LyraGame unit.
 
 CPP07 passed accolade notification, registry-order, cancellation, timer, and
 teardown policy migration; see
-[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP07-acceptance.json).
+[its acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP07-acceptance.json).
 Eleven paired native/Python cases include pending native asset and registry
 callbacks across destruction/rebuild. The two-owner native damage lane passes
 both profiles with equal four-award queue/presentation results and no awards for
@@ -126,7 +128,7 @@ fixture; natural HUD creation and visible rendering are outside this evidence.
 Only ShooterCore is rebuilt. The official Lyra reference and SDK remain unchanged.
 
 CPP08 passed native interaction indicator/option/first-choice orchestration; see
-[its acceptance ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP08-acceptance.json).
+[its acceptance ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP08-acceptance.json).
 The typed native adapters retain interface calls, soft class paths, payload
 customization, ActorInfo assembly, and GAS execution. Native/Python boundary
 matrices and the existing Explorer regression pass. In both profiles, two actual
@@ -147,11 +149,11 @@ The added `-Headless` mode of `Run-UEP58NativeEscapeValidation.ps1` compares pol
 and widget deactivation directly in isolated CommonUI worlds. It uses temporary
 zero-duration runtime stack transitions and checks restoration. This lane is
 separate from actual keyboard and visible-window acceptance. The later
-[CPP09 actual-window ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP09-acceptance.json)
+[CPP09 actual-window ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP09-acceptance.json)
 closes fourteen real Escape inputs, seven cycles and two native HUD travels;
 all nine batches and fifteen first-stage candidates are now accepted.
 
-[The CPP09 progress ledger](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP09-progress.json)
+[The CPP09 progress ledger](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP09-progress.json)
 records seven passing native/Python open/close cycles and two native travels,
 including menu class/layer/owner, desired Menu configuration, input-state
 equivalence/restoration, native HUD destruction/rebuild, and fixture cleanup.
@@ -164,7 +166,7 @@ acceptance or a fix for that resource. The optional CPP-019 through CPP-030 grou
 remain outside the approved implementation scope.
 
 A read-only preflight for CPP-016 through CPP-018 is now available in
-[the next-batch review](../Demos/UEPLyraIntegration/Migration/CPP16_18_PREFLIGHT_REVIEW.md).
+[the next-batch review](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/CPP16_18_PREFLIGHT_REVIEW.md).
 The native commandlet examined 44 original Lyra item/ability definitions and two
 existing stage fixtures, finding five initial-stat fragments, five item costs,
 and no player-cost consumer in that census. GameplayTag struct keys cannot be
@@ -176,8 +178,8 @@ distinguished from production migration. Existing CPP09 sources, assets, and
 binary remain available for its pending actual-window acceptance.
 
 The user then selected CPP-016 through CPP-018; their independent progress lives
-in [the extended tracker](../Demos/UEPLyraIntegration/Migration/cpp_extended_batches.json).
-CPP10/CPP-016 passed [native initial-stat acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP10-acceptance.json).
+in [the extended tracker](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/cpp_extended_batches.json).
+CPP10/CPP-016 passed [native initial-stat acceptance](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP10-acceptance.json).
 Two Const owner events and typed stat snapshots preserve the native instanced
 fragments and map iteration order. Definition/boundary creation, missing-owner
 fallback, no native replay, and actual two-owner tag-stack replication passed.
@@ -210,21 +212,21 @@ native callbacks exercise that bound. The earlier matrices are reused only after
 verifying the exact one-line diagnostic-only change. No SDK/bridge rebuild, full
 engine build, cook/package, new platform, or physical-input acceptance is added.
 
-[CPP11 production acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP11-acceptance.json)
-and [CPP12 capability acceptance](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP12-acceptance.json)
+[CPP11 production acceptance](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP11-acceptance.json)
+and [CPP12 capability acceptance](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP12-acceptance.json)
 close the selected extended scope: two production groups and one capability-only
 group. The first-stage CPP09 actual-window gate remains pending.
 
 The user has now selected all remaining CPP-019 through CPP-030 and requested
-continuous execution. [Remaining progress](../Demos/UEPLyraIntegration/Migration/cpp_remaining_batches.json)
-tracks that scope. [CPP13 input/physics progress](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP13-progress.json)
+continuous execution. [Remaining progress](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/cpp_remaining_batches.json)
+tracks that scope. [CPP13 input/physics progress](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP13-progress.json)
 passes 28 real native network Jump trials and 12 admission-boundary calls.
 Death/respawn crosschecks remain explicit for CPP14. The user deferred desktop
 operation, so CPP09 actual-window input remains pending while other work continues.
 
-[CPP13](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP13-acceptance.json),
-[CPP14](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP14-acceptance.json),
-and [CPP15](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP15-acceptance.json)
+[CPP13](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP13-acceptance.json),
+[CPP14](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP14-acceptance.json),
+and [CPP15](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP15-acceptance.json)
 now close native Jump, Death and Reset replacement. Incremental evidence includes
 four death/new-Avatar Jump checks, 24 native lethal/self-destruct network cases,
 two original Arena death tasks and 12 original native Reset requests. Existing
@@ -235,9 +237,9 @@ The carrier build compiles LyraGame units 1/2 plus UHT and reuses unit 3, SDK,
 bridge and engine. Startup selection passes 46 focused tests. CPP16-24 continue;
 CPP09 actual desktop input remains user-deferred.
 
-[CPP16](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP16-acceptance.json),
-[CPP17](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP17-acceptance.json),
-and [CPP18](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP18-acceptance.json)
+[CPP16](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP16-acceptance.json),
+[CPP17](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP17-acceptance.json),
+and [CPP18](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP18-acceptance.json)
 accept frontend, controller cosmetic selection and camera priority. Evidence
 contains 106 typed boundaries, native/Python actual runtime paths, default boot
 smokes and four network Reset trials with eight independent cosmetic actor/mesh
@@ -248,8 +250,8 @@ Only LyraGame units 1/3 plus UHT were compiled; unit 2, SDK, bridge and engine w
 reused. Startup selection passes 48 tests. CPP19-24 continue; CPP09 physical
 desktop input remains user-deferred.
 
-[CPP19](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP19-acceptance.json)
-through [CPP24](../Demos/UEPLyraIntegration/Migration/NativeGameplay/CPP24-acceptance.json)
+[CPP19](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP19-acceptance.json)
+through [CPP24](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/CPP24-acceptance.json)
 close the remaining device-notification, replay-retention, audio-selection,
 team-damage, Arena-attribute and GameMode-selection policies. Their default profile
 retains all earlier Python replacements. Evidence includes 600 typed boundaries,
@@ -277,8 +279,8 @@ scope (CPP-018 capability-only); CPP09 actual desktop input remains user-deferre
 
 The user selected exception recovery, timing/long-run stability, fresh-stage
 reproduction and actual packaged delivery in
-[the hardening tracker](../Demos/UEPLyraIntegration/Migration/hardening_batches.json).
-[H01](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H01-acceptance.json)
+[the hardening tracker](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/hardening_batches.json).
+[H01](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/H01-acceptance.json)
 passes thirteen actual native failure/recovery cases, including original equipped
 item costs, one reward callback after its real native broadcast and three GAS
 Reset aborts/recoveries. Incomplete world policies reject their outputs without an
@@ -289,14 +291,14 @@ are reused. H02-H04 acceptance follows; CPP09 desktop input is still user-deferr
 
 H02's first long run exposed expired Mixin selector targets after the original
 twelve-minute match ended and seamless travel destroyed the cached world. The
-[incremental selector repair](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H02-selector-guard-acceptance.json)
+[incremental selector repair](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/H02-selector-guard-acceptance.json)
 checks the tracked weak owner before using that pointer. One SDK source file and
 two links rebuild; Engine, game/bridge DLLs and the CPP09 checkpoint remain intact.
 Ninety seconds of active gameplay, actual early travel, three rejected expired
 selectors, three native respawns and 4,250 queries pass. The harness now rebinds
 to the ready world, with travel waits excluded from activity duration.
 
-[H02](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H02-acceptance.json)
+[H02](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/H02-acceptance.json)
 then passes 1,200 active seconds, 58 native respawns, 57,250 native queries and a
 natural seamless travel. Post-warmup median private bytes grow 207.16 MiB and
 handles grow four within the predeclared 256 MiB/32 budgets; native actor population
@@ -305,15 +307,15 @@ two. This bounded observation includes memory growth and does not establish
 unlimited stability or leak freedom. Current SDK timing covers 14,400 interleaved
 calls: Damage medians 6.18/17.22 microseconds native/Python and Pawn 4.70/15.43.
 The scope is the same reflected entrypoint with bridge admission, not frame rate.
-[H03](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H03-acceptance.json)
+[H03](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/H03-acceptance.json)
 reproduces all 63 current production outputs from fifteen versioned recipes in
 an independent stage. All 11,341 final staged files match their original/versioned
 composition; 23 project modules build with 289 actions scoped to that stage, and
 thirteen actual exception/recovery cases pass on the fresh DLLs. No old project
 compiler outputs are imported. The production descriptor now consistently disables
 RuntimeTests/ShooterTests, and project-local manifests use the unchanged Engine
-BuildId. See [the reproduction entry point](../Demos/UEPLyraIntegration/Migration/REPRODUCE_NATIVE.md).
-[H04](../Demos/UEPLyraIntegration/Migration/NativeGameplay/H04-acceptance.json)
+BuildId. See [the reproduction entry point](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/REPRODUCE_NATIVE.md).
+[H04](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/NativeGameplay/H04-acceptance.json)
 closes the current Game build, cook and actual packaged execution. Its cold Game
 configuration compiles 1,190 actions, including Engine runtime dependencies inside
 the owned project; 4,105 compiler-generated paths stay in that stage. The installed
@@ -334,7 +336,7 @@ All four selected follow-up groups are accepted in this Win64 Development scope.
 Actual desktop Escape/Menu subsequently passed on 2026-11-05. H04 adds no packaged Dedicated
 Server, Shipping, other-platform, rendered graphics or hardware/audio claim.
 
-The later [H05 frame/CPU follow-up](../Demos/UEPLyraIntegration/Migration/RENDERED_PERFORMANCE.md)
+The later [H05 frame/CPU follow-up](https://github.com/Arcueid77/UnrealEnginePython5Examples/blob/dev/release-1.0.0/UEPLyraIntegration/Migration/RENDERED_PERFORMANCE.md)
 does enable actual D3D12 offscreen rendering on the current package, with 1080p
 Medium settings and sixteen balanced twenty-second blocks. Only the shared
 native world-policy carrier changes; the other migrated layers stay fixed.
