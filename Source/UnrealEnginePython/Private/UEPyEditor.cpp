@@ -17,6 +17,9 @@
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "EdGraphSchema_K2.h"
 #include "K2Node_FunctionResult.h"
+#include "K2Node_FunctionEntry.h"
+#include "K2Node_CallFunction.h"
+#include "EdGraphUtilities.h"
 #include "K2Node_VariableGet.h"
 #include "Editor/LevelEditor/Public/LevelEditorActions.h"
 #include "Editor/UnrealEd/Public/EditorLevelUtils.h"
@@ -1802,6 +1805,114 @@ PyObject *py_unreal_engine_blueprint_add_function(PyObject * self, PyObject * ar
 	Py_RETURN_UOBJECT(graph);
 }
 
+PyObject *py_unreal_engine_blueprint_extract_construction_helper(PyObject * self, PyObject * args)
+{
+	PyObject *py_blueprint = nullptr;
+	const char *name = nullptr;
+	if (!PyArg_ParseTuple(args, "Os:blueprint_extract_construction_helper", &py_blueprint, &name))
+	{
+		return nullptr;
+	}
+	UBlueprint *blueprint = ue_py_check_type<UBlueprint>(py_blueprint);
+	if (!IsInGameThread() || !blueprint || !blueprint->ParentClass ||
+		!blueprint->ParentClass->IsChildOf(AActor::StaticClass()))
+	{
+		return PyErr_Format(PyExc_TypeError, "a game-thread Actor Blueprint is required");
+	}
+	const FString helper_name(UTF8_TO_TCHAR(name));
+	FText reason;
+	if (helper_name.IsEmpty() || !FName::IsValidXName(helper_name, INVALID_OBJECTNAME_CHARACTERS, &reason) ||
+		!blueprint->GeneratedClass || blueprint->GeneratedClass->FindFunctionByName(FName(*helper_name)) ||
+		FindObjectFast<UObject>(blueprint, FName(*helper_name)) ||
+		blueprint->GeneratedClass->FindPropertyByName(FName(*helper_name)))
+	{
+		return PyErr_Format(PyExc_ValueError, "construction helper name is invalid or already exists");
+	}
+	UEdGraph *source = nullptr;
+	for (UEdGraph *graph : blueprint->FunctionGraphs)
+	{
+		if (graph && graph->GetFName() == FName(TEXT("UserConstructionScript")))
+		{
+			source = graph;
+			break;
+		}
+	}
+	UK2Node_FunctionEntry *entry = nullptr;
+	if (source && source->SubGraphs.Num() == 0)
+	{
+		for (UEdGraphNode *node : source->Nodes)
+		{
+			if (UK2Node_FunctionEntry *candidate = Cast<UK2Node_FunctionEntry>(node))
+			{
+				if (entry) { return PyErr_Format(PyExc_ValueError, "construction graph has multiple entries"); }
+				entry = candidate;
+			}
+		}
+	}
+	UFunction *signature = blueprint->GeneratedClass
+		? blueprint->GeneratedClass->FindFunctionByName(FName(TEXT("UserConstructionScript"))) : nullptr;
+	if (!entry || !signature || signature->NumParms != 0 || !entry->FindPin(UEdGraphSchema_K2::PN_Then))
+	{
+		return PyErr_Format(PyExc_ValueError, "a compiled zero-parameter construction graph without nested graphs is required");
+	}
+
+	// Clone the original BP body before replacing its entry. No runtime registry
+	// change or inherited UFunction patching is required: explicit Parent calls
+	// keep the construction function, which calls this helper virtually.
+	blueprint->Modify();
+	UEdGraph *helper = FEdGraphUtilities::CloneGraph(source, blueprint);
+	helper->Rename(*helper_name, blueprint, REN_DontCreateRedirectors | REN_NonTransactional);
+	helper->GraphGuid = FGuid::NewGuid();
+	for (UEdGraphNode *node : helper->Nodes)
+	{
+		node->CreateNewGuid();
+		if (UK2Node_FunctionTerminator *terminator = Cast<UK2Node_FunctionTerminator>(node))
+		{
+			terminator->FunctionReference.SetSelfMember(FName(*helper_name));
+		}
+		if (UK2Node_FunctionEntry *helper_entry = Cast<UK2Node_FunctionEntry>(node))
+		{
+			helper_entry->CustomGeneratedFunctionName = NAME_None;
+			helper_entry->SetExtraFlags(FUNC_Public | FUNC_BlueprintCallable | FUNC_BlueprintEvent);
+			helper_entry->MetaData.Category = FText::FromString(TEXT("Python Mixin|Adapters"));
+		}
+	}
+	blueprint->FunctionGraphs.Add(helper);
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(blueprint);
+	FKismetEditorUtilities::CompileBlueprint(blueprint);
+	UFunction *helper_function = blueprint->GeneratedClass
+		? blueprint->GeneratedClass->FindFunctionByName(FName(*helper_name), EIncludeSuperFlag::ExcludeSuper) : nullptr;
+	if (blueprint->Status == BS_Error || !helper_function || helper_function->HasAnyFunctionFlags(FUNC_Final))
+	{
+		FBlueprintEditorUtils::RemoveGraph(blueprint, helper);
+		return PyErr_Format(PyExc_RuntimeError, "construction helper did not compile as a virtual function; original body retained");
+	}
+
+	source->Modify();
+	const TArray<TObjectPtr<UEdGraphNode>> old_nodes = source->Nodes;
+	for (UEdGraphNode *node : old_nodes)
+	{
+		if (node != entry) { FBlueprintEditorUtils::RemoveNode(blueprint, node, true); }
+	}
+	entry->Modify();
+	entry->LocalVariables.Empty();
+	entry->BreakAllNodeLinks();
+	FGraphNodeCreator<UK2Node_CallFunction> creator(*source);
+	UK2Node_CallFunction *call = creator.CreateNode();
+	call->SetFromFunction(helper_function);
+	call->FunctionReference.SetSelfMember(FName(*helper_name));
+	creator.Finalize();
+	const UEdGraphSchema_K2 *schema = GetDefault<UEdGraphSchema_K2>();
+	if (!schema->TryCreateConnection(entry->FindPinChecked(UEdGraphSchema_K2::PN_Then),
+		call->FindPinChecked(UEdGraphSchema_K2::PN_Execute)))
+	{
+		return PyErr_Format(PyExc_RuntimeError, "construction forwarder could not be linked; Blueprint was not saved");
+	}
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(blueprint);
+	// Caller must compile, verify, and choose whether to save the modified asset.
+	Py_RETURN_UOBJECT(helper);
+}
+
 PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject * args)
 {
 	PyObject *py_blueprint = nullptr;
@@ -1864,6 +1975,24 @@ PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject *
 	}
 
 	UClass *interface_class = UUEPPythonMixinInterface::StaticClass();
+	FNameProperty *inherited_profile_property = nullptr;
+	if (!profile_variable_name.IsNone() &&
+		FBlueprintEditorUtils::FindNewVariableIndex(blueprint, profile_variable_name) == INDEX_NONE &&
+		blueprint->ParentClass)
+	{
+		FProperty *parent_property = FindFProperty<FProperty>(
+			blueprint->ParentClass, profile_variable_name);
+		if (parent_property)
+		{
+			inherited_profile_property = CastField<FNameProperty>(parent_property);
+			if (!inherited_profile_property || inherited_profile_property->ArrayDim != 1)
+			{
+				return PyErr_Format(PyExc_TypeError,
+					"inherited Blueprint mixin profile variable %s must be a scalar Name",
+					TCHAR_TO_UTF8(*profile_variable_name.ToString()));
+			}
+		}
+	}
 	bool directly_implemented = false;
 	for (const FBPInterfaceDescription& description : blueprint->ImplementedInterfaces)
 	{
@@ -1884,7 +2013,7 @@ PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject *
 		const int32 variable_index = FBlueprintEditorUtils::FindNewVariableIndex(
 			blueprint,
 			profile_variable_name);
-		if (variable_index == INDEX_NONE)
+		if (variable_index == INDEX_NONE && !inherited_profile_property)
 		{
 			FEdGraphPinType profile_pin;
 			profile_pin.PinCategory = UEdGraphSchema_K2::PC_Name;
@@ -1900,7 +2029,7 @@ PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject *
 					TCHAR_TO_UTF8(*profile_variable_name.ToString()));
 			}
 		}
-		else
+		else if (variable_index != INDEX_NONE)
 		{
 			FBPVariableDescription& variable = blueprint->NewVariables[variable_index];
 			const bool is_name = variable.VarType.PinCategory == UEdGraphSchema_K2::PC_Name;
@@ -1919,21 +2048,26 @@ PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject *
 			variable.DefaultValue = profile_name.ToString();
 		}
 
-		FBlueprintEditorUtils::SetBlueprintOnlyEditableFlag(
-			blueprint,
-			profile_variable_name,
-			false);
-		FBlueprintEditorUtils::SetBlueprintVariableCategory(
-			blueprint,
-			profile_variable_name,
-			nullptr,
-			FText::FromString(TEXT("Python Mixin")));
-		FBlueprintEditorUtils::SetBlueprintVariableMetaData(
-			blueprint,
-			profile_variable_name,
-			nullptr,
-			FName(TEXT("tooltip")),
-			TEXT("Python mixin profile selected independently for this Blueprint instance."));
+		// A child must not redeclare an inherited selector or edit its parent's
+		// variable metadata. Its own CDO supplies the independently saved default.
+		if (!inherited_profile_property)
+		{
+			FBlueprintEditorUtils::SetBlueprintOnlyEditableFlag(
+				blueprint,
+				profile_variable_name,
+				false);
+			FBlueprintEditorUtils::SetBlueprintVariableCategory(
+				blueprint,
+				profile_variable_name,
+				nullptr,
+				FText::FromString(TEXT("Python Mixin")));
+			FBlueprintEditorUtils::SetBlueprintVariableMetaData(
+				blueprint,
+				profile_variable_name,
+				nullptr,
+				FName(TEXT("tooltip")),
+				TEXT("Python mixin profile selected independently for this Blueprint instance."));
+		}
 	}
 
 	TArray<UEdGraph*> interface_graphs;
@@ -2042,6 +2176,19 @@ PyObject *py_unreal_engine_blueprint_configure_mixin(PyObject * self, PyObject *
 			configured_profile ? 1 : 0);
 	}
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(blueprint);
+	if (inherited_profile_property)
+	{
+		UObject *cdo = blueprint->GeneratedClass ? blueprint->GeneratedClass->GetDefaultObject() : nullptr;
+		FNameProperty *selector = blueprint->GeneratedClass
+			? FindFProperty<FNameProperty>(blueprint->GeneratedClass, profile_variable_name) : nullptr;
+		if (!cdo || !selector)
+		{
+			return PyErr_Format(PyExc_RuntimeError, "unable to resolve inherited mixin selector on child CDO");
+		}
+		cdo->Modify();
+		selector->SetPropertyValue_InContainer(cdo, profile_name);
+		FBlueprintEditorUtils::MarkBlueprintAsModified(blueprint);
+	}
 	Py_RETURN_NONE;
 }
 

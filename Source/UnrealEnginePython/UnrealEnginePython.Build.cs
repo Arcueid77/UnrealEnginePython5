@@ -16,6 +16,17 @@ public class UnrealEnginePython : ModuleRules
 		// UE 5.8 dynamic Python types use the FField/FProperty reflection model.
 		PublicDefinitions.Add("UEP_WITH_DYNAMIC_CLASS_GENERATION=1");
 
+		// Python runtime helpers must remain loose files for CPython imports in
+		// packaged games; cooked UFS content is not a filesystem import path.
+		string RuntimeScripts = System.IO.Path.GetFullPath(System.IO.Path.Combine(ModuleDirectory, "../../Content/Scripts"));
+		if (System.IO.Directory.Exists(RuntimeScripts))
+		{
+			foreach (string Script in System.IO.Directory.EnumerateFiles(RuntimeScripts, "*.py", System.IO.SearchOption.AllDirectories))
+			{
+				RuntimeDependencies.Add(Script, StagedFileType.NonUFS);
+			}
+		}
+
 		// UE 5.8 ships and stages CPython 3.11 through this external module.
 		// Keeping Python selection in UnrealBuildTool avoids mixing CRTs or loading a
 		// different system Python at runtime.

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "status": "accepted",
+  "version": "1.0.0",
+  "accepted_date": "2026-11-06",
+  "beta": false,
+  "target": "UE5.8.1 / CPython3.11.8 / Win64",
+  "configurations": [
+    "Development",
+    "Shipping"
+  ],
+  "base_candidate_tag": "v1.0.0-rc.1",
+  "base_candidate": {
+    "path": "Releases/1.0.0-rc.1/validation.json",
+    "sha256": "2CD59C381F11D37C75AA7B1FC0D807796089D026E1D34A46F860975EEBE87C34"
+  },
+  "promotion_metadata": {
+    "VersionName": {
+      "before": "1.0.0-rc.1",
+      "after": "1.0.0"
+    },
+    "IsBetaVersion": {
+      "before": true,
+      "after": false
+    },
+    "Version": {
+      "before": 1000,
+      "after": 1001
+    }
+  },
+  "sdk_runtime_implementation_unchanged": true,
+  "examples_implementation_unchanged": true,
+  "current_source_pair": {
+    "core": "48c4b2bf6acfbe6626973544e448e6cb8ac84dc1",
+    "examples": "95ac0d09302d956144ed9aed4187145cebeee750"
+  },
+  "inherited_accepted_matrix": {
+    "source_checks": 5866,
+    "indexed_python_files": 2027,
+    "generic_native_checks": 70,
+    "mixin_lanes": 11,
+    "PIE_sessions": 3,
+    "development_network_client_views": 16,
+    "shipping_source_build_actions": 1151
+  },
+  "stable_package_checks": {
+    "shipping_gameplay_exception_recovery": 13,
+    "shipping_frontend": true,
+    "python_receipt_files": 4578,
+    "third_person_runtime_versions": {
+      "Mixin": "1.0.0",
+      "PythonFirst": "1.0.0"
+    },
+    "third_person_rendered_package_images": 6,
+    "normal_shutdown": true
+  },
+  "source_distribution": true,
+  "cpp_rebuild_for_version_metadata": false,
+  "evidence": [
+    {
+      "path": ".build/Release/1.0.0/promotion.json",
+      "sha256": "C8A289590EA9C1BE40712D838C4A30D707180B66F8E0A176D651B6DF05104416"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingCook01/summary.json",
+      "sha256": "6DAFA74EA55947D5103861A9EF32807A3D028E990989243BF35A1179B41483D9"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingExceptions01/summary.json",
+      "sha256": "04A7661E1C1E991C1AE97C8CDF5ED9DEA50419202906D68EE154DBC59F4DF8A3"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingExceptions01/runtime.json",
+      "sha256": "8D1F932E21381FA014426EA3581DECBD984D1181AA1A480B081D52BB3069969E"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingExceptions01/dependencies.json",
+      "sha256": "7431D42C6A8464522C31996CC4688182382F460007DB0B3A07BD6D48F69AC325"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingFrontend01/summary.json",
+      "sha256": "F11D596806DB252AED100E6D2172A84EE1B29701E990E46611F22C8B9C1A52BA"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingFrontend01/runtime.json",
+      "sha256": "1A850432BB43393B98C0B40CCDD62F18045F67CA9D0827715BE4532235611533"
+    },
+    {
+      "path": ".build/Release/1.0.0/ShippingFrontend01/dependencies.json",
+      "sha256": "7431D42C6A8464522C31996CC4688182382F460007DB0B3A07BD6D48F69AC325"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/Mixin/summary.json",
+      "sha256": "88DF97C1C6F747F52B7149A3FA54B56FFE65202BDEF08EEBAA3CBC4843A4CE34"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/Mixin/runtime.json",
+      "sha256": "52728666DCA200189733AD2CBF1ACFEF251F4203C65414D4C19CA1FCD80438D8"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/Mixin/visible.json",
+      "sha256": "1C6983244A0A13B219BF184AE9FD1908AB9B61F14AA6684F802B3E6F9EBF19CF"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/PythonFirst/summary.json",
+      "sha256": "8B987C60D963573E7DCB228E921A5184BFE124E75489353145D10E7F95CBFBE2"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/PythonFirst/runtime.json",
+      "sha256": "90D27A76E8D7B5A02AB46DF779135F90551ABD4FB42A0BF29D5808BBC97582B8"
+    },
+    {
+      "path": ".build/Release/1.0.0/ThirdPersonPackages01/PythonFirst/visible.json",
+      "sha256": "41EC86768112D57525F2AC305623181BC5D0035ACD7892D4B5FFB8429AA5AD38"
+    }
+  ]
+}

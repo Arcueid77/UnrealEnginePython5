@@ -5,15 +5,44 @@
 #include "UEPyModule.h"
 #include "Async/Async.h"
 #include "CoreGlobals.h"
+#include "Modules/ModuleManager.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectHash.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/UObjectIterator.h"
+#include <atomic>
 
 namespace
 {
 	int32 GMixinCallbackDepth = 0;
 	int32 GMixinMutationDepth = 0;
+	struct FMixinInvocation
+	{
+		TWeakObjectPtr<UObject> Context;
+		uint64 RegistrationId = 0;
+	};
+	TArray<FMixinInvocation> GMixinInvocations;
+}
+
+FUEPyScopedMixinInvocation::FUEPyScopedMixinInvocation(UObject* context, uint64 registration_id)
+{
+	if (context && registration_id != 0 && IsInGameThread())
+	{
+		FMixinInvocation invocation;
+		invocation.Context = context;
+		invocation.RegistrationId = registration_id;
+		GMixinInvocations.Add(invocation);
+		EntryDepth = GMixinInvocations.Num();
+	}
+}
+
+FUEPyScopedMixinInvocation::~FUEPyScopedMixinInvocation()
+{
+	if (EntryDepth != INDEX_NONE)
+	{
+		check(GMixinInvocations.Num() == EntryDepth);
+		GMixinInvocations.Pop(EAllowShrinking::No);
+	}
 }
 
 FUEPyScopedMixinCallback::FUEPyScopedMixinCallback()
@@ -29,7 +58,7 @@ FUEPyScopedMixinCallback::~FUEPyScopedMixinCallback()
 
 bool FUEPyScopedMixinCallback::IsActive()
 {
-	return GMixinCallbackDepth > 0;
+	return GMixinCallbackDepth > 0 || !GMixinInvocations.IsEmpty();
 }
 
 namespace
@@ -100,6 +129,11 @@ namespace
 	uint64 GNextMixinRegistrationId = 1;
 	uint64 GNextMixinProfileGenerationId = 1;
 	FDelegateHandle GMixinPackageLoadedHandle;
+#if !WITH_EDITOR
+	FDelegateHandle GMixinClassModuleLoadedHandle;
+	TArray<UClass*> GMixinRuntimeAssetClasses;
+	std::atomic<uint64> GMixinRuntimeDiscoveryEpoch{0};
+#endif
 
 	class FScopedMixinMutation
 	{
@@ -208,6 +242,23 @@ namespace
 		return found ? *found : nullptr;
 	}
 
+	FMixinBinding* FindBindingForContext(UObject* context)
+	{
+		const TWeakObjectPtr<UObject> key(context);
+		for (int32 index = GMixinInvocations.Num() - 1; index >= 0; --index)
+		{
+			const FMixinInvocation& invocation = GMixinInvocations[index];
+			if (invocation.Context == key)
+			{
+				if (FMixinBinding* binding = FindBindingById(invocation.RegistrationId))
+				{
+					return binding;
+				}
+			}
+		}
+		return context ? FindBindingForClass(context->GetClass()) : nullptr;
+	}
+
 	FMixinFunctionBinding* FindFunctionBinding(FMixinBinding* binding, FName function_name)
 	{
 		if (!binding)
@@ -219,6 +270,23 @@ namespace
 			{
 				return item.PublicName == function_name;
 			});
+	}
+
+	FMixinFunctionBinding* FindFunctionBindingForClass(UClass* object_class, FName function_name)
+	{
+		// A child can declare a separate router for disjoint functions. Its
+		// presence must not hide an ancestor's original implementation.
+		for (UClass* current = object_class; current; current = current->GetSuperClass())
+		{
+			if (TUniquePtr<FMixinBinding>* found = GMixinsByClass.Find(current))
+			{
+				if (FMixinFunctionBinding* function = FindFunctionBinding(found->Get(), function_name))
+				{
+					return function;
+				}
+			}
+		}
+		return nullptr;
 	}
 
 	FMixinProfileBinding* FindProfile(FMixinBinding* binding, FName profile_name)
@@ -291,7 +359,7 @@ namespace
 			context ? TCHAR_TO_UTF8(*context->GetPathName()) : "<invalid>");
 	}
 
-	bool RunTeardownHook(PyObject* python_class, UObject* context)
+	bool RunTeardownHook(PyObject* python_class, UObject* context, uint64 registration_id)
 	{
 		if (!python_class || !context)
 		{
@@ -304,6 +372,7 @@ namespace
 			return true;
 		}
 
+		FUEPyScopedMixinInvocation invocation_scope(context, registration_id);
 		FUEPyScopedMixinCallback callback_scope;
 		PyObject* teardown = GetLocalClassAttribute(python_class, MixinTeardownName);
 		if (!teardown)
@@ -365,7 +434,7 @@ namespace
 		bool succeeded = true;
 		if (python_class)
 		{
-			succeeded = RunTeardownHook(python_class, context);
+			succeeded = RunTeardownHook(python_class, context, registration_id);
 		}
 		Py_XDECREF(python_class);
 
@@ -469,6 +538,7 @@ namespace
 		{
 			state->bResolving = true;
 			{
+				FUEPyScopedMixinInvocation invocation_scope(context, registration_id);
 				FUEPyScopedMixinCallback callback_scope;
 				selected = IUEPPythonMixinInterface::Execute_GetPythonMixinProfile(context);
 			}
@@ -581,6 +651,7 @@ namespace
 
 		bool initialized = true;
 		{
+			FUEPyScopedMixinInvocation invocation_scope(context, registration_id);
 			FUEPyScopedMixinCallback callback_scope;
 			PyObject* initializer = GetLocalClassAttribute(python_class, "__init__");
 			if (initializer)
@@ -748,24 +819,10 @@ namespace
 		}
 
 		PruneSupersededBindings(target_class);
-		for (const TPair<UClass*, TUniquePtr<FMixinBinding>>& pair : GMixinsByClass)
-		{
-			UClass* registered_class = pair.Key;
-			if (registered_class != target_class &&
-				(target_class->IsChildOf(registered_class) || registered_class->IsChildOf(target_class)))
-			{
-				PyErr_Format(
-					PyExc_TypeError,
-					"0.7 does not allow simultaneous mixin routers on related Blueprint classes (%s and %s)",
-					TCHAR_TO_UTF8(*target_class->GetName()),
-					TCHAR_TO_UTF8(*registered_class->GetName()));
-				return false;
-			}
-		}
 		return true;
 	}
 
-	bool ValidateOriginalFunction(UFunction* original, FString& error)
+	bool ValidateOriginalFunction(UFunction* original, FString& error, bool allow_named_outputs = false)
 	{
 		if (!original)
 		{
@@ -790,6 +847,10 @@ namespace
 			if (property->HasAnyPropertyFlags(CPF_OutParm) &&
 				!property->HasAnyPropertyFlags(CPF_ReturnParm | CPF_ConstParm))
 			{
+				if (allow_named_outputs && !property->HasAnyPropertyFlags(CPF_ReferenceParm))
+				{
+					continue; // Explicit opt-in: outputs are returned by name, never mutable inputs.
+				}
 				error = FString::Printf(
 					TEXT("non-const output parameter '%s' is outside the 0.7 mixin contract"),
 					*property->GetName());
@@ -804,7 +865,8 @@ namespace
 		Py_ssize_t positional_count = 1;
 		for (TFieldIterator<FProperty> it(original); it && it->HasAnyPropertyFlags(CPF_Parm); ++it)
 		{
-			if (!it->HasAnyPropertyFlags(CPF_ReturnParm))
+			if (!it->HasAnyPropertyFlags(CPF_ReturnParm) &&
+				!(it->HasAnyPropertyFlags(CPF_OutParm) && !it->HasAnyPropertyFlags(CPF_ConstParm)))
 			{
 				++positional_count;
 			}
@@ -886,7 +948,24 @@ namespace
 		{
 			return existing->OriginalFunction;
 		}
-		return target_class->FindFunctionByName(function_name);
+		UFunction* original = target_class->FindFunctionByName(function_name);
+		// An inherited router is not the child's Blueprint original. Save its
+		// preserved implementation, not a chain of injected Python functions.
+		while (UPythonFunction* routed = Cast<UPythonFunction>(original))
+		{
+			if (!routed->IsMixinFunction())
+			{
+				break;
+			}
+			FMixinFunctionBinding* inherited = FindFunctionBinding(
+				FindBindingById(routed->GetMixinRegistrationId()), routed->GetMixinFunctionName());
+			if (!inherited || !inherited->OriginalFunction || inherited->OriginalFunction == original)
+			{
+				return nullptr;
+			}
+			original = inherited->OriginalFunction;
+		}
+		return original;
 	}
 
 	bool CollectCandidates(UClass* target_class, FMixinBinding* binding, PyObject* python_class, TArray<FMixinCandidate>& candidates)
@@ -980,7 +1059,30 @@ namespace
 			}
 
 			FString validation_error;
-			if (!ValidateOriginalFunction(original, validation_error))
+			bool allow_named_outputs = false;
+			PyObject* named_outputs = PyObject_GetAttrString(value, "uep_named_outputs");
+			if (named_outputs)
+			{
+				if (named_outputs != Py_True && named_outputs != Py_False)
+				{
+					Py_DECREF(named_outputs);
+					Py_DECREF(items);
+					PyErr_Format(PyExc_TypeError, "%s.uep_named_outputs must be bool", python_name);
+					return false;
+				}
+				allow_named_outputs = named_outputs == Py_True;
+				Py_DECREF(named_outputs);
+			}
+			else if (PyErr_ExceptionMatches(PyExc_AttributeError))
+			{
+				PyErr_Clear();
+			}
+			else
+			{
+				Py_DECREF(items);
+				return false;
+			}
+			if (!ValidateOriginalFunction(original, validation_error, allow_named_outputs))
 			{
 				Py_DECREF(items);
 				PyErr_Format(
@@ -1259,13 +1361,16 @@ namespace
 	UClass* PythonObjectAsClass(PyObject* value)
 	{
 		ue_PyUObject* py_class = ue_is_pyuobject(value);
-		return py_class ? Cast<UClass>(py_class->ue_object) : nullptr;
+		return py_class && FUnrealEnginePythonHouseKeeper::Get()->IsValidPyUObject(py_class)
+			? Cast<UClass>(py_class->ue_object) : nullptr;
 	}
 
 	UObject* PythonObjectAsUObject(PyObject* value)
 	{
 		ue_PyUObject* py_object = ue_is_pyuobject(value);
-		return py_object ? py_object->ue_object : nullptr;
+		// A retained Python wrapper can outlive its world after seamless travel.
+		return py_object && FUnrealEnginePythonHouseKeeper::Get()->IsValidPyUObject(py_object)
+			? py_object->ue_object : nullptr;
 	}
 
 	bool PythonObjectAsProfileName(PyObject* value, FName& out_name, bool allow_none = false)
@@ -1358,7 +1463,12 @@ namespace
 				return true;
 			}
 		}
-		return false;
+		// The Blueprint compiler promotes a duplicate inherited Interface into
+		// ordinary function overrides. An explicitly owned Mixin Set provider is
+		// still a declaration; merely inheriting the parent's provider is not.
+		const UFunction* provider = target_class->FindFunctionByName(MixinSetFunctionName);
+		return target_class->ImplementsInterface(interface_class) &&
+			provider && provider->GetOuter() == target_class;
 	}
 
 	bool IsDiscoverableMixinClass(UClass* target_class)
@@ -1387,7 +1497,7 @@ namespace
 			{
 				PyErr_SetString(
 					PyExc_TypeError,
-					"target must be a persistent Blueprint class that directly declares UEPPythonMixinInterface");
+					"target must be a persistent Blueprint class that declares UEPPythonMixinInterface or its own GetPythonMixinSet override");
 			}
 			return false;
 		}
@@ -1546,6 +1656,7 @@ namespace
 		return registered_count;
 	}
 
+#if WITH_EDITOR
 	void RegisterMixinInterfacesInPackage(UPackage* loaded_package)
 	{
 		if (!loaded_package)
@@ -1597,6 +1708,89 @@ namespace
 		FScopedMixinMutation mutation_scope;
 		RegisterMixinInterfacesInPackage(loaded_package);
 	}
+
+	void OnMixinEndLoadPackage(const FEndLoadPackageContext& context)
+	{
+		// The async loader's old per-package completion delegate can expose an
+		// unsafe package in UE5.8.1. EndLoad also covers synchronous loads and
+		// provides the whole completed batch, including imported packages.
+		for (UPackage* loaded_package : context.LoadedPackages)
+		{
+			OnMixinPackageLoadCompleted(loaded_package);
+		}
+	}
+#else
+	void RefreshRuntimeMixinAssetClasses()
+	{
+		TArray<UClass*> class_types;
+		GetDerivedClasses(UClass::StaticClass(), class_types, true);
+		class_types.Add(UClass::StaticClass());
+		for (UClass* class_type : class_types)
+		{
+			// These are native metaclasses (including WidgetBlueprintGeneratedClass),
+			// not the loaded Blueprint classes themselves. Registration is refcounted.
+			if (class_type->HasAnyClassFlags(CLASS_Native) && !GMixinRuntimeAssetClasses.Contains(class_type))
+			{
+				FCoreUObjectDelegates::RegisterHotfixableAssetClass(class_type);
+				GMixinRuntimeAssetClasses.Add(class_type);
+			}
+		}
+	}
+
+	void OnRuntimeMixinModulesChanged(FName, EModuleChangeReason reason)
+	{
+		if (reason != EModuleChangeReason::ModuleLoaded || !GMixinPackageLoadedHandle.IsValid())
+		{
+			return;
+		}
+		if (!IsInGameThread())
+		{
+			const uint64 epoch = GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed);
+			AsyncTask(ENamedThreads::GameThread, [epoch]()
+			{
+				if (GMixinPackageLoadedHandle.IsValid() && GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed) == epoch)
+				{
+					RefreshRuntimeMixinAssetClasses();
+				}
+			});
+			return;
+		}
+		RefreshRuntimeMixinAssetClasses();
+	}
+
+	void OnRuntimeMixinAssetLoaded(UObject* loaded_object)
+	{
+		if (IsRunningCookCommandlet() || !loaded_object || !Py_IsInitialized())
+		{
+			return;
+		}
+		if (!IsInGameThread() || FUEPyScopedMixinCallback::IsActive() || GMixinMutationDepth > 0)
+		{
+			const TWeakObjectPtr<UObject> weak_object(loaded_object);
+			const uint64 epoch = GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed);
+			AsyncTask(ENamedThreads::GameThread, [weak_object, epoch]()
+			{
+				if (GMixinPackageLoadedHandle.IsValid() && GMixinRuntimeDiscoveryEpoch.load(std::memory_order_relaxed) == epoch)
+				{
+					OnRuntimeMixinAssetLoaded(weak_object.Get());
+				}
+			});
+			return;
+		}
+		UClass* target_class = Cast<UClass>(loaded_object);
+		if (!IsDiscoverableMixinClass(target_class))
+		{
+			return;
+		}
+		FScopePythonGIL gil;
+		FScopedMixinMutation mutation_scope;
+		RegisterDeclaredMixinInternal(target_class, false);
+		if (PyErr_Occurred())
+		{
+			unreal_engine_py_log_error();
+		}
+	}
+#endif
 }
 
 void UPythonFunction::SetMixinRegistration(uint64 registration_id, FName function_name)
@@ -1622,6 +1816,11 @@ EUEPyMixinDispatch ue_py_resolve_mixin_call(
 	if (!function || !function->IsMixinFunction())
 	{
 		return EUEPyMixinDispatch::NotMixin;
+	}
+	if (!IsInGameThread())
+	{
+		PyErr_SetString(PyExc_RuntimeError, "Python mixin dispatch must run on Unreal's game thread");
+		return EUEPyMixinDispatch::Error;
 	}
 
 	FMixinBinding** found = GMixinsById.Find(function->GetMixinRegistrationId());
@@ -1664,7 +1863,7 @@ PyObject* ue_py_get_mixin_attribute(ue_PyUObject* self, PyObject* attr_name)
 		return nullptr;
 	}
 
-	FMixinBinding* binding = FindBindingForClass(self->ue_object->GetClass());
+	FMixinBinding* binding = FindBindingForContext(self->ue_object);
 	if (!binding)
 	{
 		return nullptr;
@@ -1925,7 +2124,7 @@ PyObject* py_unreal_engine_set_mixin_profile(PyObject* self, PyObject* args)
 	{
 		return target ? nullptr : PyErr_Format(PyExc_TypeError, "set_mixin_profile target must be a UObject instance");
 	}
-	FMixinBinding* binding = FindBindingForClass(target->GetClass());
+	FMixinBinding* binding = FindBindingForContext(target);
 	if (!binding)
 	{
 		return PyErr_Format(PyExc_RuntimeError, "target object has no active mixin router");
@@ -1991,7 +2190,7 @@ PyObject* py_unreal_engine_clear_mixin_profile(PyObject* self, PyObject* args)
 	{
 		return PyErr_Format(PyExc_TypeError, "clear_mixin_profile target must be a UObject instance");
 	}
-	FMixinBinding* binding = FindBindingForClass(target->GetClass());
+	FMixinBinding* binding = FindBindingForContext(target);
 	if (!binding)
 	{
 		return PyErr_Format(PyExc_RuntimeError, "target object has no active mixin router");
@@ -2043,7 +2242,7 @@ PyObject* py_unreal_engine_get_mixin_profile(PyObject* self, PyObject* args)
 	{
 		return PyErr_Format(PyExc_TypeError, "get_mixin_profile target must be a UObject instance");
 	}
-	FMixinBinding* binding = FindBindingForClass(target->GetClass());
+	FMixinBinding* binding = FindBindingForContext(target);
 	if (!binding)
 	{
 		return PyErr_Format(PyExc_RuntimeError, "target object has no active mixin router");
@@ -2336,8 +2535,11 @@ PyObject* py_ue_call_mixin_original(ue_PyUObject* self, PyObject* args, PyObject
 		return PyErr_Format(PyExc_TypeError, "call_mixin_original function name must be a string");
 	}
 	const FName function_name(UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(py_name)));
-	FMixinBinding* binding = FindBindingForClass(self->ue_object->GetClass());
-	FMixinFunctionBinding* function_binding = FindFunctionBinding(binding, function_name);
+	FMixinFunctionBinding* function_binding = FindFunctionBinding(FindBindingForContext(self->ue_object), function_name);
+	if (!function_binding)
+	{
+		function_binding = FindFunctionBindingForClass(self->ue_object->GetClass(), function_name);
+	}
 	if (!function_binding || !function_binding->OriginalFunction)
 	{
 		return PyErr_Format(
@@ -2373,7 +2575,16 @@ void unreal_engine_python_enable_mixin_discovery()
 	}
 	if (!GMixinPackageLoadedHandle.IsValid())
 	{
-		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnPackageLoadCompleted.AddStatic(&OnMixinPackageLoadCompleted);
+#if WITH_EDITOR
+		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnEndLoadPackage.AddStatic(&OnMixinEndLoadPackage);
+#else
+		// Unlike the deprecated per-package callback, this is delivered after
+		// postload in both cooked async loading and synchronous EndLoad.
+		GMixinRuntimeDiscoveryEpoch.fetch_add(1, std::memory_order_relaxed);
+		GMixinPackageLoadedHandle = FCoreUObjectDelegates::OnHotfixableAssetLoaded.AddStatic(&OnRuntimeMixinAssetLoaded);
+		GMixinClassModuleLoadedHandle = FModuleManager::Get().OnModulesChanged().AddStatic(&OnRuntimeMixinModulesChanged);
+		RefreshRuntimeMixinAssetClasses();
+#endif
 	}
 	if (Py_IsInitialized() && !FUEPyScopedMixinCallback::IsActive() && GMixinMutationDepth == 0)
 	{
@@ -2387,7 +2598,19 @@ void unreal_engine_python_disable_mixin_discovery()
 {
 	if (GMixinPackageLoadedHandle.IsValid())
 	{
-		FCoreUObjectDelegates::OnPackageLoadCompleted.Remove(GMixinPackageLoadedHandle);
+#if WITH_EDITOR
+		FCoreUObjectDelegates::OnEndLoadPackage.Remove(GMixinPackageLoadedHandle);
+#else
+		GMixinRuntimeDiscoveryEpoch.fetch_add(1, std::memory_order_relaxed);
+		FCoreUObjectDelegates::OnHotfixableAssetLoaded.Remove(GMixinPackageLoadedHandle);
+		FModuleManager::Get().OnModulesChanged().Remove(GMixinClassModuleLoadedHandle);
+		GMixinClassModuleLoadedHandle.Reset();
+		for (UClass* class_type : GMixinRuntimeAssetClasses)
+		{
+			FCoreUObjectDelegates::UnregisterHotfixableAssetClass(class_type);
+		}
+		GMixinRuntimeAssetClasses.Empty();
+#endif
 		GMixinPackageLoadedHandle.Reset();
 	}
 	GDeclaringClasses.Empty();

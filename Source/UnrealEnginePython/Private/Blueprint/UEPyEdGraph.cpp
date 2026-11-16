@@ -14,6 +14,17 @@
 #include "Editor/AIGraph/Classes/AIGraph.h"
 #include "Editor/AIGraph/Classes/AIGraphNode.h"
 #include "Editor/BlueprintGraph/Classes/K2Node_FunctionEntry.h"
+#include "Editor/BlueprintGraph/Classes/K2Node_MacroInstance.h"
+
+PyObject *py_ue_node_get_macro_graph(ue_PyUObject *self, PyObject *args)
+{
+	ue_py_check(self);
+	UK2Node_MacroInstance *node = ue_py_check_type<UK2Node_MacroInstance>(self);
+	if (!node) return PyErr_Format(PyExc_TypeError, "expected a macro instance node");
+	UEdGraph *graph = node->GetMacroGraph();
+	if (!graph) Py_RETURN_NONE;
+	Py_RETURN_UOBJECT(graph);
+}
 
 PyObject *py_ue_graph_add_node_call_function(ue_PyUObject * self, PyObject * args)
 {

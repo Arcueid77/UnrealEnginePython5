@@ -265,7 +265,7 @@ try {
     } | ConvertTo-Json | Set-Content -LiteralPath $markerPath -Encoding utf8
 
     $stagedUEP = Join-Path $stageRoot "Plugins\UnrealEnginePython"
-    foreach ($directory in @("Config", "Resources", "Source")) {
+    foreach ($directory in @("Config", "Resources", "Source", "Content")) {
         Copy-FilteredTree -Source (Join-Path $repoRoot $directory) -Destination (Join-Path $stagedUEP $directory) -ExcludedSegments @("Binaries", "Intermediate", "__pycache__", ".build", ".git", ".codegraph")
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot "UnrealEnginePython.uplugin") -Destination (Join-Path $stagedUEP "UnrealEnginePython.uplugin") -Force

@@ -1092,7 +1092,12 @@ PyObject *py_ue_broadcast(ue_PyUObject *self, PyObject *args)
 	if (auto casted_prop = CastField<FMulticastDelegateProperty>(u_property))
 	{
 #if UEP_LEGACY_ENGINE_MINOR_VERSION >= 23
-		FMulticastScriptDelegate multiscript_delegate = *casted_prop->GetMulticastDelegate(self->ue_object);
+		// GetMulticastDelegate takes the property's value, not its UObject
+		// container. Reading the object header as a delegate corrupts the
+		// access-detector/invocation-list state on current UE versions.
+		const void* delegate_value = casted_prop->ContainerPtrToValuePtr<void>(self->ue_object);
+		const FMulticastScriptDelegate* stored_delegate = casted_prop->GetMulticastDelegate(delegate_value);
+		FMulticastScriptDelegate multiscript_delegate = stored_delegate ? *stored_delegate : FMulticastScriptDelegate();
 #else
 		FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(self->ue_object);
 #endif
